@@ -16,9 +16,17 @@ help:
 	@echo "Examples:"
 	@echo "  make install ~/projects/my-project"
 	@echo "  → Installs to ~/projects/my-project/ralphy"
+	@echo ""
+	@echo "Note: Existing tasks are preserved during installation"
 
 install:
 	@echo "Installing to: $(INSTALL_PATH)"
 	@mkdir -p "$(INSTALL_PATH)"
-	@cp -r src/* "$(INSTALL_PATH)"
+	@# Preserve existing tasks directory if present
+	@if [ -d "$(INSTALL_PATH)/tasks" ]; then \
+		echo "  ℹ️  Preserving existing tasks directory"; \
+		cp -r src/* "$(INSTALL_PATH)" --exclude=tasks; \
+	else \
+		cp -r src/* "$(INSTALL_PATH)"; \
+	fi
 	@echo "✓ Installation complete"
