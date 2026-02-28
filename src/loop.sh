@@ -1,6 +1,6 @@
 #!/bin/bash
 # Ralph Loop
-# Usage: ./ralph/loop.sh [mode] [max_iterations] [options]
+# Usage: ./loop.sh [mode] [max_iterations] [options]
 #
 # Modes:
 #   task       — run an iteration in the current phase (default)
@@ -26,30 +26,31 @@
 #
 # Examples:
 #   # New task (--prompt required)
-#   ./ralph/loop.sh task --name "dark-mode" --prompt "Add dark/light mode toggle" --claude
-#   ./ralph/loop.sh task 20 --name "fix-auth" --prompt "Fix auth redirect loop" --claude sonnet
-#   ./ralph/loop.sh task --name "my-task" --prompt "Do something" --claude --no-execute
+#   ./loop.sh task --name "dark-mode" --prompt "Add dark/light mode toggle" --claude
+#   ./loop.sh task 20 --name "fix-auth" --prompt "Fix auth redirect loop" --claude sonnet
+#   ./loop.sh task --name "my-task" --prompt "Do something" --claude --no-execute
 #
 #   # Resume existing task (all settings loaded from state.json)
-#   ./ralph/loop.sh task --name "dark-mode"
-#   ./ralph/loop.sh task --name "env-refactor"
-#   ./ralph/loop.sh task --name "my-task" --unlimited --delay 10
+#   ./loop.sh task --name "dark-mode"
+#   ./loop.sh task --name "env-refactor"
+#   ./loop.sh task --name "my-task" --unlimited --delay 10
 #
 #   # Resume with overrides (--claude/--codex overrides saved engine)
-#   ./ralph/loop.sh task --name "env-refactor" --claude sonnet
-#   ./ralph/loop.sh task --name "my-task" --codex
+#   ./loop.sh task --name "env-refactor" --claude sonnet
+#   ./loop.sh task --name "my-task" --codex
 #
 #   # Task management
-#   ./ralph/loop.sh status --name "my-task"
-#   ./ralph/loop.sh advance --name "my-task"
-#   ./ralph/loop.sh set-phase --name "my-task" --phase plan
+#   ./loop.sh status --name "my-task"
+#   ./loop.sh advance --name "my-task"
+#   ./loop.sh set-phase --name "my-task" --phase plan
 
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
 cd "$PROJECT_ROOT"
 
-TEMPLATES="$PROJECT_ROOT/ralph/templates"
+TEMPLATES="$SCRIPT_DIR/templates"
 
 MODE="task"
 MAX=0  # Unlimited iterations by default
@@ -178,10 +179,10 @@ case "$MODE" in
     task)
         if [ -z "$TASK_NAME" ]; then
             echo "Error: task mode requires --name \"task-name\""
-            echo "Usage: ./ralph/loop.sh task --name \"my-task\" [--prompt \"Task description\"] --claude"
+            echo "Usage: ./loop.sh task --name \"my-task\" [--prompt \"Task description\"] --claude"
             exit 1
         fi
-        TASK_DIR="ralph/tasks/$TASK_NAME"
+        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
 
         # Check if task already exists
         if [ -f "$TASK_DIR/state.json" ]; then
@@ -232,7 +233,7 @@ case "$MODE" in
             echo "Error: $MODE requires --name \"task-name\""
             exit 1
         fi
-        TASK_DIR="ralph/tasks/$TASK_NAME"
+        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
         if [ ! -d "$TASK_DIR" ]; then
             echo "Error: task directory $TASK_DIR does not exist"
             exit 1
@@ -254,7 +255,7 @@ case "$MODE" in
                 exit 1
                 ;;
         esac
-        TASK_DIR="ralph/tasks/$TASK_NAME"
+        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
         if [ ! -d "$TASK_DIR" ]; then
             echo "Error: task directory $TASK_DIR does not exist"
             exit 1
@@ -265,12 +266,12 @@ esac
 # --- For non-task loop modes, use the static prompt file ---
 case "$MODE" in
     task|status|advance|set-phase) ;;
-    *) PROMPT_FILE="ralph/PROMPT_${MODE}.md" ;;
+    *) PROMPT_FILE="$SCRIPT_DIR/prompts/${MODE}.md" ;;
 esac
 
 ITERATION=0
 BRANCH=$(git branch --show-current)
-FORMATTER="$PROJECT_ROOT/ralph/format-${ENGINE}-stream.sh"
+FORMATTER="$SCRIPT_DIR/formatters/format-${ENGINE}-stream.sh"
 
 # ---------------------------------------------------------------
 # Timeout implementation removed - commands run without time limits
@@ -671,10 +672,10 @@ build_task_prompt() {
     local phase="$1"
 
     if [ "$phase" = "research" ]; then
-        cat "ralph/PROMPT_task_research.md"
+        cat "$SCRIPT_DIR/prompts/task_research.md"
         render_template "$TEMPLATES/inject_task.md"
     elif [ "$phase" = "plan" ]; then
-        cat "ralph/PROMPT_task_plan.md"
+        cat "$SCRIPT_DIR/prompts/task_plan.md"
         render_template "$TEMPLATES/inject_task.md"
         # Inject research findings so the agent has them in context
         if [ -f "$TASK_DIR/RESEARCH.md" ]; then
@@ -686,7 +687,7 @@ build_task_prompt() {
             cat "$TASK_DIR/RESEARCH.md"
         fi
     elif [ "$phase" = "exec" ]; then
-        cat "ralph/PROMPT_task_exec.md"
+        cat "$SCRIPT_DIR/prompts/task_exec.md"
         render_template "$TEMPLATES/inject_task.md"
         render_template "$TEMPLATES/inject_section.md"
         extract_current_section
