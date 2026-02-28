@@ -62,7 +62,7 @@ git commit -m "research: <task-name>"
 Then advance to the planning phase so the next iteration starts correctly:
 
 ```
-./ralph/loop.sh advance --name "{{TASK_NAME}}"
+./loop.sh advance --name "{{TASK_NAME}}"
 ```
 
 **Stop after advancing. Do not create PLAN.md or PROGRESS.md — that happens in the next phase. Do not implement anything.**
@@ -79,7 +79,7 @@ If you hit a blocker (task description is ambiguous, critical information is mis
 
 - **RESEARCH ONLY. Do NOT implement anything. Do NOT write application code. Do NOT create PLAN.md or PROGRESS.md.**
 - If RESEARCH.md already exists, you are refining it — read it first, identify gaps, then enhance.
-- Phase iteration: {{PHASE_ITERATION}}. After committing, run `./ralph/loop.sh advance` to move to planning.
+- Phase iteration: {{PHASE_ITERATION}}. After committing, run `./loop.sh advance` to move to planning.
 - Read actual files — don't guess at what's in them.
 - Use parallel subagents aggressively to explore the codebase.
 - The quality of the plan depends entirely on the quality of this research. Be thorough.

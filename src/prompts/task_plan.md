@@ -14,7 +14,7 @@ You have a RESEARCH.md with detailed codebase findings. Your job is to create an
 0c. Read `TASK_DIR/RESEARCH.md` thoroughly — it contains the codebase analysis, file details, callsites, and dependency graph.
 0d. You may do additional targeted searches if the research missed something, but most exploration should already be done.
 0e. If PLAN.md and PROGRESS.md already exist, you are refining them — review, identify issues, improve.
-0f. Phase iteration: {{PHASE_ITERATION}}. After committing, run `./ralph/loop.sh advance` to move to execution.
+0f. Phase iteration: {{PHASE_ITERATION}}. After committing, run `./loop.sh advance` to move to execution.
 
 ---
 
@@ -76,7 +76,7 @@ git commit -m "plan: <task-name>"
 Then advance to the execution phase so the next iteration starts correctly:
 
 ```
-./ralph/loop.sh advance --name "{{TASK_NAME}}"
+./loop.sh advance --name "{{TASK_NAME}}"
 ```
 
 **Stop after advancing. Do not implement anything.**

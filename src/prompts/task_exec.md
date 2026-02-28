@@ -67,7 +67,7 @@ nx run lib1:test & nx run lib2:test
 - `git push`
 - Check PROGRESS.md for remaining unchecked items. If **all items across all sections** are now checked, advance to done:
   ```
-  ./ralph/loop.sh advance --name "{{TASK_NAME}}"
+  ./loop.sh advance --name "{{TASK_NAME}}"
   ```
 
 ---

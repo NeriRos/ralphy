@@ -1,6 +1,6 @@
 #!/bin/bash
 # Parses `codex exec --json` JSONL into readable terminal output
-# Usage: codex exec --json ... | ./ralph/format-codex-stream.sh [--verbose]
+# Usage: codex exec --json ... | ./format-codex-stream.sh [--verbose]
 #   default: compact progress + assistant text + completion status
 #   --verbose: also prints unknown events and non-JSON stderr/stdout lines
 

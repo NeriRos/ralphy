@@ -221,7 +221,7 @@ case "$MODE" in
             # New task - prompt is required
             if [ -z "$TASK_PROMPT" ]; then
                 echo "Error: new task requires --prompt \"description\""
-                echo "Usage: ./ralph/loop.sh task --name \"my-task\" --prompt \"Task description\" --claude"
+                echo "Usage: ./loop.sh task --name \"my-task\" --prompt \"Task description\" --claude"
                 exit 1
             fi
             mkdir -p "$TASK_DIR"
@@ -673,10 +673,8 @@ build_task_prompt() {
 
     if [ "$phase" = "research" ]; then
         cat "$SCRIPT_DIR/prompts/task_research.md"
-        render_template "$TEMPLATES/inject_task.md"
     elif [ "$phase" = "plan" ]; then
         cat "$SCRIPT_DIR/prompts/task_plan.md"
-        render_template "$TEMPLATES/inject_task.md"
         # Inject research findings so the agent has them in context
         if [ -f "$TASK_DIR/RESEARCH.md" ]; then
             echo ""
@@ -688,8 +686,6 @@ build_task_prompt() {
         fi
     elif [ "$phase" = "exec" ]; then
         cat "$SCRIPT_DIR/prompts/task_exec.md"
-        render_template "$TEMPLATES/inject_task.md"
-        render_template "$TEMPLATES/inject_section.md"
         extract_current_section
         # Inject all checklist templates
         for checklist in "$TEMPLATES"/checklist_*.md; do

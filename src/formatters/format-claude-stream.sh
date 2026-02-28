@@ -1,6 +1,6 @@
 #!/bin/bash
 # Parses claude --output-format stream-json into readable terminal output
-# Usage: claude -p --verbose --output-format stream-json ... | ./ralph/format-stream.sh [--verbose]
+# Usage: claude -p --verbose --output-format stream-json ... | ./format-claude-stream.sh [--verbose]
 #   default:   compact progress — tool names, short summaries, assistant text, result
 #   --verbose: full detail — tool inputs, tool result previews, thinking content
 
