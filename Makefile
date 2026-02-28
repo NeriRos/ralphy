@@ -25,7 +25,11 @@ install:
 	@# Preserve existing tasks directory if present
 	@if [ -d "$(INSTALL_PATH)/tasks" ]; then \
 		echo "  ℹ️  Preserving existing tasks directory"; \
-		cp -r src/* "$(INSTALL_PATH)" --exclude=tasks; \
+		for item in src/*; do \
+			if [ "$$(basename $$item)" != "tasks" ]; then \
+				cp -r "$$item" "$(INSTALL_PATH)/"; \
+			fi \
+		done; \
 	else \
 		cp -r src/* "$(INSTALL_PATH)"; \
 	fi
