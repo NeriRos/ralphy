@@ -60,7 +60,26 @@ nx run lib1:test & nx run lib2:test
 - Check off (`[x]`) every completed item in the section
 - If you discovered new issues or subtasks, add them as `- [ ]` entries in the appropriate section (or create a new section)
 
-### 4. Commit, push, and advance if done
+### 4. Review
+
+Before committing, review all changes made in this section:
+
+- **Code review**: Check for typos, logic errors, missing edge cases, and adherence to patterns
+- **Test coverage**: Verify all new code paths are covered by tests
+- **Type safety**: Run typecheck to catch any type errors
+- **Lint & format**: Ensure all files pass linting
+- **Integration**: Check that changes work correctly with existing code
+
+**If issues are found:**
+- Document them in PROGRESS.md with a note (e.g., `- [x] Item name — ⚠️ Issue: [description]`)
+- Fix each issue directly in the code
+- Re-run verification commands (`nx affected -t test,lint,typecheck`)
+- Loop back to step 2 (Verify) until all issues are resolved
+
+**If no issues are found:**
+- Proceed to step 5 (Commit & push)
+
+### 5. Commit, push, and advance if done
 
 - `git add` the specific files you changed (not `git add -A`)
 - `git commit` with a descriptive message summarizing the section's work

@@ -18,8 +18,12 @@
 #   --timeout N              Deprecated (timeout removed)
 #   --push-interval N        Deprecated (pushes every iteration)
 #   --unlimited              Deprecated (unlimited by default)
-#   --phase <phase>          Target phase for set-phase mode
+#   --phase <phase>          Target phase for set-phase mode (research|plan|exec|review|done)
 #   [number]                 Set max iterations (e.g., 20)
+#
+# Phases:
+#   research → plan → exec ↔ review → done
+#   (review loops back to exec if issues found, advances otherwise)
 #
 # Safety Features:
 #   - All safety features removed (unlimited iterations, no delays, no timeouts)
@@ -245,13 +249,13 @@ case "$MODE" in
             exit 1
         fi
         if [ -z "$PHASE_ARG" ]; then
-            echo "Error: set-phase requires --phase <research|plan|exec|done>"
+            echo "Error: set-phase requires --phase <research|plan|exec|review|done>"
             exit 1
         fi
         case "$PHASE_ARG" in
-            research|plan|exec|done) ;;
+            research|plan|exec|review|done) ;;
             *)
-                echo "Error: invalid phase '$PHASE_ARG'. Must be one of: research, plan, exec, done"
+                echo "Error: invalid phase '$PHASE_ARG'. Must be one of: research, plan, exec, review, done"
                 exit 1
                 ;;
         esac
@@ -504,12 +508,30 @@ advance_phase() {
             next_phase="exec"
             ;;
         exec)
-            local unchecked
-            unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
-            if [ "$unchecked" -gt 0 ]; then
-                echo "Warning: advancing to done with $unchecked unchecked items in PROGRESS.md"
+            # Auto-advance exec→review after each iteration
+            next_phase="review"
+            ;;
+        review)
+            # After review, either loop back to exec (if issues found) or advance
+            # Check if there are any ⚠️ issues marked in PROGRESS.md for current section
+            local current_section
+            current_section=$(extract_current_section | head -1)
+            local has_issues
+            has_issues=$(extract_current_section | grep -c '⚠️' || true)
+
+            if [ "$has_issues" -gt 0 ]; then
+                # Issues found — loop back to exec to fix them
+                next_phase="exec"
+            else
+                # No issues — advance to next section or done
+                local unchecked
+                unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
+                if [ "$unchecked" -eq 0 ]; then
+                    next_phase="done"
+                else
+                    next_phase="exec"
+                fi
             fi
-            next_phase="done"
             ;;
         done)
             echo "Task is already done. Nothing to advance."
@@ -691,6 +713,15 @@ build_task_prompt() {
         for checklist in "$TEMPLATES"/checklist_*.md; do
             [ -f "$checklist" ] && render_template "$checklist"
         done
+    elif [ "$phase" = "review" ]; then
+        cat "$SCRIPT_DIR/prompts/task_review.md"
+        # Inject current section for review
+        echo ""
+        echo "---"
+        echo ""
+        echo "## Current Section (to review)"
+        echo ""
+        extract_current_section
     fi
 }
 
@@ -781,11 +812,14 @@ while true; do
 
         local_phase_iter=$(jq -r '.phaseIteration' "$TASK_DIR/state.json" 2>/dev/null || echo "0")
         echo " Phase: $PHASE (iteration $local_phase_iter)"
-        if [ "$PHASE" = "exec" ]; then
+        if [ "$PHASE" = "exec" ] || [ "$PHASE" = "review" ]; then
             SECTION_HEADER=$(extract_current_section | head -1)
             STATS=$(count_progress)
             echo " Section: $SECTION_HEADER"
             echo " Progress: $STATS (done/remaining)"
+            if [ "$PHASE" = "review" ]; then
+                echo " (Reviewing section for quality/correctness...)"
+            fi
         fi
         echo ""
 
@@ -837,28 +871,92 @@ while true; do
     if [ "$MODE" = "task" ]; then
         update_state_iteration "success"
 
-        # Auto-advance exec→done when all PROGRESS.md items are checked
-        if [ "$PHASE" = "exec" ] && [ -f "$TASK_DIR/PROGRESS.md" ]; then
-            local_unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
-            if [ "$local_unchecked" -eq 0 ]; then
+        # Auto-transition: exec→review→(exec or done)
+        if [ "$PHASE" = "exec" ]; then
+            # Always advance exec→review
+            jq \
+                --arg now "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+            '
+                .phase = "review" |
+                .lastModified = $now |
+                .history += [{
+                    timestamp: $now,
+                    phase: "exec",
+                    iteration: .phaseIteration,
+                    engine: .engine,
+                    model: .model,
+                    result: "auto-advance -> review"
+                }]
+            ' "$TASK_DIR/state.json" > "$TASK_DIR/state.json.tmp" \
+                && mv "$TASK_DIR/state.json.tmp" "$TASK_DIR/state.json"
+            echo "  [state] Auto-advanced exec → review"
+
+        elif [ "$PHASE" = "review" ]; then
+            # Check if issues found in current section
+            local current_section_issues
+            current_section_issues=$(extract_current_section | grep -c '⚠️' || true)
+
+            if [ "$current_section_issues" -gt 0 ]; then
+                # Issues found — loop back to exec to fix
                 jq \
                     --arg now "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
                 '
-                    .phase = "done" |
+                    .phase = "exec" |
                     .lastModified = $now |
-                    .status = "completed" |
                     .history += [{
                         timestamp: $now,
-                        phase: "exec",
+                        phase: "review",
                         iteration: .phaseIteration,
                         engine: .engine,
                         model: .model,
-                        result: "advance -> done"
+                        result: "issues found -> loop back to exec"
                     }]
                 ' "$TASK_DIR/state.json" > "$TASK_DIR/state.json.tmp" \
                     && mv "$TASK_DIR/state.json.tmp" "$TASK_DIR/state.json"
-                echo "  [state] All items checked — auto-advanced to done"
-                commit_state "advance: exec -> done"
+                echo "  [state] Issues found — looping back to exec"
+
+            else
+                # No issues — check if more sections or done
+                local unchecked
+                unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
+                if [ "$unchecked" -eq 0 ]; then
+                    # All items checked — advance to done
+                    jq \
+                        --arg now "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+                    '
+                        .phase = "done" |
+                        .lastModified = $now |
+                        .status = "completed" |
+                        .history += [{
+                            timestamp: $now,
+                            phase: "review",
+                            iteration: .phaseIteration,
+                            engine: .engine,
+                            model: .model,
+                            result: "no issues found -> advance to done"
+                        }]
+                    ' "$TASK_DIR/state.json" > "$TASK_DIR/state.json.tmp" \
+                        && mv "$TASK_DIR/state.json.tmp" "$TASK_DIR/state.json"
+                    echo "  [state] Review clean — auto-advanced review → done"
+                else
+                    # More items to implement — advance to next exec
+                    jq \
+                        --arg now "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+                    '
+                        .phase = "exec" |
+                        .lastModified = $now |
+                        .history += [{
+                            timestamp: $now,
+                            phase: "review",
+                            iteration: .phaseIteration,
+                            engine: .engine,
+                            model: .model,
+                            result: "no issues found -> advance to next section"
+                        }]
+                    ' "$TASK_DIR/state.json" > "$TASK_DIR/state.json.tmp" \
+                        && mv "$TASK_DIR/state.json.tmp" "$TASK_DIR/state.json"
+                    echo "  [state] Review approved — advancing to next section"
+                fi
             fi
         fi
     fi
