@@ -305,10 +305,13 @@ render_template() {
         "$file"
 }
 
-# Scaffold PLAN.md from template if it doesn't exist yet
+# Scaffold PLAN.md and STEERING.md from templates if they don't exist yet
 scaffold_task_files() {
     if [ ! -f "$TASK_DIR/PLAN.md" ]; then
         render_template "$TEMPLATES/PLAN.md" > "$TASK_DIR/PLAN.md"
+    fi
+    if [ ! -f "$TASK_DIR/STEERING.md" ]; then
+        cp "$TEMPLATES/STEERING.md" "$TASK_DIR/STEERING.md"
     fi
 }
 
@@ -693,6 +696,21 @@ count_progress() {
 build_task_prompt() {
     local phase="$1"
 
+    # Inject steering guidance at the top of every phase (if present)
+    if [ -f "$TASK_DIR/STEERING.md" ]; then
+        local steering_content
+        steering_content=$(cat "$TASK_DIR/STEERING.md" | grep -v '^#' | sed '/^$/d' | head -20)
+        if [ -n "$steering_content" ]; then
+            echo "---"
+            echo "# 📌 User Steering (READ FIRST)"
+            echo ""
+            cat "$TASK_DIR/STEERING.md"
+            echo ""
+            echo "---"
+            echo ""
+        fi
+    fi
+
     if [ "$phase" = "research" ]; then
         cat "$SCRIPT_DIR/prompts/task_research.md"
     elif [ "$phase" = "plan" ]; then
@@ -783,6 +801,7 @@ fi
 # Ensure state.json exists for task mode
 if [ "$MODE" = "task" ]; then
     ensure_state
+    scaffold_task_files  # Create STEERING.md and other templates
 fi
 
 while true; do
