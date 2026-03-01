@@ -24,7 +24,7 @@ install:
 	@mkdir -p "$(INSTALL_PATH)"
 	@# Copy bin and .gitignore, preserve existing tasks directory
 	@cp -r src/bin "$(INSTALL_PATH)/"
-	@cp src/.gitignore "$(INSTALL_PATH)/" 2>/dev/null || true
+	@cp src/gitignore "$(INSTALL_PATH)/.gitignore" 2>/dev/null || true
 	@if [ ! -d "$(INSTALL_PATH)/tasks" ]; then \
 		mkdir -p "$(INSTALL_PATH)/tasks"; \
 	else \

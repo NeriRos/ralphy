@@ -1,0 +1,3 @@
+# Formatter debug logs
+tasks/**/format-claude-stream.log
+bin
