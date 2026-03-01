@@ -1,12 +1,18 @@
 #!/bin/bash
 # Parses claude --output-format stream-json into readable terminal output
-# Usage: claude -p --verbose --output-format stream-json ... | ./format-claude-stream.sh [--verbose]
+# Usage: claude -p --verbose --output-format stream-json ... | ./format-claude-stream.sh [--verbose] [--log]
 #   default:   compact progress — tool names, short summaries, assistant text, result
 #   --verbose: full detail — tool inputs, tool result previews, thinking content
+#   --log:     save raw JSON output to format-claude-stream.log for debugging
 
 VERBOSE=false
+LOG_FILE=""
 for arg in "$@"; do
     [ "$arg" = "--verbose" ] || [ "$arg" = "-v" ] && VERBOSE=true
+    if [ "$arg" = "--log" ]; then
+        LOG_FILE="format-claude-stream.log"
+        > "$LOG_FILE"  # Clear existing log
+    fi
 done
 
 BOLD='\033[1m'
@@ -27,6 +33,9 @@ TOOL_COUNT=0
 while IFS= read -r line; do
     [ -z "$line" ] && continue
 
+    # Log raw output if --log flag was set
+    [ -n "$LOG_FILE" ] && echo "$line" >> "$LOG_FILE"
+
     type=$(echo "$line" | jq -r '.type // empty' 2>/dev/null)
     [ -z "$type" ] && continue
 
@@ -34,14 +43,24 @@ while IFS= read -r line; do
         system)
             model=$(echo "$line" | jq -r '.model // "unknown"')
             sid=$(echo "$line" | jq -r '.session_id // ""' | cut -c1-8)
-            if $VERBOSE; then
-                ver=$(echo "$line" | jq -r '.claude_code_version // ""')
-                ntools=$(echo "$line" | jq -r '.tools | length')
-                echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                echo -e "${DIM}  model: ${RESET}${BOLD}${model}${RESET}  ${DIM}session: ${sid}…  v${ver}  tools: ${ntools}${RESET}"
-                echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+            if [ "$model" = "unknown" ]; then
+                # Mark as failed when model info is missing
+                if $VERBOSE; then
+                    echo -e "${RED}${BOLD}⚠ FAILED TO PARSE MODEL${RESET} ${DIM}(${sid}…)${RESET}"
+                    echo -e "${DIM}  Check log file for raw JSON output. Run with --log to capture full output.${RESET}"
+                else
+                    echo -e "${RED}✗${RESET} ${BOLD}UNKNOWN${RESET} ${DIM}(${sid}…) - see --log${RESET}"
+                fi
             else
-                echo -e "${GRAY}──${RESET} ${BOLD}${model}${RESET} ${GRAY}(${sid}…)${RESET}"
+                if $VERBOSE; then
+                    ver=$(echo "$line" | jq -r '.claude_code_version // ""')
+                    ntools=$(echo "$line" | jq -r '.tools | length')
+                    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                    echo -e "${DIM}  model: ${RESET}${BOLD}${model}${RESET}  ${DIM}session: ${sid}…  v${ver}  tools: ${ntools}${RESET}"
+                    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                else
+                    echo -e "${GRAY}──${RESET} ${BOLD}${model}${RESET} ${GRAY}(${sid}…)${RESET}"
+                fi
             fi
             ;;
 

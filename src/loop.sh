@@ -18,6 +18,7 @@
 #   --timeout N              Deprecated (timeout removed)
 #   --push-interval N        Deprecated (pushes every iteration)
 #   --unlimited              Deprecated (unlimited by default)
+#   --log                    Log raw stream JSON to format-claude-stream.log for debugging
 #   --phase <phase>          Target phase for set-phase mode (research|plan|exec|review|done)
 #   [number]                 Set max iterations (e.g., 20)
 #
@@ -75,6 +76,7 @@ NO_EXECUTE=0
 ITERATION_DELAY=0  # No delay between iterations
 ITERATION_TIMEOUT=600  # Not used (timeout removed)
 PUSH_INTERVAL=1  # Push to git every iteration
+LOG_FLAG=""
 
 for arg in "$@"; do
     if [ "$EXPECT_MODEL" -eq 1 ]; then
@@ -167,6 +169,9 @@ for arg in "$@"; do
             ;;
         --unlimited)
             MAX=0
+            ;;
+        --log)
+            LOG_FLAG="--log"
             ;;
         ''|*[!0-9]*)
             MODE="$arg"
@@ -861,7 +866,7 @@ while true; do
             --model "$MODEL" \
             --verbose \
             --output-format stream-json \
-            | "$FORMATTER"
+            | "$FORMATTER" $LOG_FLAG
         STATUS=$?
     else
         cat "$TEMP_PROMPT" | codex exec \
@@ -870,7 +875,7 @@ while true; do
             --dangerously-bypass-approvals-and-sandbox \
             - \
             2>&1 \
-            | "$FORMATTER"
+            | "$FORMATTER" $LOG_FLAG
         STATUS=$?
     fi
 
