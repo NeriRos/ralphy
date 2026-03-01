@@ -52,10 +52,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 TEMPLATES="$SCRIPT_DIR/templates"
+TASKS_DIR="$PROJECT_ROOT/tasks"
 
 MODE="task"
 MAX=0  # Unlimited iterations by default
@@ -191,7 +192,7 @@ case "$MODE" in
             echo "Usage: ./loop.sh task --name \"my-task\" [--prompt \"Task description\"] --claude"
             exit 1
         fi
-        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
+        TASK_DIR="$TASKS_DIR/$TASK_NAME"
 
         # Check if task already exists
         if [ -f "$TASK_DIR/state.json" ]; then
@@ -242,7 +243,7 @@ case "$MODE" in
             echo "Error: $MODE requires --name \"task-name\""
             exit 1
         fi
-        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
+        TASK_DIR="$TASKS_DIR/$TASK_NAME"
         if [ ! -d "$TASK_DIR" ]; then
             echo "Error: task directory $TASK_DIR does not exist"
             exit 1
@@ -264,7 +265,7 @@ case "$MODE" in
                 exit 1
                 ;;
         esac
-        TASK_DIR="$SCRIPT_DIR/tasks/$TASK_NAME"
+        TASK_DIR="$TASKS_DIR/$TASK_NAME"
         if [ ! -d "$TASK_DIR" ]; then
             echo "Error: task directory $TASK_DIR does not exist"
             exit 1

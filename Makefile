@@ -22,15 +22,12 @@ help:
 install:
 	@echo "Installing to: $(INSTALL_PATH)"
 	@mkdir -p "$(INSTALL_PATH)"
-	@# Preserve existing tasks directory if present
-	@if [ -d "$(INSTALL_PATH)/tasks" ]; then \
-		echo "  ℹ️  Preserving existing tasks directory"; \
-		for item in src/*; do \
-			if [ "$$(basename $$item)" != "tasks" ]; then \
-				cp -r "$$item" "$(INSTALL_PATH)/"; \
-			fi \
-		done; \
+	@# Copy bin and .gitignore, preserve existing tasks directory
+	@cp -r src/bin "$(INSTALL_PATH)/"
+	@cp src/.gitignore "$(INSTALL_PATH)/" 2>/dev/null || true
+	@if [ ! -d "$(INSTALL_PATH)/tasks" ]; then \
+		mkdir -p "$(INSTALL_PATH)/tasks"; \
 	else \
-		cp -r src/* "$(INSTALL_PATH)"; \
+		echo "  ℹ️  Preserving existing tasks directory"; \
 	fi
 	@echo "✓ Installation complete"
