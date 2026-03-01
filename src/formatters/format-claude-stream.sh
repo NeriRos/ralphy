@@ -96,9 +96,10 @@ while IFS= read -r line; do
                             echo -e "\n  ${CYAN}${BOLD}▶ ${name}${RESET}"
                             [ -n "$input_summary" ] && echo -e "    ${DIM}${input_summary}${RESET}"
                         else
-                            # Compact: tool + summary on one line, no trailing newline
+                            # Compact: tool + summary, each on own line
                             printf "  ${CYAN}▶${RESET} ${CYAN}${name}${RESET}"
                             [ -n "$input_summary" ] && printf " ${DIM}${input_summary}${RESET}"
+                            printf "\n"
                         fi
                         ;;
                     thinking)
@@ -146,8 +147,8 @@ while IFS= read -r line; do
                     fi
                 done <<< "$content"
             else
-                # Compact: append checkmark inline (printf has no newline from tool line)
-                printf " ${GREEN}✓${RESET}\n"
+                # Compact: checkmark on its own, spaced right
+                echo -e " ${GREEN}✓${RESET}"
             fi
             ;;
 
