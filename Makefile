@@ -4,18 +4,18 @@
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(ARGS):;@:)
 
-# Installation path - appends /ralphy to the provided path
+# Installation path - appends /.ralph to the provided path
 BASE_PATH ?= $(if $(ARGS),$(ARGS),.)
-INSTALL_PATH := $(BASE_PATH)/ralphy
+INSTALL_PATH := $(BASE_PATH)/.ralph
 
 help:
 	@echo "Available targets:"
-	@echo "  make install              Install to ./ralphy (default)"
-	@echo "  make install /path/to/dir Install to /path/to/dir/ralphy"
+	@echo "  make install              Install to ./.ralph (default)"
+	@echo "  make install /path/to/dir Install to /path/to/dir/.ralph"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make install ~/projects/my-project"
-	@echo "  → Installs to ~/projects/my-project/ralphy"
+	@echo "  make install ~"
+	@echo "  → Installs to ~/.ralph"
 	@echo ""
 	@echo "Note: Existing tasks are preserved during installation"
 
