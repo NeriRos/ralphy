@@ -917,7 +917,6 @@ while true; do
 
         elif [ "$PHASE" = "review" ]; then
             # Check if issues found in current section
-            local current_section_issues
             current_section_issues=$(extract_current_section | grep -c '⚠️' || true)
 
             if [ "$current_section_issues" -gt 0 ]; then
@@ -941,7 +940,6 @@ while true; do
 
             else
                 # No issues — check if more sections or done
-                local unchecked
                 unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
                 if [ "$unchecked" -eq 0 ]; then
                     # All items checked — advance to done

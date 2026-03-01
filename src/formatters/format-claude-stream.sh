@@ -82,36 +82,23 @@ while IFS= read -r line; do
                         input_summary=$(echo "$block" | jq -r '
                             .input |
                             if .file_path then "📄 " + (.file_path | split("/") | .[-1])
-                            elif .command then "$ " + (.command | split("\n") | .[0])[0:60]
-                            elif .pattern then "🔍 " + .pattern[0:40] + (if .path then " in " + (.path | split("/") | .[-1]) else "" end)
-                            elif .query then "🔍 " + .query[0:60]
-                            elif .url then "🌐 " + .url[0:60]
-                            elif .prompt then "💬 " + (.prompt | split("\n") | .[0])[0:60]
+                            elif .command then "$ " + (.command | split("\n") | .[0])
+                            elif .pattern then "🔍 " + .pattern + (if .path then " in " + (.path | split("/") | .[-1]) else "" end)
+                            elif .query then "🔍 " + .query
+                            elif .url then "🌐 " + .url
+                            elif .prompt then "💬 " + (.prompt | split("\n") | .[0])
                             elif .old_string then "✏️  edit"
                             elif .content then "📝 write"
                             else ""
                             end
                         ' 2>/dev/null)
                         if $VERBOSE; then
-                            # Full path / full command in verbose
-                            full_summary=$(echo "$block" | jq -r '
-                                .input |
-                                if .file_path then "📄 " + .file_path
-                                elif .command then "$ " + (.command | split("\n") | .[0])
-                                elif .pattern then "🔍 " + .pattern + (if .path then " in " + .path else "" end)
-                                elif .query then "🔍 " + .query
-                                elif .url then "🌐 " + .url
-                                elif .prompt then "💬 " + (.prompt | split("\n") | .[0])[0:80]
-                                elif .old_string then "✏️  edit"
-                                elif .content then "📝 write"
-                                else (tostring | .[0:100])
-                                end
-                            ' 2>/dev/null)
                             echo -e "\n  ${CYAN}${BOLD}▶ ${name}${RESET}"
-                            [ -n "$full_summary" ] && echo -e "    ${DIM}${full_summary}${RESET}"
+                            [ -n "$input_summary" ] && echo -e "    ${DIM}${input_summary}${RESET}"
                         else
-                            # Compact: tool + summary on one line
-                            echo -e "  ${CYAN}▶${RESET} ${CYAN}${name}${RESET} ${DIM}${input_summary}${RESET}"
+                            # Compact: tool + summary on one line, no trailing newline
+                            printf "  ${CYAN}▶${RESET} ${CYAN}${name}${RESET}"
+                            [ -n "$input_summary" ] && printf " ${DIM}${input_summary}${RESET}"
                         fi
                         ;;
                     thinking)
@@ -159,8 +146,8 @@ while IFS= read -r line; do
                     fi
                 done <<< "$content"
             else
-                # Compact: just a checkmark to show the tool finished
-                echo -e " ${GREEN}✓${RESET}"
+                # Compact: append checkmark inline (printf has no newline from tool line)
+                printf " ${GREEN}✓${RESET}\n"
             fi
             ;;
 
