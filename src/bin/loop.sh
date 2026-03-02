@@ -4,6 +4,7 @@
 #
 # Modes:
 #   task       — run an iteration in the current phase (default)
+#   list       — show all incomplete tasks
 #   status     — show task state + history
 #   advance    — move to next phase (research→plan→exec)
 #   set-phase  — jump to any phase (resets phaseIteration to 0)
@@ -46,6 +47,7 @@
 #   ./loop.sh task --name "my-task" --codex
 #
 #   # Task management
+#   ./loop.sh list
 #   ./loop.sh status --name "my-task"
 #   ./loop.sh advance --name "my-task"
 #   ./loop.sh set-phase --name "my-task" --phase plan
@@ -253,6 +255,9 @@ case "$MODE" in
             echo "  [new] Creating new task: $TASK_NAME"
         fi
         ;;
+    list)
+        # No --name required
+        ;;
     status|advance)
         if [ -z "$TASK_NAME" ]; then
             echo "Error: $MODE requires --name \"task-name\""
@@ -290,7 +295,7 @@ esac
 
 # --- For non-task loop modes, use the static prompt file ---
 case "$MODE" in
-    task|status|advance|set-phase) ;;
+    task|list|status|advance|set-phase) ;;
     *) PROMPT_FILE="$SCRIPT_DIR/prompts/${MODE}.md" ;;
 esac
 
@@ -386,6 +391,15 @@ init_state() {
         engine: $engine,
         model: $model,
         status: "active",
+        usage: {
+            total_cost_usd: 0,
+            total_duration_ms: 0,
+            total_turns: 0,
+            total_input_tokens: 0,
+            total_output_tokens: 0,
+            total_cache_read_input_tokens: 0,
+            total_cache_creation_input_tokens: 0
+        },
         history: [],
         metadata: {
             branch: $branch
@@ -423,6 +437,15 @@ migrate_state() {
         engine: $engine,
         model: $model,
         status: "active",
+        usage: {
+            total_cost_usd: 0,
+            total_duration_ms: 0,
+            total_turns: 0,
+            total_input_tokens: 0,
+            total_output_tokens: 0,
+            total_cache_read_input_tokens: 0,
+            total_cache_creation_input_tokens: 0
+        },
         history: [],
         metadata: {
             branch: $branch
@@ -460,27 +483,44 @@ detect_phase() {
 update_state_iteration() {
     local result="${1:-success}"
     local state_file="$TASK_DIR/state.json"
+    local stats_file="$TASK_DIR/.iteration_stats.json"
     local now
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+    # Read iteration stats if available (written by formatter)
+    local stats='{}'
+    if [ -f "$stats_file" ]; then
+        stats=$(cat "$stats_file")
+        rm -f "$stats_file"
+    fi
 
     jq \
         --arg now "$now" \
         --arg result "$result" \
         --arg engine "$ENGINE" \
         --arg model "$MODEL" \
+        --argjson stats "$stats" \
     '
         .phaseIteration += 1 |
         .totalIterations += 1 |
         .lastModified = $now |
         .engine = $engine |
         .model = $model |
+        .usage.total_cost_usd = ((.usage.total_cost_usd // 0) + ($stats.cost_usd // 0)) |
+        .usage.total_duration_ms = ((.usage.total_duration_ms // 0) + ($stats.duration_ms // 0)) |
+        .usage.total_turns = ((.usage.total_turns // 0) + ($stats.num_turns // 0)) |
+        .usage.total_input_tokens = ((.usage.total_input_tokens // 0) + ($stats.input_tokens // 0)) |
+        .usage.total_output_tokens = ((.usage.total_output_tokens // 0) + ($stats.output_tokens // 0)) |
+        .usage.total_cache_read_input_tokens = ((.usage.total_cache_read_input_tokens // 0) + ($stats.cache_read_input_tokens // 0)) |
+        .usage.total_cache_creation_input_tokens = ((.usage.total_cache_creation_input_tokens // 0) + ($stats.cache_creation_input_tokens // 0)) |
         .history += [{
             timestamp: $now,
             phase: .phase,
             iteration: .phaseIteration,
             engine: $engine,
             model: $model,
-            result: $result
+            result: $result,
+            usage: $stats
         }]
     ' "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
@@ -646,6 +686,16 @@ show_status() {
     echo " Branch:           $(jq -r '.metadata.branch' "$state_file")"
     echo "--------------------------------------------"
 
+    # Show usage totals
+    echo " Usage:"
+    echo "   Cost:           \$$(jq -r '(.usage.total_cost_usd // 0) * 100 | round / 100' "$state_file")"
+    echo "   Time:           $(jq -r '((.usage.total_duration_ms // 0) / 1000 * 10 | round / 10) | tostring + "s"' "$state_file")"
+    echo "   Turns:          $(jq -r '.usage.total_turns // 0' "$state_file")"
+    echo "   Input tokens:   $(jq -r '.usage.total_input_tokens // 0' "$state_file")"
+    echo "   Output tokens:  $(jq -r '.usage.total_output_tokens // 0' "$state_file")"
+    echo "   Cached tokens:  $(jq -r '.usage.total_cache_read_input_tokens // 0' "$state_file")"
+    echo "--------------------------------------------"
+
     # Show files present
     echo " Files:"
     for f in RESEARCH.md PLAN.md PROGRESS.md; do
@@ -766,6 +816,40 @@ build_task_prompt() {
 # ---------------------------------------------------------------
 
 case "$MODE" in
+    list)
+        echo "============================================"
+        echo " Incomplete Tasks"
+        echo "============================================"
+        found=0
+        for state_file in "$TASKS_DIR"/*/state.json; do
+            [ -f "$state_file" ] || continue
+            phase=$(jq -r '.phase' "$state_file")
+            [ "$phase" = "done" ] && continue
+            found=1
+            name=$(jq -r '.name' "$state_file")
+            status=$(jq -r '.status' "$state_file")
+            total=$(jq -r '.totalIterations' "$state_file")
+            modified=$(jq -r '.lastModified' "$state_file")
+            engine=$(jq -r '.engine' "$state_file")
+            model=$(jq -r '.model' "$state_file")
+            prompt=$(jq -r '.prompt' "$state_file" | head -c 60)
+            # Progress info
+            progress_info=""
+            progress_file="$(dirname "$state_file")/PROGRESS.md"
+            if [ -f "$progress_file" ]; then
+                checked=$(grep -c '^\- \[x\]' "$progress_file" 2>/dev/null || true)
+                unchecked=$(grep -c '^\- \[ \]' "$progress_file" 2>/dev/null || true)
+                progress_info=" | progress: $checked done / $unchecked remaining"
+            fi
+            printf " %-20s  phase: %-8s  status: %-8s  iters: %s%s\n" "$name" "$phase" "$status" "$total" "$progress_info"
+            printf "   %s\n" "$prompt"
+        done
+        if [ "$found" -eq 0 ]; then
+            echo " No incomplete tasks found."
+        fi
+        echo "============================================"
+        exit 0
+        ;;
     status)
         show_status
         exit 0
@@ -896,11 +980,29 @@ while true; do
     set -e
 
     if [ "$STATUS" -eq 42 ]; then
-        echo "Detected Codex rate limit. Stopping loop."
+        echo -e "\n\033[33m\033[1m⚠ Rate limited\033[0m  \033[2mCodex rate limit hit. Stopping loop.\033[0m"
         break
     fi
     if [ "$STATUS" -ne 0 ]; then
-        echo "Engine run failed with exit code: $STATUS"
+        case "$STATUS" in
+            130)
+                echo -e "\n\033[31m\033[1m✗ Interrupted (exit 130)\033[0m  \033[2mClaude hit usage limits or was cancelled (SIGINT).\033[0m"
+                echo -e "  \033[2mThis usually means the conversation exceeded max output tokens or API limits.\033[0m"
+                ;;
+            137)
+                echo -e "\n\033[31m\033[1m✗ Killed (exit 137)\033[0m  \033[2mProcess was killed (SIGKILL / OOM).\033[0m"
+                ;;
+            1)
+                echo -e "\n\033[31m\033[1m✗ Failed (exit 1)\033[0m  \033[2mClaude exited with a general error.\033[0m"
+                ;;
+            *)
+                echo -e "\n\033[31m\033[1m✗ Failed (exit $STATUS)\033[0m  \033[2mEngine exited unexpectedly.\033[0m"
+                ;;
+        esac
+        # Update state with failure info before exiting
+        if [ "$MODE" = "task" ] && [ -f "$TASK_DIR/state.json" ]; then
+            update_state_iteration "failed:exit-$STATUS"
+        fi
         exit "$STATUS"
     fi
 
