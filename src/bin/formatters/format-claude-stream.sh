@@ -44,6 +44,37 @@ TURN=0
 TOOL_COUNT=0
 GOT_RESULT=false
 
+# Accumulate usage stats from a result event into state.json
+# Adds to root .usage totals and stores .last_iteration_usage for loop.sh to attach to history
+update_state_usage() {
+    local result_line="$1"
+    [ -z "$LOG_DIR" ] && return
+    [ ! -f "$LOG_DIR/state.json" ] && return
+
+    local stats
+    stats=$(echo "$result_line" | jq '{
+        cost_usd: (.total_cost_usd // 0),
+        duration_ms: (.duration_ms // 0),
+        num_turns: (.num_turns // 0),
+        input_tokens: (.usage.input_tokens // 0),
+        output_tokens: (.usage.output_tokens // 0),
+        cache_read_input_tokens: (.usage.cache_read_input_tokens // 0),
+        cache_creation_input_tokens: (.usage.cache_creation_input_tokens // 0)
+    }' 2>/dev/null) || return
+
+    jq --argjson stats "$stats" '
+        .usage.total_cost_usd = ((.usage.total_cost_usd // 0) + $stats.cost_usd) |
+        .usage.total_duration_ms = ((.usage.total_duration_ms // 0) + $stats.duration_ms) |
+        .usage.total_turns = ((.usage.total_turns // 0) + $stats.num_turns) |
+        .usage.total_input_tokens = ((.usage.total_input_tokens // 0) + $stats.input_tokens) |
+        .usage.total_output_tokens = ((.usage.total_output_tokens // 0) + $stats.output_tokens) |
+        .usage.total_cache_read_input_tokens = ((.usage.total_cache_read_input_tokens // 0) + $stats.cache_read_input_tokens) |
+        .usage.total_cache_creation_input_tokens = ((.usage.total_cache_creation_input_tokens // 0) + $stats.cache_creation_input_tokens) |
+        .last_iteration_usage = $stats
+    ' "$LOG_DIR/state.json" > "$LOG_DIR/state.json.tmp" \
+        && mv "$LOG_DIR/state.json.tmp" "$LOG_DIR/state.json"
+}
+
 while IFS= read -r line; do
     [ -z "$line" ] && continue
 
@@ -198,18 +229,8 @@ while IFS= read -r line; do
                     echo -e "\n${GREEN}✓ done${RESET}  ${DIM}${info}${RESET}"
                 fi
             fi
-            # Write iteration stats to file for loop.sh to pick up
-            if [ -n "$LOG_DIR" ]; then
-                echo "$line" | jq '{
-                    cost_usd: (.total_cost_usd // 0),
-                    duration_ms: (.duration_ms // 0),
-                    num_turns: (.num_turns // 0),
-                    input_tokens: (.usage.input_tokens // 0),
-                    output_tokens: (.usage.output_tokens // 0),
-                    cache_read_input_tokens: (.usage.cache_read_input_tokens // 0),
-                    cache_creation_input_tokens: (.usage.cache_creation_input_tokens // 0)
-                }' > "$LOG_DIR/.iteration_stats.json" 2>/dev/null
-            fi
+            # Accumulate usage stats into state.json
+            update_state_usage "$line"
             ;;
     esac
 done

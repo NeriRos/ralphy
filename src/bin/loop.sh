@@ -480,39 +480,24 @@ detect_phase() {
 }
 
 # Increment iteration counters and append to history after each run
+# Usage stats are already accumulated by the formatter into .usage and .last_iteration_usage
 update_state_iteration() {
     local result="${1:-success}"
     local state_file="$TASK_DIR/state.json"
-    local stats_file="$TASK_DIR/.iteration_stats.json"
     local now
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-
-    # Read iteration stats if available (written by formatter)
-    local stats='{}'
-    if [ -f "$stats_file" ]; then
-        stats=$(cat "$stats_file")
-        rm -f "$stats_file"
-    fi
 
     jq \
         --arg now "$now" \
         --arg result "$result" \
         --arg engine "$ENGINE" \
         --arg model "$MODEL" \
-        --argjson stats "$stats" \
     '
         .phaseIteration += 1 |
         .totalIterations += 1 |
         .lastModified = $now |
         .engine = $engine |
         .model = $model |
-        .usage.total_cost_usd = ((.usage.total_cost_usd // 0) + ($stats.cost_usd // 0)) |
-        .usage.total_duration_ms = ((.usage.total_duration_ms // 0) + ($stats.duration_ms // 0)) |
-        .usage.total_turns = ((.usage.total_turns // 0) + ($stats.num_turns // 0)) |
-        .usage.total_input_tokens = ((.usage.total_input_tokens // 0) + ($stats.input_tokens // 0)) |
-        .usage.total_output_tokens = ((.usage.total_output_tokens // 0) + ($stats.output_tokens // 0)) |
-        .usage.total_cache_read_input_tokens = ((.usage.total_cache_read_input_tokens // 0) + ($stats.cache_read_input_tokens // 0)) |
-        .usage.total_cache_creation_input_tokens = ((.usage.total_cache_creation_input_tokens // 0) + ($stats.cache_creation_input_tokens // 0)) |
         .history += [{
             timestamp: $now,
             phase: .phase,
@@ -520,8 +505,9 @@ update_state_iteration() {
             engine: $engine,
             model: $model,
             result: $result,
-            usage: $stats
-        }]
+            usage: (.last_iteration_usage // {})
+        }] |
+        del(.last_iteration_usage)
     ' "$state_file" > "$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
 
