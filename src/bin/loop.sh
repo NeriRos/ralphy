@@ -11,6 +11,7 @@
 # Options:
 #   --name "task-name"       Task name (required for task mode)
 #   --prompt "description"   Task description (required for NEW tasks, optional for existing)
+#   --prompt-file <path>     Read task description from file (alternative to --prompt)
 #   --claude [model]         Use Claude API (haiku|sonnet|opus, default: opus or saved setting)
 #   --codex                  Use Codex API (overrides saved engine for existing tasks)
 #   --no-execute             Stop after research+plan, don't execute
@@ -66,6 +67,7 @@ ENGINE_SET=0
 EXPECT_MODEL=0
 EXPECT_NAME=0
 EXPECT_PROMPT=0
+EXPECT_PROMPT_FILE=0
 EXPECT_PHASE=0
 EXPECT_DELAY=0
 EXPECT_TIMEOUT=0
@@ -102,6 +104,16 @@ for arg in "$@"; do
     if [ "$EXPECT_PROMPT" -eq 1 ]; then
         TASK_PROMPT="$arg"
         EXPECT_PROMPT=0
+        continue
+    fi
+
+    if [ "$EXPECT_PROMPT_FILE" -eq 1 ]; then
+        if [ ! -f "$arg" ]; then
+            echo "Error: prompt file not found: $arg"
+            exit 1
+        fi
+        TASK_PROMPT=$(cat "$arg")
+        EXPECT_PROMPT_FILE=0
         continue
     fi
 
@@ -152,6 +164,9 @@ for arg in "$@"; do
             ;;
         --prompt)
             EXPECT_PROMPT=1
+            ;;
+        --prompt-file)
+            EXPECT_PROMPT_FILE=1
             ;;
         --phase)
             EXPECT_PHASE=1
@@ -303,12 +318,12 @@ render_template() {
     fi
     sed \
         -e "s|{{TASK_NAME}}|$TASK_NAME|g" \
-        -e "s|{{TASK_PROMPT}}|$TASK_PROMPT|g" \
         -e "s|{{TASK_DIR}}|$TASK_DIR|g" \
         -e "s|{{DATE}}|$(date '+%Y-%m-%d')|g" \
         -e "s|{{PHASE}}|$phase_val|g" \
         -e "s|{{PHASE_ITERATION}}|$phase_iter|g" \
-        "$file"
+        "$file" \
+    | TASK_PROMPT="$TASK_PROMPT" perl -pe 'BEGIN{$p=$ENV{"TASK_PROMPT"}} s/\{\{TASK_PROMPT\}\}/$p/g'
 }
 
 # Scaffold PLAN.md and STEERING.md from templates if they don't exist yet

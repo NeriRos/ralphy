@@ -30,6 +30,7 @@ install:
 	else \
 		echo "  ℹ️  Preserving existing tasks directory"; \
 	fi
+	@touch "$(INSTALL_PATH)/tasks/.gitkeep"
 	@# Add ralph script to package.json if it exists
 	@if [ -f "$(BASE_PATH)/package.json" ]; then \
 		if command -v jq &> /dev/null; then \
