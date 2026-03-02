@@ -54,27 +54,37 @@ while IFS= read -r line; do
 
     case "$type" in
         system)
-            model=$(echo "$line" | jq -r '.model // "unknown"')
-            sid=$(echo "$line" | jq -r '.session_id // ""' | cut -c1-8)
-            if [ "$model" = "unknown" ]; then
-                # Mark as failed when model info is missing
-                if $VERBOSE; then
-                    echo -e "${RED}${BOLD}⚠ FAILED TO PARSE MODEL${RESET} ${DIM}(${sid}…)${RESET}"
-                    echo -e "${DIM}  Check log file for raw JSON output. Run with --log to capture full output.${RESET}"
-                else
-                    echo -e "${RED}✗${RESET} ${BOLD}UNKNOWN${RESET} ${DIM}(${sid}…) - see --log${RESET}"
-                fi
-            else
-                if $VERBOSE; then
-                    ver=$(echo "$line" | jq -r '.claude_code_version // ""')
-                    ntools=$(echo "$line" | jq -r '.tools | length')
-                    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                    echo -e "${DIM}  model: ${RESET}${BOLD}${model}${RESET}  ${DIM}session: ${sid}…  v${ver}  tools: ${ntools}${RESET}"
-                    echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-                else
-                    echo -e "${GRAY}──${RESET} ${BOLD}${model}${RESET} ${GRAY}(${sid}…)${RESET}"
-                fi
-            fi
+            subtype=$(echo "$line" | jq -r '.subtype // ""')
+            case "$subtype" in
+                init)
+                    model=$(echo "$line" | jq -r '.model // "unknown"')
+                    sid=$(echo "$line" | jq -r '.session_id // ""' | cut -c1-8)
+                    if [ "$model" = "unknown" ]; then
+                        if $VERBOSE; then
+                            echo -e "${RED}${BOLD}⚠ FAILED TO PARSE MODEL${RESET} ${DIM}(${sid}…)${RESET}"
+                            echo -e "${DIM}  Check log file for raw JSON output. Run with --log to capture full output.${RESET}"
+                        else
+                            echo -e "${RED}✗${RESET} ${BOLD}UNKNOWN${RESET} ${DIM}(${sid}…) - see --log${RESET}"
+                        fi
+                    else
+                        if $VERBOSE; then
+                            ver=$(echo "$line" | jq -r '.claude_code_version // ""')
+                            ntools=$(echo "$line" | jq -r '.tools | length')
+                            echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                            echo -e "${DIM}  model: ${RESET}${BOLD}${model}${RESET}  ${DIM}session: ${sid}…  v${ver}  tools: ${ntools}${RESET}"
+                            echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+                        else
+                            echo -e "${GRAY}──${RESET} ${BOLD}${model}${RESET} ${GRAY}(${sid}…)${RESET}"
+                        fi
+                    fi
+                    ;;
+                task_started)
+                    if $VERBOSE; then
+                        desc=$(echo "$line" | jq -r '.description // ""')
+                        [ -n "$desc" ] && echo -e "  ${DIM}⊳ agent: ${desc}${RESET}"
+                    fi
+                    ;;
+            esac
             ;;
 
         assistant)
