@@ -30,4 +30,12 @@ install:
 	else \
 		echo "  ℹ️  Preserving existing tasks directory"; \
 	fi
+	@# Add ralph script to package.json if it exists
+	@if [ -f "$(BASE_PATH)/package.json" ]; then \
+		if command -v jq &> /dev/null; then \
+			jq '.scripts.ralph = "./.ralph/bin/loop.sh"' "$(BASE_PATH)/package.json" > "$(BASE_PATH)/package.json.tmp" && \
+			mv "$(BASE_PATH)/package.json.tmp" "$(BASE_PATH)/package.json"; \
+			echo "  ✓ Added ralph script to package.json"; \
+		fi \
+	fi
 	@echo "✓ Installation complete"
