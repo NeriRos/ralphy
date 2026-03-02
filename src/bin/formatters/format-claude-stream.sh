@@ -42,6 +42,7 @@ GRAY='\033[90m'
 
 TURN=0
 TOOL_COUNT=0
+GOT_RESULT=false
 
 while IFS= read -r line; do
     [ -z "$line" ] && continue
@@ -176,6 +177,7 @@ while IFS= read -r line; do
             ;;
 
         result)
+            GOT_RESULT=true
             info=$(echo "$line" | jq -r '
                 "cost=$" + ((.total_cost_usd // 0) * 100 | round / 100 | tostring) +
                 "  time=" + (((.duration_ms // 0) / 1000 * 10 | round / 10) | tostring) + "s" +
@@ -196,6 +198,28 @@ while IFS= read -r line; do
                     echo -e "\n${GREEN}✓ done${RESET}  ${DIM}${info}${RESET}"
                 fi
             fi
+            # Write iteration stats to file for loop.sh to pick up
+            if [ -n "$LOG_DIR" ]; then
+                echo "$line" | jq '{
+                    cost_usd: (.total_cost_usd // 0),
+                    duration_ms: (.duration_ms // 0),
+                    num_turns: (.num_turns // 0),
+                    input_tokens: (.usage.input_tokens // 0),
+                    output_tokens: (.usage.output_tokens // 0),
+                    cache_read_input_tokens: (.usage.cache_read_input_tokens // 0),
+                    cache_creation_input_tokens: (.usage.cache_creation_input_tokens // 0)
+                }' > "$LOG_DIR/.iteration_stats.json" 2>/dev/null
+            fi
             ;;
     esac
 done
+
+# If stream ended without a result event, Claude was interrupted (limits, Ctrl+C, crash)
+if ! $GOT_RESULT; then
+    echo ""
+    echo -e "${RED}${BOLD}✗ Stream interrupted${RESET}  ${DIM}(no result received — Claude may have hit usage limits or been interrupted)${RESET}"
+    if $VERBOSE; then
+        echo -e "${DIM}  turns=$TURN  tools=$TOOL_COUNT${RESET}"
+        echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    fi
+fi
