@@ -326,11 +326,8 @@ render_template() {
     | TASK_PROMPT="$TASK_PROMPT" perl -pe 'BEGIN{$p=$ENV{"TASK_PROMPT"}} s/\{\{TASK_PROMPT\}\}/$p/g'
 }
 
-# Scaffold PLAN.md and STEERING.md from templates if they don't exist yet
+# Scaffold STEERING.md from template if it doesn't exist yet
 scaffold_task_files() {
-    if [ ! -f "$TASK_DIR/PLAN.md" ]; then
-        render_template "$TEMPLATES/PLAN.md" > "$TASK_DIR/PLAN.md"
-    fi
     if [ ! -f "$TASK_DIR/STEERING.md" ]; then
         cp "$TEMPLATES/STEERING.md" "$TASK_DIR/STEERING.md"
     fi
