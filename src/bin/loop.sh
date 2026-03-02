@@ -879,7 +879,7 @@ while true; do
             --model "$MODEL" \
             --verbose \
             --output-format stream-json \
-            | "$FORMATTER" $LOG_FLAG
+            | "$FORMATTER" $LOG_FLAG ${TASK_DIR:+--log-dir "$TASK_DIR"}
         STATUS=$?
     else
         cat "$TEMP_PROMPT" | codex exec \
@@ -888,7 +888,7 @@ while true; do
             --dangerously-bypass-approvals-and-sandbox \
             - \
             2>&1 \
-            | "$FORMATTER" $LOG_FLAG
+            | "$FORMATTER" $LOG_FLAG ${TASK_DIR:+--log-dir "$TASK_DIR"}
         STATUS=$?
     fi
 

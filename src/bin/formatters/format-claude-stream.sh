@@ -7,13 +7,26 @@
 
 VERBOSE=false
 LOG_FILE=""
+LOG_DIR=""
+EXPECT_LOG_DIR=0
 for arg in "$@"; do
-    [ "$arg" = "--verbose" ] || [ "$arg" = "-v" ] && VERBOSE=true
-    if [ "$arg" = "--log" ]; then
-        LOG_FILE="format-claude-stream.log"
-        > "$LOG_FILE"  # Clear existing log
+    if [ "$EXPECT_LOG_DIR" -eq 1 ]; then
+        LOG_DIR="$arg"
+        EXPECT_LOG_DIR=0
+        continue
     fi
+    [ "$arg" = "--verbose" ] || [ "$arg" = "-v" ] && VERBOSE=true
+    [ "$arg" = "--log" ] && LOG_FILE="1"
+    [ "$arg" = "--log-dir" ] && EXPECT_LOG_DIR=1
 done
+if [ -n "$LOG_FILE" ]; then
+    if [ -n "$LOG_DIR" ]; then
+        LOG_FILE="$LOG_DIR/stream.log"
+    else
+        LOG_FILE="format-claude-stream.log"
+    fi
+    > "$LOG_FILE"  # Clear existing log
+fi
 
 BOLD='\033[1m'
 DIM='\033[2m'
