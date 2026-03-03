@@ -351,3 +351,152 @@ describe("ralph_create_task", () => {
     expect(state.model).toBe("opus");
   });
 });
+
+describe("ralph_run_task", () => {
+  beforeEach(() => {
+    spawnMock.mockClear();
+  });
+
+  test("spawns subprocess with correct default args", async () => {
+    createTask(tempDir, "run-task");
+    const handler = captureHandlers(tempDir)("ralph_run_task");
+
+    const result = await handler({ name: "run-task" });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { started: string; pid: number };
+    expect(data.started).toBe("run-task");
+    expect(data.pid).toBe(12345);
+
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    const calls = spawnMock.mock.calls as unknown as [string, string[], Record<string, unknown>][];
+    const call = calls[0]!;
+    expect(call[0]).toBe("bun");
+    expect(call[1]).toEqual(["run", "apps/cli/src/index.ts", "task", "--name", "run-task"]);
+    expect(call[2]).toMatchObject({ detached: true, stdio: "ignore" });
+  });
+
+  test("includes optional maxIterations, engine, and model args", async () => {
+    createTask(tempDir, "run-opts");
+    const handler = captureHandlers(tempDir)("ralph_run_task");
+
+    await handler({ name: "run-opts", maxIterations: 5, engine: "openai", model: "gpt-4" });
+
+    const calls = spawnMock.mock.calls as unknown as [string, string[], Record<string, unknown>][];
+    const call = calls[0]!;
+    expect(call[1]).toEqual([
+      "run",
+      "apps/cli/src/index.ts",
+      "task",
+      "--name",
+      "run-opts",
+      "--max-iterations",
+      "5",
+      "--engine",
+      "openai",
+      "--model",
+      "gpt-4",
+    ]);
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_run_task");
+
+    const result = await handler({ name: "nonexistent" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("nonexistent");
+    expect(spawnMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("ralph_advance_phase", () => {
+  test("advances research to plan when RESEARCH.md exists", async () => {
+    const taskDir = createTask(tempDir, "adv-task");
+    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research\nDone.");
+    const handler = captureHandlers(tempDir)("ralph_advance_phase");
+
+    const result = await handler({ name: "adv-task" });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { from: string; to: string };
+    expect(data.from).toBe("research");
+    expect(data.to).toBe("plan");
+  });
+
+  test("uses setPhase when explicit phase param provided", async () => {
+    const taskDir = createTask(tempDir, "set-phase-task");
+    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research");
+    const handler = captureHandlers(tempDir)("ralph_advance_phase");
+
+    const result = await handler({ name: "set-phase-task", phase: "exec" });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { from: string; to: string };
+    expect(data.from).toBe("research");
+    expect(data.to).toBe("exec");
+
+    // Verify state was written with the new phase
+    const stateRaw = readFileSync(join(tempDir, "set-phase-task", "state.json"), "utf-8");
+    const state = JSON.parse(stateRaw) as { phase: string };
+    expect(state.phase).toBe("exec");
+  });
+
+  test("returns error when prerequisites missing", async () => {
+    createTask(tempDir, "no-research-task");
+    // No RESEARCH.md — cannot advance from research
+    const handler = captureHandlers(tempDir)("ralph_advance_phase");
+
+    const result = await handler({ name: "no-research-task" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("RESEARCH.md");
+  });
+
+  test("calls commitState on success", async () => {
+    const { commitState: commitMock } = await import("@ralphy/core/git");
+    (commitMock as ReturnType<typeof mock>).mockClear();
+
+    const taskDir = createTask(tempDir, "commit-task");
+    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research");
+    const handler = captureHandlers(tempDir)("ralph_advance_phase");
+
+    await handler({ name: "commit-task" });
+
+    expect(commitMock).toHaveBeenCalledTimes(1);
+    const commitCalls = (commitMock as ReturnType<typeof mock>).mock.calls as unknown as [
+      string,
+      string,
+    ][];
+    expect(commitCalls[0]![0]).toBe(join(tempDir, "commit-task"));
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_advance_phase");
+
+    const result = await handler({ name: "ghost-task" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("ghost-task");
+  });
+});
+
+describe("ralph_update_steering", () => {
+  test("overwrites STEERING.md content", async () => {
+    const taskDir = createTask(tempDir, "steer-task");
+    writeFileSync(join(taskDir, "STEERING.md"), "Old content");
+    const handler = captureHandlers(tempDir)("ralph_update_steering");
+
+    const result = await handler({
+      name: "steer-task",
+      content: "# New Steering\nUpdated guidance.",
+    });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toContain("steer-task");
+
+    const content = readFileSync(join(taskDir, "STEERING.md"), "utf-8");
+    expect(content).toBe("# New Steering\nUpdated guidance.");
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_update_steering");
+
+    const result = await handler({ name: "nonexistent", content: "New content" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("nonexistent");
+  });
+});

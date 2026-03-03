@@ -21,7 +21,7 @@
 
 ## Section 4 — Run, Advance Phase & Update Steering Tests
 
-- [ ] Write `ralph_run_task` tests: spawns subprocess with correct args (verify `spawn` mock called with expected args including optional maxIterations/engine/model), missing task returns error
-- [ ] Write `ralph_advance_phase` tests: valid advance (research→plan with RESEARCH.md present), advance with explicit phase param uses `setPhase`, missing prerequisites returns error, `commitState` called on success
-- [ ] Write `ralph_update_steering` tests: overwrites STEERING.md content, missing task returns error
-- [ ] Run full test suite (`nx affected -t test`) to verify all MCP tests pass alongside existing tests
+- [x] Write `ralph_run_task` tests: spawns subprocess with correct args (verify `spawn` mock called with expected args including optional maxIterations/engine/model), missing task returns error
+- [x] Write `ralph_advance_phase` tests: valid advance (research→plan with RESEARCH.md present), advance with explicit phase param uses `setPhase`, missing prerequisites returns error, `commitState` called on success
+- [x] Write `ralph_update_steering` tests: overwrites STEERING.md content, missing task returns error
+- [x] Run full test suite (`nx affected -t test`) to verify all MCP tests pass alongside existing tests
