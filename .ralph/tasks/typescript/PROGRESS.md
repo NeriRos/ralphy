@@ -43,9 +43,9 @@
 
 ## Section 7 — Engine Execution and CLI
 
-- [ ] Create `packages/ralph/src/engine.ts`: `runEngine(opts)` that spawns `claude` or `codex` CLI via `Bun.spawn` / `child_process.spawn`, pipes prompt via stdin, streams stdout through the appropriate formatter; `handleEngineFailure(exitCode)` with exit code handling (42=rate limit, 130=interrupted, 137=killed)
-- [ ] Create `packages/ralph/src/cli.ts`: `parseArgs(argv)` returning parsed options (mode, name, prompt, engine, model, maxIterations, flags); port the existing manual parser logic
-- [ ] Write tests for CLI argument parsing in `packages/ralph/src/__tests__/cli.test.ts`
+- [x] Create `packages/ralph/src/engine.ts`: `runEngine(opts)` that spawns `claude` or `codex` CLI via `Bun.spawn` / `child_process.spawn`, pipes prompt via stdin, streams stdout through the appropriate formatter; `handleEngineFailure(exitCode)` with exit code handling (42=rate limit, 130=interrupted, 137=killed)
+- [x] Create `packages/ralph/src/cli.ts`: `parseArgs(argv)` returning parsed options (mode, name, prompt, engine, model, maxIterations, flags); port the existing manual parser logic
+- [x] Write tests for CLI argument parsing in `packages/ralph/src/__tests__/cli.test.ts`
 
 ## Section 8 — Main Loop and Entry Point
 
