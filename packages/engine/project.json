@@ -1,0 +1,20 @@
+{
+  "name": "engine",
+  "sourceRoot": "packages/engine/src",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p packages/engine/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/engine/src",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

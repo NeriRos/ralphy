@@ -13,12 +13,6 @@
         "no-console": "off",
         "no-control-regex": "off"
       }
-    },
-    {
-      "files": ["**/cli/**", "**/ralph-cli/**", "**/index.ts", "**/display.ts", "**/loop.ts"],
-      "rules": {
-        "no-console": "off"
-      }
     }
   ],
   "ignorePatterns": ["node_modules", "dist", ".husky"]

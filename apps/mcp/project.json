@@ -1,0 +1,18 @@
+{
+  "name": "mcp",
+  "sourceRoot": "apps/mcp/src",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun build apps/mcp/src/index.ts --outdir apps/mcp/dist --target bun"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p apps/mcp/tsconfig.json"
+      }
+    }
+  }
+}

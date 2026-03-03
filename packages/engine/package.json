@@ -1,0 +1,14 @@
+{
+  "name": "engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./engine": "./src/engine.ts",
+    "./formatters/claude-stream": "./src/formatters/claude-stream.ts",
+    "./formatters/codex-stream": "./src/formatters/codex-stream.ts"
+  },
+  "dependencies": {
+    "types": "workspace:*"
+  }
+}

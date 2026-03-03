@@ -1,0 +1,20 @@
+{
+  "name": "core",
+  "sourceRoot": "packages/core/src",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p packages/core/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/core/src",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

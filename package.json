@@ -7,7 +7,7 @@
   ],
   "type": "module",
   "scripts": {
-    "ralph": "bun apps/ralph-cli/src/index.ts",
+    "ralph": "bun apps/cli/src/index.ts",
     "lint": "oxlint --config .oxlintrc.json .",
     "lint:fix": "oxlint --config .oxlintrc.json --fix .",
     "fmt": "oxfmt --write .",
