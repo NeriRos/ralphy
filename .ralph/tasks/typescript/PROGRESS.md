@@ -25,9 +25,9 @@
 
 ## Section 4 — Git Operations and Display
 
-- [ ] Create `packages/ralph/src/git.ts`: `getCurrentBranch()`, `gitAdd(files)`, `gitCommit(message)`, `gitPush()` (with fallback chain: push, push with upstream, push with set-upstream), `commitState(taskDir, message)`
-- [ ] Create `packages/ralph/src/display.ts`: `showBanner(state, opts)`, `showStatus(state, taskDir)`, `showList(tasksDir)` — port ANSI formatting using chalk
-- [ ] Write tests for git helpers (mock execSync) and display output in `packages/ralph/src/__tests__/git.test.ts`
+- [x] Create `packages/ralph/src/git.ts`: `getCurrentBranch()`, `gitAdd(files)`, `gitCommit(message)`, `gitPush()` (with fallback chain: push, push with upstream, push with set-upstream), `commitState(taskDir, message)`
+- [x] Create `packages/ralph/src/display.ts`: `showBanner(state, opts)`, `showStatus(state, taskDir)`, `showList(tasksDir)` — port ANSI formatting using chalk
+- [x] Write tests for git helpers (mock execSync) and display output in `packages/ralph/src/__tests__/git.test.ts`
 
 ## Section 5 — Phase Transitions
 
