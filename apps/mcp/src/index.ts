@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools";
+import { registerPrompts } from "./prompts";
 import { error } from "@ralphy/output";
 
 /**
@@ -37,6 +38,7 @@ async function main(): Promise<void> {
   });
 
   registerTools(server, tasksDir);
+  registerPrompts(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
