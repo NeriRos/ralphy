@@ -1,279 +1,363 @@
-# Research: Convert ralphy to TypeScript + Nx + Bun
+# Research — typescript
 
-## Task
-Convert the ralphy project from a shell-based system into a TypeScript Node.js project using Nx as the build system and Bun as the package manager/runtime.
+> Task: Convert the current project into TypeScript with Nx and Bun (latest versions), using the current project as the template.
+> Created: 2026-03-03
 
----
+## Current Project Inventory
 
-## Current Project Structure
-
+### Directory Structure
 ```
-ralphy/
-├── Makefile                          # Build/install tool
-├── skills-lock.json                  # Agent skill lock file
+/Users/personal/Developer/ralphy/
+├── Makefile                           # Install script (copies src/bin → .ralph/bin)
+├── skills-lock.json                   # Claude Code skills config
+├── .claude/settings.local.json        # Claude Code permissions
+├── .ralph/                            # Installation output (runtime)
+│   ├── .gitignore
+│   ├── bin/                           # Copied from src/bin at install time
+│   └── tasks/                         # Task state directories
 ├── src/
-│   ├── gitignore                     # Template .gitignore for installations
 │   ├── bin/
-│   │   ├── loop.sh                   # Main orchestrator (~1052 lines)
+│   │   ├── loop.sh                    # Main orchestration engine (1052 lines)
 │   │   ├── formatters/
-│   │   │   ├── format-claude-stream.sh  (~253 lines)
-│   │   │   └── format-codex-stream.sh   (~403 lines)
+│   │   │   ├── format-claude-stream.sh  (253 lines)
+│   │   │   └── format-codex-stream.sh   (403 lines)
 │   │   ├── prompts/
 │   │   │   ├── task_research.md
 │   │   │   ├── task_plan.md
 │   │   │   ├── task_exec.md
 │   │   │   └── task_review.md
 │   │   └── templates/
-│   │       ├── PLAN.md
-│   │       ├── PROGRESS.md
-│   │       ├── STEERING.md
-│   │       ├── checklist_deploy.md
-│   │       ├── checklist_static.md
-│   │       ├── checklist_tests.md
-│   │       └── do_list.md
-│   └── tasks/
-│       └── .gitkeep
-├── dist/                             # Empty build output
-├── .ralph/                           # Self-installed copy (for dogfooding)
-│   ├── bin/                          # Mirror of src/bin/ (gitignored)
-│   └── tasks/typescript/             # This active task
-└── .claude/
-    ├── settings.local.json
-    └── skills/ (agent-browser symlink)
+│   │       ├── PLAN.md, PROGRESS.md, STEERING.md
+│   │       ├── checklist_tests.md, checklist_static.md, checklist_deploy.md
+│   │       └── do_list.md (empty, likely unused)
+│   ├── tasks/.gitkeep
+│   └── gitignore                      # Template .gitignore for .ralph/
+└── dist/                              # Empty output directory
 ```
 
-### Key Insight: Source vs Installed
-- `src/bin/` is the **source of truth** — edited during development
-- `.ralph/bin/` is the **installed copy** — deployed to target projects via `make install`
-- The `.ralph/` directory at project root is ralphy installed into itself (dogfooding)
+### Files to Convert
 
----
+#### 1. `src/bin/loop.sh` — Main Loop Engine (1052 lines)
 
-## Files to Convert
+**Functional decomposition:**
 
-### 1. `src/bin/loop.sh` — Main Orchestrator (1052 lines)
+| Function | Lines | Purpose | Conversion Notes |
+|----------|-------|---------|-----------------|
+| `parse_args()` | 77-156 | CLI argument parsing | Use `commander` or `yargs` or manual parser |
+| `validate_task_name()` | 162-168 | Regex validation | Simple regex |
+| `validate_task_mode()` | 170-184 | Mode/task validation | |
+| `resume_existing_task()` | 186-207 | Load state from state.json | `fs.readFileSync` + JSON.parse |
+| `create_new_task()` | 209-216 | Create task directory | `fs.mkdirSync` |
+| `validate_named_mode()` | 218-228 | Validate mode requires name | |
+| `validate_set_phase_mode()` | 230-242 | Validate set-phase | |
+| `validate_mode()` | 244-258 | Route to correct validator | |
+| `render_template()` | 264-281 | Mustache-style template rendering | String replace + `jq` → native JSON |
+| `scaffold_task_files()` | 283-287 | Copy STEERING.md template | `fs.copyFileSync` |
+| `extract_current_section()` | 294-321 | AWK: find first unchecked section | Parse markdown in TS |
+| `count_progress()` | 323-329 | Count checked/unchecked items | Regex on file content |
+| `infer_phase_from_files()` | 335-341 | Detect phase from file existence | `fs.existsSync` checks |
+| `build_state_json()` | 344-385 | Create initial state.json | Object construction + `JSON.stringify` |
+| `init_state()` | 387-389 | Write initial state | |
+| `migrate_state()` | 391-396 | Migrate legacy tasks | |
+| `ensure_state()` | 398-406 | Ensure state.json exists | |
+| `detect_phase()` | 408-414 | Read phase from state | |
+| `update_state_json()` | 418-423 | Atomic jq update | Read + modify + atomic write |
+| `update_state_iteration()` | 425-451 | Record iteration in state | |
+| `record_phase_transition()` | 453-475 | Record phase change | |
+| `commit_state()` | 477-484 | Git add + commit state.json | `child_process.execSync` |
+| `advance_phase()` | 490-559 | Phase state machine | |
+| `set_phase()` | 561-590 | Jump to any phase | |
+| `show_status()` | 596-645 | Display task status | Console output with ANSI |
+| `show_list()` | 647-679 | List incomplete tasks | Read all task dirs |
+| `show_banner()` | 681-723 | Display startup banner | |
+| `build_task_prompt()` | 729-779 | Assemble prompt for engine | String concatenation + file reads |
+| `run_engine()` | 785-804 | Execute claude/codex CLI | `child_process.spawn` with pipe |
+| `handle_engine_failure()` | 806-833 | Handle non-zero exits | |
+| `auto_transition_after_exec()` | 839-850 | Exec → review auto-transition | |
+| `auto_transition_after_review()` | 852-885 | Review → exec/done auto-transition | |
+| `git_push()` | 891-898 | Push to remote | `child_process.execSync` |
+| `check_stop_signal()` | 904-921 | Check for STOP file | `fs.existsSync` |
+| `should_continue()` | 924-935 | Check loop termination | |
+| Main loop | 968-1052 | Iteration loop | |
 
-**Current functionality:**
-- Argument parsing (modes: task, list, status, advance, set-phase)
-- Engine configuration (claude/codex, model selection)
-- Task validation and creation
-- Template rendering with `sed`/`awk` ({{TASK_NAME}}, {{DATE}}, etc.)
-- State management via `state.json` (init, migrate, update, detect phase)
-- Phase transitions (research → plan → exec ↔ review → done)
-- Progress tracking (parsing PROGRESS.md for `[x]`/`[ ]` checkboxes and `⚠️` markers)
-- Prompt building (steering injection, phase-specific prompt assembly, checklist injection)
-- Engine execution (piping prompts to `claude`/`codex` CLI, streaming through formatters)
-- Auto-transitions after exec/review phases
-- Git push after each iteration
-- Stop signal detection
-- Banner display with ANSI colors
-- Usage stats accumulation
+**External dependencies used in shell:**
+- `jq` — JSON manipulation (heavy usage for state.json) → native in TS
+- `git` — branch detection, add, commit, push → `child_process.execSync`
+- `claude` CLI — pipe prompt, stream-json output → `child_process.spawn`
+- `codex` CLI — pipe prompt, JSONL output → `child_process.spawn`
+- `awk` — section extraction from PROGRESS.md → regex/line parsing
+- `sed` — template rendering → `String.replace()`
+- `grep` — pattern matching in files → `String.match()` / file reads
+- `mktemp` — temp file for prompt → can use in-memory or `os.tmpdir()`
+- `date` — ISO timestamps → `new Date().toISOString()`
 
-**External dependencies:**
-- `jq` — JSON manipulation (heavily used for state.json read/write)
-- `git` — branch detection, commit, push
-- `claude` CLI — Claude Code execution
-- `codex` CLI — Codex execution
-- `sed`, `awk`, `grep`, `mktemp`, `date` — text processing
+#### 2. `src/bin/formatters/format-claude-stream.sh` (253 lines)
 
-**Key patterns:**
-- Atomic JSON updates: `jq ... file > file.tmp && mv file.tmp file`
-- Shell functions defined in-file (no external modules)
-- ANSI color codes for terminal output
-- Heredoc-style prompt building (concatenating markdown files)
+**Purpose:** Parse Claude `--output-format stream-json` into readable terminal output.
 
-### 2. `src/bin/formatters/format-claude-stream.sh` (253 lines)
+**Key functionality:**
+- Line-by-line JSON parsing of streaming events
+- Event types: `system` (init, task_started), `assistant` (text, tool_use, thinking), `user` (tool_result), `result`
+- ANSI color output (bold, dim, italic, cyan, green, red, gray)
+- Usage stats accumulation into state.json via `update_state_usage()`
+- Compact vs verbose modes
+- Optional raw JSON logging
+- Exit code 130 if stream interrupted without result
 
-**Functionality:**
-- Parses Claude `--output-format stream-json` JSONL line by line
-- Handles event types: `system/init`, `assistant` (text, tool_use, thinking), `user` (tool results), `result`
-- Verbose/compact output modes
-- Raw JSON logging (`--log`, `--log-dir`)
-- **Accumulates usage stats into `state.json`** via `update_state_usage()` — this is critical for cost tracking
-- Exits 130 if stream interrupted (no result event)
+**Conversion approach:** Stream transformer / readline-based parser in TS. Use `chalk` or raw ANSI for colors.
 
-**Dependencies:** `jq`, `bash`
+#### 3. `src/bin/formatters/format-codex-stream.sh` (403 lines)
 
-### 3. `src/bin/formatters/format-codex-stream.sh` (403 lines)
+**Purpose:** Parse Codex `exec --json` JSONL into readable terminal output.
 
-**Functionality:**
-- Parses `codex exec --json` JSONL
-- Handles codex-specific event types: `thread.started`, `turn.*`, tool start/complete, text deltas, reasoning
-- Rate limit detection (exits 42)
-- Complex tool name/input/result extraction from deeply nested JSON structures
-- Verbose/compact output modes
+**Key functionality:**
+- More complex event structure (thread.started, turn.started/completed, tool events, response events)
+- Deeply nested tool name/input/output extraction (`jq` with many fallback paths)
+- Rate limit detection (exit 42)
+- Non-JSON stderr handling (panics, errors, tracebacks)
+- Verbose and compact modes
 
-**Dependencies:** `jq`, `bash`
+**Conversion approach:** Similar stream transformer. The deep jq extractions become TypeScript optional chaining.
 
-### 4. `Makefile`
+#### 4. Prompt Templates (`src/bin/prompts/*.md`)
 
-**Functionality:**
-- `make install [path]` — copies `src/bin/` to `<path>/.ralph/bin/`, creates tasks dir
-- Adds `ralph` script to `package.json` if present
-- Preserves existing tasks directory
+These are **static markdown files** with `{{VARIABLE}}` placeholders. They don't need conversion — just need to be bundled/accessible at runtime.
 
-### 5. Static Files (prompts, templates)
-- `src/bin/prompts/*.md` — 4 markdown prompt templates with `{{PLACEHOLDER}}` variables
-- `src/bin/templates/*.md` — 7 markdown templates (PLAN, PROGRESS, STEERING, checklists)
-- `src/gitignore` — Template .gitignore for installations
-- `skills-lock.json` — Agent skill configuration
+Files: `task_research.md` (87 lines), `task_plan.md` (100 lines), `task_exec.md` (126 lines), `task_review.md` (101 lines)
 
-These files are **not code** — they should be bundled as-is (assets/resources).
+#### 5. Scaffolding Templates (`src/bin/templates/`)
 
----
+Also **static files** copied into task directories. No conversion needed — just bundle them.
 
-## Architecture Decisions
+Files: `PLAN.md`, `PROGRESS.md`, `STEERING.md`, `checklist_tests.md`, `checklist_static.md`, `checklist_deploy.md`, `do_list.md`
 
-### Nx + Bun Configuration
+#### 6. `Makefile`
 
-**Latest setup (2026):**
-- Nx 21.x with `--preset=ts` uses **npm/bun workspaces + TypeScript project references**
-- Bun support since Nx 19.5: `"cli": { "packageManager": "bun" }` in `nx.json`
-- Auto-detection via `bun.lock` / `bun.lockb` at root
-- Use `@nx/js/typescript` plugin for build/typecheck targets
+**Current behavior:**
+- `make install [path]` → copies `src/bin` to `[path]/.ralph/bin`
+- Preserves existing `tasks/` directory
+- Adds `"ralph"` script to `package.json` if it exists
 
-**Known gotchas:**
-- Bun doesn't support Node.js IPC — may break `nx-cloud` and default task runner
-- Nx TUI may not display output correctly with Bun — disable: `"tui": { "enabled": false }`
-- Avoid `@nx/webpack:webpack` with `generatePackageJson: true` — use tsc instead
-- Use Bun as **package manager** but `@nx/js:node` as runtime executor (safer)
+**Conversion:** Replace with an Nx-based build + install script. The Makefile can become an npm/bun script or be kept as a wrapper.
 
-### Project Structure (Target)
+## Target Architecture: Nx + Bun + TypeScript
 
-Since ralphy is a **single CLI tool** (not a monorepo with multiple packages), the Nx structure should be minimal:
+### Nx Workspace Setup
 
-```
-ralphy/
-├── nx.json
-├── package.json              # root, "type": "module"
-├── tsconfig.base.json
-├── tsconfig.json
-├── bun.lock
-├── src/
-│   ├── index.ts              # CLI entry point
-│   ├── cli/
-│   │   └── args.ts           # Argument parsing
-│   ├── core/
-│   │   ├── state.ts          # State management (state.json read/write)
-│   │   ├── phase.ts          # Phase transitions
-│   │   ├── progress.ts       # PROGRESS.md parsing
-│   │   └── template.ts       # Template rendering
-│   ├── engine/
-│   │   ├── runner.ts         # Engine execution (claude/codex)
-│   │   └── prompt.ts         # Prompt building
-│   ├── formatters/
-│   │   ├── claude.ts         # Claude stream formatter
-│   │   └── codex.ts          # Codex stream formatter
-│   ├── display/
-│   │   └── terminal.ts       # Banner, status, list display
-│   └── utils/
-│       └── git.ts            # Git helpers
-├── assets/
-│   ├── prompts/              # Markdown prompt templates (copied from src/bin/prompts)
-│   ├── templates/            # Markdown templates (copied from src/bin/templates)
-│   └── gitignore             # Template .gitignore
-├── project.json              # Nx project config
-├── tsconfig.lib.json
-└── tests/
-    └── ...
+**Latest versions (as of 2026-03):**
+- `create-nx-workspace` v22.x (latest is ~22.5)
+- Bun as package manager: `--pm=bun`
+- TypeScript preset: `--preset=ts`
+
+**Command:**
+```bash
+npx create-nx-workspace@latest ralph --pm=bun --preset=ts
 ```
 
-### Module Breakdown from loop.sh
+### Recommended Project Structure
 
-The 1052-line loop.sh naturally decomposes into these TypeScript modules:
+```
+/Users/personal/Developer/ralphy/
+├── nx.json                          # Nx configuration
+├── package.json                     # Root package.json (bun workspaces)
+├── tsconfig.base.json               # Shared TS config (composite: true)
+├── bun.lock                         # Bun lockfile
+├── packages/
+│   └── ralph/                       # Main package
+│       ├── package.json             # Package config
+│       ├── tsconfig.json            # Extends base, project refs
+│       ├── src/
+│       │   ├── index.ts             # Entry point / CLI
+│       │   ├── loop.ts              # Main loop engine
+│       │   ├── cli.ts               # Argument parsing
+│       │   ├── state.ts             # State management (state.json)
+│       │   ├── phases.ts            # Phase transitions
+│       │   ├── progress.ts          # PROGRESS.md parsing
+│       │   ├── templates.ts         # Template rendering
+│       │   ├── display.ts           # Banner, status, list display
+│       │   ├── engine.ts            # Engine execution (claude/codex)
+│       │   ├── git.ts               # Git operations
+│       │   ├── formatters/
+│       │   │   ├── claude-stream.ts # Claude stream formatter
+│       │   │   └── codex-stream.ts  # Codex stream formatter
+│       │   └── types.ts             # Shared types + Zod schemas
+│       ├── prompts/                 # Static markdown (bundled)
+│       │   ├── task_research.md
+│       │   ├── task_plan.md
+│       │   ├── task_exec.md
+│       │   └── task_review.md
+│       └── templates/               # Static templates (bundled)
+│           ├── PLAN.md
+│           ├── PROGRESS.md
+│           ├── STEERING.md
+│           └── checklist_*.md
+├── .claude/                         # Preserved
+├── .ralph/                          # Installation target (unchanged)
+│   ├── tasks/                       # Task state (unchanged)
+│   └── bin/                         # Now contains compiled JS or bun binary
+└── dist/                            # Build output
+```
 
-| Shell Function(s) | TypeScript Module | Responsibility |
-|---|---|---|
-| `parse_args()` | `cli/args.ts` | CLI argument parsing (use a library like `commander` or `citty`) |
-| `validate_task_mode()`, `validate_named_mode()`, `validate_set_phase_mode()` | `cli/args.ts` | Validation logic |
-| `render_template()`, `scaffold_task_files()` | `core/template.ts` | `{{VAR}}` substitution, file scaffolding |
-| `extract_current_section()`, `count_progress()` | `core/progress.ts` | PROGRESS.md parsing |
-| `init_state()`, `ensure_state()`, `migrate_state()`, `update_state_json()`, `update_state_iteration()`, `detect_phase()`, `build_state_json()`, `commit_state()` | `core/state.ts` | state.json CRUD (use native JSON, not jq) |
-| `advance_phase()`, `set_phase()`, `record_phase_transition()`, `auto_transition_after_exec()`, `auto_transition_after_review()` | `core/phase.ts` | Phase state machine |
-| `build_task_prompt()` | `engine/prompt.ts` | Prompt assembly from templates + sections |
-| `run_engine()`, `handle_engine_failure()` | `engine/runner.ts` | Subprocess execution of claude/codex CLI |
-| `show_banner()`, `show_status()`, `show_list()` | `display/terminal.ts` | Terminal output with ANSI codes (use `chalk` or `picocolors`) |
-| `git_push()` | `utils/git.ts` | Git operations |
-| `check_stop_signal()`, `should_continue()` | Main loop logic in `index.ts` | Loop control |
+### Key Technical Decisions
 
-### Formatter Conversion
+#### 1. Module System
+- Use **ESM** (`"type": "module"` in package.json)
+- TypeScript with `"module": "nodenext"`, `"moduleResolution": "nodenext"`
 
-The formatters (`format-claude-stream.sh`, `format-codex-stream.sh`) parse JSONL line by line. In TypeScript:
-- Use Node.js `readline` or Bun's line reader on stdin
-- Parse each line with `JSON.parse()` instead of `jq`
-- All the nested field extraction (`jq -r '.item?.raw_item?.name? // ...'`) becomes simple optional chaining (`event?.item?.raw_item?.name ?? ...`)
-- ANSI codes can use `picocolors` or `chalk`
-- The `update_state_usage()` function writes to `state.json` — replace `jq` with `fs.readFileSync` + `JSON.parse` + `fs.writeFileSync`
+#### 2. TypeScript Configuration
+Root `tsconfig.base.json`:
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "strict": true,
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist"
+  }
+}
+```
 
-### Install Mechanism
+#### 3. Static File Bundling
+Prompts and templates are **read at runtime** via `fs.readFileSync`. Store them alongside compiled output or use `__dirname` resolution. Bun handles `import.meta.dir` natively.
 
-The Makefile `install` target copies `src/bin/` to a target `.ralph/`. In TypeScript:
-- Build produces a bundled dist (or uses `tsc` to compile to `dist/`)
-- Install script copies `dist/` (compiled JS) + `assets/` (prompts, templates) to `.ralph/`
-- Could be an Nx target or a simple `bin` script in package.json
-- The CLI entry point should use `import.meta.dirname` or `__dirname` to find assets relative to itself
+#### 4. CLI Entry Point
+Use `#!/usr/bin/env bun` shebang for the CLI entry. Or use `#!/usr/bin/env node` for broader compatibility (Bun can run Node scripts).
 
----
+#### 5. Dependencies
+**Runtime:**
+- `chalk` (or raw ANSI — the shell scripts already use raw codes, could keep that pattern)
+- `zod` (for state.json schema validation)
+- No need for `commander`/`yargs` — the existing parser is simple enough to port directly
 
-## Dependencies to Add
+**Dev:**
+- `@nx/js` or `@nx/node` plugin
+- `typescript`
+- `vitest` or `bun:test` for testing
 
-| Package | Purpose |
-|---|---|
-| `typescript` | Language |
-| `@nx/js` | Nx JavaScript/TypeScript plugin |
-| `nx` | Build system |
-| `picocolors` | ANSI terminal colors (tiny, fast) |
-| `commander` or `citty` | CLI argument parsing |
-| `zod` | Schema validation for state.json |
-| `vitest` | Testing |
+#### 6. Build Strategy
+- Nx builds the TypeScript package
+- Output goes to `dist/`
+- Install script copies `dist/` contents to `.ralph/bin/` (replacing the current `src/bin` copy)
+- OR: the install script just symlinks/copies the built package
 
-**Not needed:**
-- `jq` — replaced by native JSON
-- `sed`/`awk` — replaced by string methods
-- `grep` — replaced by regex
+### Type System Design
 
----
+#### State Schema (Zod)
+```typescript
+const UsageSchema = z.object({
+  total_cost_usd: z.number().default(0),
+  total_duration_ms: z.number().default(0),
+  total_turns: z.number().default(0),
+  total_input_tokens: z.number().default(0),
+  total_output_tokens: z.number().default(0),
+  total_cache_read_input_tokens: z.number().default(0),
+  total_cache_creation_input_tokens: z.number().default(0),
+});
 
-## Constraints & Risks
+const HistoryEntrySchema = z.object({
+  timestamp: z.string(),
+  startedAt: z.string().optional(),
+  endedAt: z.string().optional(),
+  phase: z.string(),
+  iteration: z.number(),
+  engine: z.string(),
+  model: z.string(),
+  result: z.string(),
+  usage: z.record(z.number()).optional(),
+});
 
-1. **Backward compatibility**: Existing `.ralph/` installations in other projects use the shell scripts. The TypeScript version should either:
-   - Ship a compiled JS bundle that runs with `node` (or `bun`)
-   - Or provide a shim script that runs `bun dist/index.js`
+const StateSchema = z.object({
+  version: z.literal("1"),
+  name: z.string(),
+  prompt: z.string(),
+  phase: z.enum(["research", "plan", "exec", "review", "done"]),
+  phaseIteration: z.number().default(0),
+  totalIterations: z.number().default(0),
+  createdAt: z.string(),
+  lastModified: z.string(),
+  engine: z.enum(["claude", "codex"]),
+  model: z.string(),
+  status: z.enum(["active", "completed", "blocked"]),
+  usage: UsageSchema,
+  history: z.array(HistoryEntrySchema),
+  metadata: z.object({
+    branch: z.string(),
+  }),
+  last_iteration_usage: z.record(z.number()).optional(),
+});
+```
 
-2. **Asset bundling**: Prompts and templates are markdown files referenced at runtime. They need to be:
-   - Bundled alongside compiled JS
-   - Found via `import.meta.dirname` or similar
+#### Phase Enum
+```typescript
+type Phase = "research" | "plan" | "exec" | "review" | "done";
+type Engine = "claude" | "codex";
+type Mode = "task" | "list" | "status" | "advance" | "set-phase";
+```
 
-3. **Subprocess piping**: The formatters currently receive piped JSONL from claude/codex. In TypeScript, this becomes:
-   - Spawn child process for `claude`/`codex`
-   - Pipe stdout through formatter logic in-process (no separate process needed)
-   - Or keep formatters as separate scripts and pipe through them
+### Key Shell → TypeScript Mappings
 
-4. **Atomic file writes**: `jq ... > tmp && mv tmp file` pattern → use `fs.writeFileSync` with `{flag: 'w'}` or write to temp then rename
+| Shell Pattern | TypeScript Equivalent |
+|--------------|----------------------|
+| `jq -r '.field'` | `JSON.parse(fs.readFileSync(path, 'utf-8')).field` |
+| `jq '...' file > file.tmp && mv file.tmp file` | `fs.writeFileSync(path, JSON.stringify(obj))` with atomic write via `fs.renameSync` |
+| `sed -e 's|{{VAR}}|val|g'` | `content.replaceAll('{{VAR}}', val)` |
+| `awk '/^## / { ... }'` | Line-by-line regex parsing |
+| `grep -c '^\- \[ \]'` | `content.match(/^- \[ \]/gm)?.length ?? 0` |
+| `set -euo pipefail` | Try/catch + explicit error handling |
+| `echo -e "\033[1m..."` | `chalk.bold(...)` or raw ANSI |
+| `git branch --show-current` | `execSync('git branch --show-current').toString().trim()` |
+| `cat file \| claude -p ...` | `spawn('claude', [...], { stdio: ['pipe', 'pipe', 'pipe'] })` |
+| `while IFS= read -r line` | `readline.createInterface` or `for await (const line of ...)` |
+| `mktemp` | `path.join(os.tmpdir(), 'ralph-' + randomId)` |
+| `date -u '+%Y-%m-%dT%H:%M:%SZ'` | `new Date().toISOString()` |
 
-5. **Self-installation**: ralphy is installed into itself (`.ralph/`) for dogfooding. The build process needs to handle this correctly.
+### Existing Patterns to Preserve
 
-6. **`nx affected`**: The exec prompt mandates `nx affected -t test,lint,typecheck`. Since ralphy itself will now be an Nx project, this becomes available naturally.
+1. **Atomic state writes** — Always write to `.tmp` then rename
+2. **Phase state machine** — research → plan → exec ↔ review → done
+3. **Auto-transitions** — exec→review (all checked), review→exec (issues), review→done (clean)
+4. **Template variables** — `{{TASK_NAME}}`, `{{TASK_DIR}}`, `{{DATE}}`, `{{PHASE}}`, `{{PHASE_ITERATION}}`, `{{TASK_PROMPT}}`
+5. **STEERING.md injection** — Read at start of every phase, inject into prompt
+6. **Git push after every iteration** — with fallback chain
+7. **STOP signal** — Check for STOP file after each iteration
+8. **Usage accumulation** — Formatter writes usage stats back to state.json
+9. **Compact/verbose display modes** — Both formatters support this
+10. **Exit codes** — 42 (rate limit), 130 (interrupted), 137 (killed), 1 (general error)
 
----
+### Risks & Edge Cases
 
-## Ordering Constraints
+1. **Bun compatibility with `claude` CLI** — Need to verify `Bun.spawn` or `child_process.spawn` works correctly with Claude CLI's stream-json output
+2. **Bun vs Node for streams** — Bun's `readline` and stream handling may differ slightly from Node
+3. **Static file resolution** — Need to ensure prompts/templates are found at runtime regardless of how ralph is invoked (installed vs dev)
+4. **Backward compatibility** — Existing `.ralph/tasks/` directories with state.json files must continue to work
+5. **jq removal** — Currently jq is required at runtime; TypeScript version eliminates this dependency entirely
+6. **Makefile replacement** — Need to maintain the `make install` workflow or provide equivalent `bun run install`
 
-1. **First**: Set up Nx workspace, package.json, tsconfig, nx.json
-2. **Second**: Create type definitions (Zod schemas for state.json, phase types, etc.)
-3. **Third**: Port core modules (state, progress, template, phase) — no external deps
-4. **Fourth**: Port CLI arg parsing, display, and git helpers
-5. **Fifth**: Port engine runner and prompt builder
-6. **Sixth**: Port formatters (claude, codex)
-7. **Seventh**: Wire up main loop (`index.ts`) connecting all modules
-8. **Eighth**: Create install mechanism (replace Makefile)
-9. **Last**: Tests, linting config, verify with `nx affected -t test,lint,typecheck`
+### Dependency Graph (ordering constraints)
 
----
-
-## Existing Patterns to Follow
-
-- State.json schema is well-defined — create a Zod schema from the existing structure
-- Phase state machine is clearly documented in comments — encode as a TypeScript enum + transition map
-- Template variables are a fixed set: `{{TASK_NAME}}`, `{{TASK_DIR}}`, `{{DATE}}`, `{{PHASE}}`, `{{PHASE_ITERATION}}`, `{{TASK_PROMPT}}`
-- Progress parsing uses exact regex patterns: `^\- \[x\]`, `^\- \[ \]`, `^## `, `⚠️`
+1. **First:** Initialize Nx workspace structure (nx.json, package.json, tsconfig)
+2. **Then:** Create the `ralph` package scaffolding
+3. **Then (parallel):**
+   - Types/schemas (`types.ts`)
+   - Static files (copy prompts + templates into package)
+4. **Then:** Core modules (no circular deps):
+   - `state.ts` (depends on types)
+   - `progress.ts` (standalone)
+   - `templates.ts` (standalone)
+   - `git.ts` (standalone)
+   - `display.ts` (depends on state types)
+5. **Then:** Higher-level modules:
+   - `phases.ts` (depends on state, progress)
+   - `engine.ts` (depends on formatters)
+   - `formatters/claude-stream.ts` (depends on types, state)
+   - `formatters/codex-stream.ts` (depends on types)
+6. **Then:** Orchestration:
+   - `cli.ts` (depends on everything)
+   - `loop.ts` (depends on everything)
+   - `index.ts` (entry point, wires cli + loop)
+7. **Finally:** Build configuration, install script, tests
