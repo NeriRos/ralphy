@@ -2,11 +2,11 @@
   "version": "1",
   "name": "test",
   "prompt": "run lint on all projects",
-  "phase": "research",
-  "phaseIteration": 6,
-  "totalIterations": 6,
-  "createdAt": "2026-03-03T21:19:54.884Z",
-  "lastModified": "2026-03-03T21:27:01.875Z",
+  "phase": "plan",
+  "phaseIteration": 0,
+  "totalIterations": 0,
+  "createdAt": "2026-03-03T21:29:39.646Z",
+  "lastModified": "2026-03-03T21:29:39.646Z",
   "engine": "claude",
   "model": "opus",
   "status": "active",
@@ -21,64 +21,12 @@
   },
   "history": [
     {
-      "timestamp": "2026-03-03T21:19:56.162Z",
-      "startedAt": "2026-03-03T21:19:54.927Z",
-      "endedAt": "2026-03-03T21:19:56.162Z",
+      "timestamp": "2026-03-03T19:09:24.442Z",
       "phase": "research",
-      "iteration": 1,
+      "iteration": 0,
       "engine": "claude",
       "model": "opus",
-      "result": "failed:exit-1"
-    },
-    {
-      "timestamp": "2026-03-03T21:20:25.689Z",
-      "startedAt": "2026-03-03T21:20:24.406Z",
-      "endedAt": "2026-03-03T21:20:25.689Z",
-      "phase": "research",
-      "iteration": 2,
-      "engine": "claude",
-      "model": "opus",
-      "result": "failed:exit-1"
-    },
-    {
-      "timestamp": "2026-03-03T21:24:17.086Z",
-      "startedAt": "2026-03-03T21:24:15.639Z",
-      "endedAt": "2026-03-03T21:24:17.086Z",
-      "phase": "research",
-      "iteration": 3,
-      "engine": "claude",
-      "model": "opus",
-      "result": "failed:exit-1"
-    },
-    {
-      "timestamp": "2026-03-03T21:25:13.738Z",
-      "startedAt": "2026-03-03T21:25:13.462Z",
-      "endedAt": "2026-03-03T21:25:13.738Z",
-      "phase": "research",
-      "iteration": 4,
-      "engine": "claude",
-      "model": "opus",
-      "result": "failed:exit-1"
-    },
-    {
-      "timestamp": "2026-03-03T21:26:20.663Z",
-      "startedAt": "2026-03-03T21:26:20.385Z",
-      "endedAt": "2026-03-03T21:26:20.663Z",
-      "phase": "research",
-      "iteration": 5,
-      "engine": "claude",
-      "model": "opus",
-      "result": "failed:exit-1"
-    },
-    {
-      "timestamp": "2026-03-03T21:27:01.875Z",
-      "startedAt": "2026-03-03T21:27:00.565Z",
-      "endedAt": "2026-03-03T21:27:01.875Z",
-      "phase": "research",
-      "iteration": 6,
-      "engine": "claude",
-      "model": "opus",
-      "result": "failed:exit-1"
+      "result": "advance -> plan"
     }
   ],
   "metadata": {
