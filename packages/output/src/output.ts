@@ -1,6 +1,16 @@
 import chalk from "chalk";
 
-export type Style = "bold" | "dim" | "gray" | "error" | "fail" | "warn" | "header";
+export type Style =
+  | "bold"
+  | "dim"
+  | "gray"
+  | "error"
+  | "fail"
+  | "warn"
+  | "header"
+  | "success"
+  | "successBold"
+  | "cyan";
 
 export interface StyledText {
   text: string;
@@ -15,6 +25,9 @@ const formatters: Record<Style, (text: string) => string> = {
   fail: (text) => chalk.red.bold(text),
   warn: (text) => chalk.yellow.bold(text),
   header: (text) => chalk.bold.cyan(text),
+  success: (text) => chalk.green(text),
+  successBold: (text) => chalk.green.bold(text),
+  cyan: (text) => chalk.cyan(text),
 };
 
 function format(msg: StyledText): string {

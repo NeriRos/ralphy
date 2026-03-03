@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { styled } from "@ralphy/output";
 
 export interface ClaudeStreamOptions {
   verbose?: boolean;
@@ -22,7 +22,7 @@ export interface ClaudeStreamResult {
   usage: ClaudeUsageStats | null;
 }
 
-const SEP = chalk.gray("━".repeat(50));
+const SEP = styled("━".repeat(50), "gray");
 
 function formatCost(usd: number): string {
   return (Math.round(usd * 100) / 100).toFixed(2);
@@ -98,15 +98,18 @@ export function processClaudeLine(
         const sid = ((event.session_id as string) ?? "").slice(0, 8);
         if (model === "unknown") {
           if (verbose) {
-            output.push(`${chalk.red.bold("⚠ FAILED TO PARSE MODEL")} ${chalk.dim(`(${sid}…)`)}`);
             output.push(
-              chalk.dim(
+              `${styled("⚠ FAILED TO PARSE MODEL", "fail")} ${styled(`(${sid}…)`, "dim")}`,
+            );
+            output.push(
+              styled(
                 "  Check log file for raw JSON output. Run with --log to capture full output.",
+                "dim",
               ),
             );
           } else {
             output.push(
-              `${chalk.red("✗")} ${chalk.bold("UNKNOWN")} ${chalk.dim(`(${sid}…) - see --log`)}`,
+              `${styled("✗", "error")} ${styled("UNKNOWN", "bold")} ${styled(`(${sid}…) - see --log`, "dim")}`,
             );
           }
         } else {
@@ -115,16 +118,18 @@ export function processClaudeLine(
             const ntools = Array.isArray(event.tools) ? event.tools.length : 0;
             output.push(SEP);
             output.push(
-              `  ${chalk.dim("model:")} ${chalk.bold(model)}  ${chalk.dim(`session: ${sid}…  v${ver}  tools: ${ntools}`)}`,
+              `  ${styled("model:", "dim")} ${styled(model, "bold")}  ${styled(`session: ${sid}…  v${ver}  tools: ${ntools}`, "dim")}`,
             );
             output.push(SEP);
           } else {
-            output.push(`${chalk.gray("──")} ${chalk.bold(model)} ${chalk.gray(`(${sid}…)`)}`);
+            output.push(
+              `${styled("──", "gray")} ${styled(model, "bold")} ${styled(`(${sid}…)`, "gray")}`,
+            );
           }
         }
       } else if (subtype === "task_started" && verbose) {
         const desc = (event.description as string) ?? "";
-        if (desc) output.push(`  ${chalk.dim(`⊳ agent: ${desc}`)}`);
+        if (desc) output.push(`  ${styled(`⊳ agent: ${desc}`, "dim")}`);
       }
       break;
     }
@@ -137,7 +142,7 @@ export function processClaudeLine(
         const btype = block.type as string;
         if (btype === "text") {
           const text = block.text as string;
-          if (text) output.push(`\n${chalk.bold(text)}`);
+          if (text) output.push(`\n${styled(text, "bold")}`);
         } else if (btype === "tool_use") {
           state.toolCount++;
           const name = (block.name as string) ?? "?";
@@ -145,11 +150,11 @@ export function processClaudeLine(
             (block.input ?? {}) as Record<string, unknown>,
           );
           if (verbose) {
-            output.push(`\n  ${chalk.cyan.bold(`▶ ${name}`)}`);
-            if (inputSummary) output.push(`    ${chalk.dim(inputSummary)}`);
+            output.push(`\n  ${styled(`▶ ${name}`, "header")}`);
+            if (inputSummary) output.push(`    ${styled(inputSummary, "dim")}`);
           } else {
-            let line = `  ${chalk.cyan("▶")} ${chalk.cyan(name)}`;
-            if (inputSummary) line += ` ${chalk.dim(inputSummary)}`;
+            let line = `  ${styled("▶", "cyan")} ${styled(name, "cyan")}`;
+            if (inputSummary) line += ` ${styled(inputSummary, "dim")}`;
             output.push(line);
           }
         } else if (btype === "thinking") {
@@ -157,16 +162,16 @@ export function processClaudeLine(
             const thinking = (block.thinking as string) ?? "";
             if (thinking) {
               const lines = thinking.split("\n");
-              output.push(`\n  ${chalk.gray.italic("💭 thinking")}`);
+              output.push(`\n  ${styled("💭 thinking", "gray")}`);
               for (const tl of lines.slice(0, 3)) {
-                output.push(`  ${chalk.gray(tl)}`);
+                output.push(`  ${styled(tl, "gray")}`);
               }
               if (lines.length > 3) {
-                output.push(`  ${chalk.gray(`  … (${lines.length - 3} more lines)`)}`);
+                output.push(`  ${styled(`  … (${lines.length - 3} more lines)`, "gray")}`);
               }
             }
           } else {
-            output.push(`  ${chalk.gray("💭")}`);
+            output.push(`  ${styled("💭", "gray")}`);
           }
         }
       }
@@ -193,16 +198,16 @@ export function processClaudeLine(
               const lines = resultText.split("\n");
               const preview = lines.slice(0, 6);
               for (const pl of preview) {
-                output.push(`    ${chalk.dim(pl)}`);
+                output.push(`    ${styled(pl, "dim")}`);
               }
               if (lines.length > 6) {
-                output.push(`    ${chalk.dim(`… (${lines.length - 6} more lines)`)}`);
+                output.push(`    ${styled(`… (${lines.length - 6} more lines)`, "dim")}`);
               }
             }
           }
         }
       } else {
-        output.push(` ${chalk.green("✓")}`);
+        output.push(` ${styled("✓", "success")}`);
       }
       break;
     }
@@ -223,13 +228,13 @@ export function processClaudeLine(
       const subtype = (event.subtype as string) ?? "unknown";
       if (subtype === "error") {
         const errmsg = (event.result as string) ?? "unknown error";
-        output.push(`\n${chalk.red.bold("✗ Error")} ${chalk.red(errmsg)}`);
+        output.push(`\n${styled("✗ Error", "fail")} ${styled(errmsg, "error")}`);
       } else {
         if (verbose) {
-          output.push(`\n${chalk.green.bold("✓ Done")}  ${chalk.dim(info)}`);
+          output.push(`\n${styled("✓ Done", "successBold")}  ${styled(info, "dim")}`);
           output.push(`${SEP}\n`);
         } else {
-          output.push(`\n${chalk.green("✓ done")}  ${chalk.dim(info)}`);
+          output.push(`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`);
         }
       }
       break;
@@ -263,10 +268,10 @@ export function formatClaudeStream(
   if (!state.gotResult) {
     allOutput.push("");
     allOutput.push(
-      `${chalk.red.bold("✗ Stream interrupted")}  ${chalk.dim("(no result received — Claude may have hit usage limits or been interrupted)")}`,
+      `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
     );
     if (options.verbose) {
-      allOutput.push(chalk.dim(`  turns=${state.turnCount}  tools=${state.toolCount}`));
+      allOutput.push(styled(`  turns=${state.turnCount}  tools=${state.toolCount}`, "dim"));
       allOutput.push(SEP);
     }
   }
