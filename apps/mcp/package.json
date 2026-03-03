@@ -6,6 +6,7 @@
   "dependencies": {
     "@ralphy/context": "workspace:*",
     "@ralphy/core": "workspace:*",
+    "@ralphy/output": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

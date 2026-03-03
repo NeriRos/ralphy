@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -9,20 +9,26 @@ import { runWithContext, createDefaultContext } from "@ralphy/context";
 
 let tempDir: string;
 let logs: string[];
-let originalLog: typeof console.log;
 const withStorage = <T>(fn: () => T): T => runWithContext(createDefaultContext(), fn);
+
+mock.module("@ralphy/output", () => ({
+  log: (...args: unknown[]) => {
+    logs.push(args.map(String).join(" "));
+  },
+  error: (...args: unknown[]) => {
+    logs.push(args.map(String).join(" "));
+  },
+  blank: () => {
+    logs.push("");
+  },
+}));
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "display-test-"));
   logs = [];
-  originalLog = console.log;
-  spyOn(console, "log").mockImplementation((...args: unknown[]) => {
-    logs.push(args.map(String).join(" "));
-  });
 });
 
 afterEach(() => {
-  console.log = originalLog;
   rmSync(tempDir, { recursive: true, force: true });
 });
 

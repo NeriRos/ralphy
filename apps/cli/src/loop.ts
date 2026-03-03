@@ -8,6 +8,7 @@ import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engin
 import { autoTransitionAfterExec, autoTransitionAfterReview } from "@ralphy/core/phases";
 import { gitPush } from "@ralphy/core/git";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
+import { log, error } from "@ralphy/output";
 import { showBanner } from "./display";
 
 export interface LoopOptions {
@@ -142,8 +143,8 @@ function checkStopSignal(taskDir: string): string | null {
 
   storage.remove(stopFile);
 
-  console.log(`\n${chalk.yellow.bold("STOP signal detected.")}`);
-  console.log(`Reason: ${reason.trim()}`);
+  log(`\n${chalk.yellow.bold("STOP signal detected.")}`);
+  log(`Reason: ${reason.trim()}`);
 
   updateState(taskDir, (s) => ({
     ...s,
@@ -294,16 +295,14 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
         const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
         if (progressContent !== null) {
           const { checked, unchecked } = countProgress(progressContent);
-          console.log(
-            `\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`,
-          );
+          log(`\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`);
         }
-        console.log(`See: ${taskDir}/PROGRESS.md`);
+        log(`See: ${taskDir}/PROGRESS.md`);
       } else if (opts.noExecute && state.phase === "exec") {
-        console.log("\nResearch and planning complete. Stopping before execution (--no-execute).");
-        console.log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
+        log("\nResearch and planning complete. Stopping before execution (--no-execute).");
+        log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
       } else if (opts.maxIterations > 0 && iteration >= opts.maxIterations) {
-        console.log(`\nReached max iterations: ${opts.maxIterations}`);
+        log(`\nReached max iterations: ${opts.maxIterations}`);
       }
       break;
     }
@@ -311,11 +310,11 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     iteration++;
 
     const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-    console.log(`\n======== ITERATION ${iteration} ${time} ========\n`);
+    log(`\n======== ITERATION ${iteration} ${time} ========\n`);
 
     // Show phase info
     const phase = state.phase as Phase;
-    console.log(` Phase: ${phase} (iteration ${state.phaseIteration})`);
+    log(` Phase: ${phase} (iteration ${state.phaseIteration})`);
 
     if (phase === "exec" || phase === "review") {
       const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
@@ -323,16 +322,16 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
         const section = extractCurrentSection(progressContent);
         if (section) {
           const firstLine = section.split("\n")[0];
-          console.log(` Section: ${firstLine}`);
+          log(` Section: ${firstLine}`);
         }
         const { checked, unchecked } = countProgress(progressContent);
-        console.log(` Progress: ${checked} done / ${unchecked} remaining`);
+        log(` Progress: ${checked} done / ${unchecked} remaining`);
         if (phase === "review") {
-          console.log(" (Reviewing section for quality/correctness...)");
+          log(" (Reviewing section for quality/correctness...)");
         }
       }
     }
-    console.log("");
+    log("");
 
     // Build prompt
     const prompt = buildTaskPrompt(state, taskDir);
@@ -349,13 +348,13 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
         taskDir,
       });
     } catch (err) {
-      console.error(chalk.red(`Engine spawn error: ${err}`));
+      error(chalk.red(`Engine spawn error: ${err}`));
       break;
     }
 
     if (engineResult.exitCode !== 0) {
       const failure = handleEngineFailure(engineResult.exitCode);
-      console.log(`\n${chalk.red.bold(failure.message)}`);
+      log(`\n${chalk.red.bold(failure.message)}`);
 
       updateStateIteration(
         taskDir,
@@ -399,16 +398,16 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     // Check STOP signal
     if (checkStopSignal(taskDir)) break;
 
-    console.log(`\n======== COMPLETED ITERATION ${iteration} ========\n`);
+    log(`\n======== COMPLETED ITERATION ${iteration} ========\n`);
 
     // Delay between iterations if configured
     if (shouldContinue(state, iteration, opts) && opts.delay > 0) {
-      console.log(`  [wait] Sleeping ${opts.delay}s before next iteration...\n`);
+      log(`  [wait] Sleeping ${opts.delay}s before next iteration...\n`);
       await sleep(opts.delay);
     }
   }
 
-  console.log(`Ralph loop finished after ${iteration} iterations.`);
+  log(`Ralph loop finished after ${iteration} iterations.`);
 
   // Final push
   if (iteration > 0) {

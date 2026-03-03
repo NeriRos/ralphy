@@ -8,6 +8,7 @@ import { readState, ensureState, writeState } from "@ralphy/core/state";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { commitState } from "@ralphy/core/git";
 import { mainLoop } from "./loop";
+import { log, error } from "@ralphy/output";
 import type { Phase } from "@ralphy/types";
 
 /**
@@ -35,12 +36,12 @@ async function main(): Promise<void> {
 
     case "status": {
       if (!args.name) {
-        console.error("Error: --name is required for status mode");
+        error("Error: --name is required for status mode");
         process.exit(1);
       }
       const taskDir = join(tasksDir, args.name);
       if (!existsSync(join(taskDir, "state.json"))) {
-        console.error(`Error: task '${args.name}' not found`);
+        error(`Error: task '${args.name}' not found`);
         process.exit(1);
       }
       const state = readState(taskDir);
@@ -50,7 +51,7 @@ async function main(): Promise<void> {
 
     case "advance": {
       if (!args.name) {
-        console.error("Error: --name is required for advance mode");
+        error("Error: --name is required for advance mode");
         process.exit(1);
       }
       const taskDir = join(tasksDir, args.name);
@@ -58,29 +59,29 @@ async function main(): Promise<void> {
       const updated = advancePhase(state, taskDir);
       writeState(taskDir, updated);
       commitState(taskDir, `advance phase: ${state.phase} -> ${updated.phase}`);
-      console.log(`Advanced: ${state.phase} -> ${updated.phase}`);
+      log(`Advanced: ${state.phase} -> ${updated.phase}`);
       break;
     }
 
     case "set-phase": {
       if (!args.name) {
-        console.error("Error: --name is required for set-phase mode");
+        error("Error: --name is required for set-phase mode");
         process.exit(1);
       }
       if (!args.phase) {
-        console.error("Error: --phase is required for set-phase mode");
+        error("Error: --phase is required for set-phase mode");
         process.exit(1);
       }
       const taskDir = join(tasksDir, args.name);
       const state = ensureState(taskDir);
       const updated = setPhase(state, taskDir, args.phase as Phase);
-      console.log(`Set phase: ${state.phase} -> ${updated.phase}`);
+      log(`Set phase: ${state.phase} -> ${updated.phase}`);
       break;
     }
 
     case "task": {
       if (!args.name) {
-        console.error("Error: --name is required for task mode");
+        error("Error: --name is required for task mode");
         process.exit(1);
       }
 
@@ -103,6 +104,6 @@ async function main(): Promise<void> {
 }
 
 await main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+  error(err instanceof Error ? err.message : err);
   process.exit(1);
 });

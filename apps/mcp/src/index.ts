@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools";
+import { error } from "@ralphy/output";
 
 /**
  * Resolve the .ralph/tasks directory by walking up from a starting dir.
@@ -42,6 +43,6 @@ async function main(): Promise<void> {
 }
 
 await main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
+  error(err instanceof Error ? err.message : err);
   process.exit(1);
 });
