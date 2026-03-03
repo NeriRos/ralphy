@@ -19,13 +19,18 @@ for arg in "$@"; do
     [ "$arg" = "--log" ] && LOG_FILE="1"
     [ "$arg" = "--log-dir" ] && EXPECT_LOG_DIR=1
 done
+
+if [ "$EXPECT_LOG_DIR" -eq 1 ]; then
+    echo "Error: --log-dir requires a directory path" >&2
+    exit 2
+fi
 if [ -n "$LOG_FILE" ]; then
     if [ -n "$LOG_DIR" ]; then
         LOG_FILE="$LOG_DIR/stream.log"
     else
         LOG_FILE="format-claude-stream.log"
     fi
-    > "$LOG_FILE"  # Clear existing log
+    : > "$LOG_FILE"  # Clear existing log
 fi
 
 BOLD='\033[1m'
@@ -33,16 +38,16 @@ DIM='\033[2m'
 ITALIC='\033[3m'
 CYAN='\033[36m'
 GREEN='\033[32m'
-YELLOW='\033[33m'
-MAGENTA='\033[35m'
 RED='\033[31m'
-BLUE='\033[34m'
 RESET='\033[0m'
 GRAY='\033[90m'
 
 TURN=0
 TOOL_COUNT=0
 GOT_RESULT=false
+
+# jq filter: round a number to exactly 2 decimal places (e.g. 0.1 → "0.10")
+JQ_FMT_2D='tostring | split(".") | if length == 1 then .[0] + ".00" elif (.[1] | length) == 1 then .[0] + "." + .[1] + "0" else .[0] + "." + .[1] end'
 
 # Accumulate usage stats from a result event into state.json
 # Adds to root .usage totals and stores .last_iteration_usage for loop.sh to attach to history
@@ -53,7 +58,7 @@ update_state_usage() {
 
     local stats
     stats=$(echo "$result_line" | jq '{
-        cost_usd: (.total_cost_usd // 0),
+        cost_usd: ((.total_cost_usd // 0) * 100 | round / 100),
         duration_ms: (.duration_ms // 0),
         num_turns: (.num_turns // 0),
         input_tokens: (.usage.input_tokens // 0),
@@ -63,7 +68,7 @@ update_state_usage() {
     }' 2>/dev/null) || return
 
     jq --argjson stats "$stats" '
-        .usage.total_cost_usd = ((.usage.total_cost_usd // 0) + $stats.cost_usd) |
+        .usage.total_cost_usd = (((.usage.total_cost_usd // 0) + $stats.cost_usd) * 100 | round / 100) |
         .usage.total_duration_ms = ((.usage.total_duration_ms // 0) + $stats.duration_ms) |
         .usage.total_turns = ((.usage.total_turns // 0) + $stats.num_turns) |
         .usage.total_input_tokens = ((.usage.total_input_tokens // 0) + $stats.input_tokens) |
@@ -152,8 +157,8 @@ while IFS= read -r line; do
                             [ -n "$input_summary" ] && echo -e "    ${DIM}${input_summary}${RESET}"
                         else
                             # Compact: tool + summary, each on own line
-                            printf "  ${CYAN}▶${RESET} ${CYAN}${name}${RESET}"
-                            [ -n "$input_summary" ] && printf " ${DIM}${input_summary}${RESET}"
+                            printf "  %b▶%b %b%s%b" "$CYAN" "$RESET" "$CYAN" "$name" "$RESET"
+                            [ -n "$input_summary" ] && printf " %b%s%b" "$DIM" "$input_summary" "$RESET"
                             printf "\n"
                         fi
                         ;;
@@ -210,7 +215,7 @@ while IFS= read -r line; do
         result)
             GOT_RESULT=true
             info=$(echo "$line" | jq -r '
-                "cost=$" + ((.total_cost_usd // 0) * 100 | round / 100 | tostring) +
+                "cost=$" + ((.total_cost_usd // 0) * 100 | round / 100 | '"$JQ_FMT_2D"') +
                 "  time=" + (((.duration_ms // 0) / 1000 * 10 | round / 10) | tostring) + "s" +
                 "  turns=" + ((.num_turns // 0) | tostring) +
                 "  in=" + ((.usage.input_tokens // 0) | tostring) +
@@ -243,4 +248,5 @@ if ! $GOT_RESULT; then
         echo -e "${DIM}  turns=$TURN  tools=$TOOL_COUNT${RESET}"
         echo -e "${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     fi
+    exit 130
 fi

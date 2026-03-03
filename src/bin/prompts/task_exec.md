@@ -71,12 +71,14 @@ Before committing, review all changes made in this section:
 - **Integration**: Check that changes work correctly with existing code
 
 **If issues are found:**
+
 - Document them in PROGRESS.md with a note (e.g., `- [x] Item name — ⚠️ Issue: [description]`)
 - Fix each issue directly in the code
 - Re-run verification commands (`nx affected -t test,lint,typecheck`)
 - Loop back to step 2 (Verify) until all issues are resolved
 
 **If no issues are found:**
+
 - Proceed to step 5 (Commit & push)
 
 ### 5. Commit, push, and advance if done

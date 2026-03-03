@@ -1,4 +1,3 @@
-
 ## Checklist — Deployment
 
 Run after pushing. Skip if no CI/CD is configured.

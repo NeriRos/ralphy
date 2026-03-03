@@ -45,6 +45,7 @@ nx affected -t lint,typecheck
 ```
 
 If there are errors:
+
 - Document them as issues in PROGRESS.md (step 4)
 - Do NOT fix them here — the execution phase will fix them
 
@@ -57,6 +58,7 @@ If you found **any problems**, add them to `PROGRESS.md` under the current secti
 ```
 
 Example:
+
 ```markdown
 - [x] Add login button — ⚠️ Issue: Button missing error handling for failed login attempts
 - [x] Create auth service — ⚠️ Issue: Type error on line 42: cannot assign string to AuthToken
@@ -67,11 +69,13 @@ Include enough detail that an implementation agent can fix the issue directly wi
 ### 5. Decision
 
 **If issues found:**
+
 - Do NOT advance
 - Return to console with issues documented
 - The loop will loop back to exec to fix them
 
 **If NO issues found:**
+
 - All items in section are correct
 - Ready to advance to next section
 

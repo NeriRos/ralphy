@@ -71,8 +71,8 @@ TASK_PROMPT=""
 PHASE_ARG=""
 NO_EXECUTE=0
 ITERATION_DELAY=0
-PUSH_INTERVAL=1
 LOG_FLAG=""
+IS_RESUME=0
 
 parse_args() {
     local expect_model=0 expect_name=0 expect_prompt=0
@@ -113,7 +113,7 @@ parse_args() {
             expect_timeout=0; continue  # Deprecated, consume and ignore
         fi
         if [ "$expect_push_interval" -eq 1 ]; then
-            PUSH_INTERVAL="$arg"; expect_push_interval=0; continue
+            expect_push_interval=0; continue  # Deprecated, consume and ignore
         fi
 
         case "$arg" in
@@ -139,7 +139,17 @@ parse_args() {
             --push-interval) expect_push_interval=1 ;;
             --unlimited)     MAX=0 ;;
             --log)           LOG_FLAG="--log" ;;
-            ''|*[!0-9]*)     MODE="$arg" ;;
+            ''|*[!0-9]*)
+                case "$arg" in
+                    task|list|status|advance|set-phase)
+                        MODE="$arg"
+                        ;;
+                    *)
+                        echo "Error: unknown argument or mode '$arg'"
+                        exit 1
+                        ;;
+                esac
+                ;;
             *)               MAX="$arg" ;;
         esac
     done
@@ -149,12 +159,21 @@ parse_args() {
 # Mode validation
 # ---------------------------------------------------------------
 
+validate_task_name() {
+    local value="$1"
+    if ! printf "%s" "$value" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+        echo "Error: invalid task name '$value'. Use only letters, numbers, dot, underscore, and hyphen."
+        exit 1
+    fi
+}
+
 validate_task_mode() {
     if [ -z "$TASK_NAME" ]; then
         echo "Error: task mode requires --name \"task-name\""
         echo "Usage: ./loop.sh task --name \"my-task\" [--prompt \"Task description\"] --claude"
         exit 1
     fi
+    validate_task_name "$TASK_NAME"
     TASK_DIR="$TASKS_DIR/$TASK_NAME"
 
     if [ -f "$TASK_DIR/state.json" ]; then
@@ -165,8 +184,6 @@ validate_task_mode() {
 }
 
 resume_existing_task() {
-    echo "  [resume] Found existing task: $TASK_NAME"
-
     if [ -z "$TASK_PROMPT" ]; then
         TASK_PROMPT=$(jq -r '.prompt' "$TASK_DIR/state.json" 2>/dev/null || echo "")
         if [ -z "$TASK_PROMPT" ]; then
@@ -177,22 +194,16 @@ resume_existing_task() {
     if [ "$ENGINE_SET" -eq 0 ]; then
         local saved_engine
         saved_engine=$(jq -r '.engine // "claude"' "$TASK_DIR/state.json" 2>/dev/null)
-        if [ -n "$saved_engine" ]; then
-            ENGINE="$saved_engine"
-            echo "  [resume] Using saved engine: $ENGINE"
-        fi
+        [ -n "$saved_engine" ] && ENGINE="$saved_engine"
     fi
 
     if [ "$ENGINE" = "claude" ]; then
         local saved_model
         saved_model=$(jq -r '.model // "opus"' "$TASK_DIR/state.json" 2>/dev/null)
-        if [ -n "$saved_model" ]; then
-            MODEL="$saved_model"
-            echo "  [resume] Using saved model: $MODEL"
-        fi
+        [ -n "$saved_model" ] && MODEL="$saved_model"
     fi
 
-    echo "  [resume] Prompt: $TASK_PROMPT"
+    IS_RESUME=1
 }
 
 create_new_task() {
@@ -202,7 +213,6 @@ create_new_task() {
         exit 1
     fi
     mkdir -p "$TASK_DIR"
-    echo "  [new] Creating new task: $TASK_NAME"
 }
 
 validate_named_mode() {
@@ -210,6 +220,7 @@ validate_named_mode() {
     if [ -z "$TASK_NAME" ]; then
         echo "Error: $mode requires --name \"task-name\""; exit 1
     fi
+    validate_task_name "$TASK_NAME"
     TASK_DIR="$TASKS_DIR/$TASK_NAME"
     if [ ! -d "$TASK_DIR" ]; then
         echo "Error: task directory $TASK_DIR does not exist"; exit 1
@@ -266,7 +277,7 @@ render_template() {
         -e "s|{{PHASE}}|$phase_val|g" \
         -e "s|{{PHASE_ITERATION}}|$phase_iter|g" \
         "$file" \
-    | TASK_PROMPT="$TASK_PROMPT" perl -pe 'BEGIN{$p=$ENV{"TASK_PROMPT"}} s/\{\{TASK_PROMPT\}\}/$p/g'
+    | awk -v prompt="$TASK_PROMPT" '{gsub(/\{\{TASK_PROMPT\}\}/, prompt); print}'
 }
 
 scaffold_task_files() {
@@ -403,6 +414,7 @@ detect_phase() {
 }
 
 # Write a state.json update via jq with atomic rename
+# shellcheck disable=SC2016 # jq filters use $var syntax for --arg variables, not shell expansion
 update_state_json() {
     local jq_filter="$1"
     shift
@@ -412,9 +424,11 @@ update_state_json() {
 
 update_state_iteration() {
     local result="${1:-success}"
+    local started_at="${2:-}"
     local now
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
+    # shellcheck disable=SC2016
     update_state_json '
         .phaseIteration += 1 |
         .totalIterations += 1 |
@@ -423,6 +437,8 @@ update_state_iteration() {
         .model = $model |
         .history += [{
             timestamp: $now,
+            startedAt: $started_at,
+            endedAt: $now,
             phase: .phase,
             iteration: .phaseIteration,
             engine: $engine,
@@ -431,7 +447,7 @@ update_state_iteration() {
             usage: (.last_iteration_usage // {})
         }] |
         del(.last_iteration_usage)
-    ' --arg now "$now" --arg result "$result" --arg engine "$ENGINE" --arg model "$MODEL"
+    ' --arg now "$now" --arg started_at "$started_at" --arg result "$result" --arg engine "$ENGINE" --arg model "$MODEL"
 }
 
 # Record a phase transition in state.json history
@@ -441,13 +457,16 @@ record_phase_transition() {
     local now
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
+    # shellcheck disable=SC2016
     update_state_json '
+        . as $prev |
         .phase = $phase |
+        .phaseIteration = 0 |
         .lastModified = $now |
         .history += [{
             timestamp: $now,
-            phase: .phase,
-            iteration: .phaseIteration,
+            phase: $prev.phase,
+            iteration: $prev.phaseIteration,
             engine: .engine,
             model: .model,
             result: $result
@@ -519,14 +538,16 @@ advance_phase() {
 
     local now
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    # shellcheck disable=SC2016
     update_state_json '
+        . as $prev |
         .phase = $phase |
         .phaseIteration = 0 |
         .lastModified = $now |
         .history += [{
             timestamp: $now,
             phase: $from,
-            iteration: .phaseIteration,
+            iteration: $prev.phaseIteration,
             engine: .engine,
             model: .model,
             result: ("advance -> " + $phase)
@@ -548,14 +569,16 @@ set_phase() {
     current_phase=$(jq -r '.phase' "$state_file")
     now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
+    # shellcheck disable=SC2016
     update_state_json '
+        . as $prev |
         .phase = $phase |
         .phaseIteration = 0 |
         .lastModified = $now |
         .history += [{
             timestamp: $now,
             phase: $from,
-            iteration: .phaseIteration,
+            iteration: $prev.phaseIteration,
             engine: .engine,
             model: .model,
             result: ("set-phase -> " + $phase)
@@ -628,7 +651,7 @@ show_list() {
     local found=0
     for state_file in "$TASKS_DIR"/*/state.json; do
         [ -f "$state_file" ] || continue
-        local phase name status total modified engine model prompt
+        local phase name status total prompt
         phase=$(jq -r '.phase' "$state_file")
         [ "$phase" = "done" ] && continue
         found=1
@@ -638,7 +661,8 @@ show_list() {
         prompt=$(jq -r '.prompt' "$state_file" | head -c 60)
         # Progress info
         local progress_info=""
-        local progress_file="$(dirname "$state_file")/PROGRESS.md"
+        local progress_file
+        progress_file="$(dirname "$state_file")/PROGRESS.md"
         if [ -f "$progress_file" ]; then
             local checked unchecked
             checked=$(grep -c '^\- \[x\]' "$progress_file" 2>/dev/null || true)
@@ -655,26 +679,47 @@ show_list() {
 }
 
 show_banner() {
-    echo "============================================"
-    echo " Ralph Loop"
-    echo " Mode: $MODE"
+    local BOLD='\033[1m'
+    local DIM='\033[2m'
+    local CYAN='\033[36m'
+    local GRAY='\033[90m'
+    local RESET='\033[0m'
+    local SEP="${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+
+    echo -e "$SEP"
+    echo -e " ${BOLD}${CYAN}Ralph Loop${RESET}"
+    echo -e "$SEP"
+    echo -e " ${BOLD}Mode:${RESET}       $MODE$([ "$IS_RESUME" -eq 1 ] && echo -e " ${DIM}(resumed)${RESET}" || true)"
     if [ "$MODE" = "task" ]; then
-        echo " Task: $TASK_NAME"
-        echo " Description: $TASK_PROMPT"
-        echo " Task dir: $TASK_DIR"
+        echo -e " ${BOLD}Task:${RESET}       $TASK_NAME"
+        echo -e " ${BOLD}Task dir:${RESET}   $TASK_DIR"
     fi
-    echo " Engine: $ENGINE$([ "$ENGINE" = "claude" ] && echo " ($MODEL)" || true)"
-    echo " Branch: $BRANCH"
+    echo -e " ${BOLD}Engine:${RESET}     $ENGINE$([ "$ENGINE" = "claude" ] && echo " ($MODEL)" || true)"
+    echo -e " ${BOLD}Branch:${RESET}     $BRANCH"
     if [ -n "${PROMPT_FILE:-}" ]; then
-        echo " Prompt: $PROMPT_FILE"
+        echo -e " ${BOLD}Prompt:${RESET}     $PROMPT_FILE"
     fi
-    echo " No execute: $([ $NO_EXECUTE -eq 1 ] && echo 'yes (research+plan only)' || echo 'no')"
-    echo " Max iterations: $([ $MAX -gt 0 ] && echo $MAX || echo 'unlimited')"
-    if [ $ITERATION_DELAY -gt 0 ]; then
-        echo " Iteration delay: ${ITERATION_DELAY}s between runs"
+    echo -e " ${BOLD}No execute:${RESET} $([ "$NO_EXECUTE" -eq 1 ] && echo 'yes (research+plan only)' || echo 'no')"
+    echo -e " ${BOLD}Max iters:${RESET}  $([ "$MAX" -gt 0 ] && echo "$MAX" || echo 'unlimited')"
+    if [ "$ITERATION_DELAY" -gt 0 ]; then
+        echo -e " ${BOLD}Delay:${RESET}      ${ITERATION_DELAY}s between runs"
     fi
-    echo " Formatter: $(basename "$FORMATTER")"
-    echo "============================================"
+    echo -e " ${BOLD}Formatter:${RESET}  $(basename "$FORMATTER")"
+
+    if [ "$MODE" = "task" ] && [ -n "$TASK_PROMPT" ]; then
+        local max_lines=6
+        local total_lines
+        total_lines=$(echo "$TASK_PROMPT" | wc -l | tr -d ' ')
+        echo -e "$SEP"
+        echo -e " ${BOLD}Prompt:${RESET}"
+        echo "$TASK_PROMPT" | head -n "$max_lines" | while IFS= read -r line; do
+            echo -e "  ${GRAY}${line}${RESET}"
+        done
+        if [ "$total_lines" -gt "$max_lines" ]; then
+            echo -e "  ${DIM}… ($((total_lines - max_lines)) more lines)${RESET}"
+        fi
+    fi
+    echo -e "$SEP"
 }
 
 # ---------------------------------------------------------------
@@ -692,7 +737,7 @@ build_task_prompt() {
             echo "---"
             echo "# 📌 User Steering (READ FIRST)"
             echo ""
-            cat "$TASK_DIR/STEERING.md"
+            echo "$steering_content"
             echo ""
             echo "---"
             echo ""
@@ -782,7 +827,7 @@ handle_engine_failure() {
     esac
 
     if [ "$MODE" = "task" ] && [ -f "$TASK_DIR/state.json" ]; then
-        update_state_iteration "failed:exit-$status"
+        update_state_iteration "failed:exit-$status" "$ITER_START"
     fi
     return "$status"
 }
@@ -792,8 +837,16 @@ handle_engine_failure() {
 # ---------------------------------------------------------------
 
 auto_transition_after_exec() {
-    record_phase_transition "review" "auto-advance -> review"
-    echo "  [state] Auto-advanced exec → review"
+    local unchecked
+    unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
+
+    if [ "$unchecked" -gt 0 ]; then
+        echo "  [state] $unchecked unchecked items remain — staying in exec"
+        return
+    fi
+
+    record_phase_transition "review" "all items checked -> auto-advance to review"
+    echo "  [state] All items checked — auto-advanced exec → review"
 }
 
 auto_transition_after_review() {
@@ -810,6 +863,7 @@ auto_transition_after_review() {
     unchecked=$(grep -c '^\- \[ \]' "$TASK_DIR/PROGRESS.md" || true)
 
     if [ "$unchecked" -eq 0 ]; then
+        # shellcheck disable=SC2016
         update_state_json '
             .phase = "done" |
             .lastModified = $now |
@@ -855,6 +909,7 @@ check_stop_signal() {
         echo "Reason: $(cat "$stop_file")"
         rm "$stop_file"
         if [ "$MODE" = "task" ] && [ -f "$TASK_DIR/state.json" ]; then
+            # shellcheck disable=SC2016
             update_state_json '
                 .status = "blocked" |
                 .lastModified = $now
@@ -867,7 +922,7 @@ check_stop_signal() {
 
 # Check whether the loop should continue after an iteration
 should_continue() {
-    if [ $MAX -gt 0 ] && [ $ITERATION -ge $MAX ]; then
+    if [ "$MAX" -gt 0 ] && [ "$ITERATION" -ge "$MAX" ]; then
         return 1
     fi
     if [ "$MODE" = "task" ]; then
@@ -911,7 +966,7 @@ if [ "$MODE" = "task" ]; then
 fi
 
 while true; do
-    if [ $MAX -gt 0 ] && [ $ITERATION -ge $MAX ]; then
+    if [ "$MAX" -gt 0 ] && [ "$ITERATION" -ge "$MAX" ]; then
         echo "Reached max iterations: $MAX"
         break
     fi
@@ -952,6 +1007,7 @@ while true; do
     TEMP_PROMPT=$(mktemp)
     SEND_PROMPT > "$TEMP_PROMPT"
 
+    ITER_START=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
     STATUS=0
     set +e
     run_engine "$TEMP_PROMPT"
@@ -966,7 +1022,7 @@ while true; do
 
     # Post-iteration state updates
     if [ "$MODE" = "task" ]; then
-        update_state_iteration "success"
+        update_state_iteration "success" "$ITER_START"
 
         case "$PHASE" in
             exec)   auto_transition_after_exec ;;
@@ -982,7 +1038,7 @@ while true; do
 
     echo -e "\n======== COMPLETED ITERATION $ITERATION ========\n"
 
-    if should_continue && [ $ITERATION_DELAY -gt 0 ]; then
+    if should_continue && [ "$ITERATION_DELAY" -gt 0 ]; then
         echo -e "  [wait] Sleeping ${ITERATION_DELAY}s before next iteration...\n"
         sleep "$ITERATION_DELAY"
     fi
