@@ -37,9 +37,9 @@
 
 ## Section 6 — Stream Formatters
 
-- [ ] Create `packages/ralph/src/formatters/claude-stream.ts`: line-by-line JSON parser for Claude `stream-json` output; handle event types (system, assistant, user, result); accumulate usage stats; ANSI output via chalk; support compact/verbose modes
-- [ ] Create `packages/ralph/src/formatters/codex-stream.ts`: JSONL parser for Codex output; handle event types (thread.started, turn.started/completed, tool events, response events); rate limit detection (exit 42); stderr handling
-- [ ] Write tests for both formatters with sample stream data in `packages/ralph/src/__tests__/formatters.test.ts`
+- [x] Create `packages/ralph/src/formatters/claude-stream.ts`: line-by-line JSON parser for Claude `stream-json` output; handle event types (system, assistant, user, result); accumulate usage stats; ANSI output via chalk; support compact/verbose modes
+- [x] Create `packages/ralph/src/formatters/codex-stream.ts`: JSONL parser for Codex output; handle event types (thread.started, turn.started/completed, tool events, response events); rate limit detection (exit 42); stderr handling
+- [x] Write tests for both formatters with sample stream data in `packages/ralph/src/__tests__/formatters.test.ts`
 
 ## Section 7 — Engine Execution and CLI
 
