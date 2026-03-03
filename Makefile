@@ -21,14 +21,14 @@ help:
 
 install:
 	@echo "Installing to: $(INSTALL_PATH)"
-	@# Build the ralph package first
-	@echo "  Building ralph..."
-	@bunx nx build ralph
+	@# Build the ralph-cli app first
+	@echo "  Building ralph-cli..."
+	@bunx nx build ralph-cli
 	@mkdir -p "$(INSTALL_PATH)/bin"
 	@# Copy built output and static assets
-	@cp packages/ralph/dist/index.js "$(INSTALL_PATH)/bin/"
-	@cp -r packages/ralph/prompts "$(INSTALL_PATH)/bin/"
-	@cp -r packages/ralph/templates "$(INSTALL_PATH)/bin/"
+	@cp apps/ralph-cli/dist/index.js "$(INSTALL_PATH)/bin/"
+	@cp -r packages/ralph-core/prompts "$(INSTALL_PATH)/bin/"
+	@cp -r packages/ralph-core/templates "$(INSTALL_PATH)/bin/"
 	@# Copy legacy bin files and .gitignore
 	@cp src/bin/loop.sh "$(INSTALL_PATH)/bin/" 2>/dev/null || true
 	@cp src/gitignore "$(INSTALL_PATH)/.gitignore" 2>/dev/null || true

@@ -17,49 +17,49 @@ Rewrite the shell-based task orchestration system (`loop.sh` + formatters) as a 
 
 ## Architectural Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Package manager | Bun | User requested; fast installs, native TS execution |
-| Module system | ESM (`"type": "module"`) | Modern standard, Bun-native |
-| CLI framework | Manual parser (port existing) | Existing arg parser is simple; no need for commander/yargs |
-| Colors | `chalk` | Clean API, widely used; replaces raw ANSI codes |
-| Schema validation | `zod` | Type-safe state.json parsing, derive TS types |
-| Test framework | `bun:test` | Zero-config with Bun, fast |
-| Stream parsing | `readline` + line-by-line | Direct port of existing line-based shell parsers |
-| Static files | Runtime `fs.readFileSync` via `import.meta.dir` | Simple, Bun-native path resolution |
-| Build output | `dist/` via Nx | Standard Nx convention |
+| Decision          | Choice                                          | Rationale                                                  |
+| ----------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| Package manager   | Bun                                             | User requested; fast installs, native TS execution         |
+| Module system     | ESM (`"type": "module"`)                        | Modern standard, Bun-native                                |
+| CLI framework     | Manual parser (port existing)                   | Existing arg parser is simple; no need for commander/yargs |
+| Colors            | `chalk`                                         | Clean API, widely used; replaces raw ANSI codes            |
+| Schema validation | `zod`                                           | Type-safe state.json parsing, derive TS types              |
+| Test framework    | `bun:test`                                      | Zero-config with Bun, fast                                 |
+| Stream parsing    | `readline` + line-by-line                       | Direct port of existing line-based shell parsers           |
+| Static files      | Runtime `fs.readFileSync` via `import.meta.dir` | Simple, Bun-native path resolution                         |
+| Build output      | `dist/` via Nx                                  | Standard Nx convention                                     |
 
 ## Files Created
 
-| File | Purpose |
-|------|---------|
-| `nx.json` | Nx workspace config |
-| `package.json` | Root workspace (bun workspaces) |
-| `tsconfig.base.json` | Shared TypeScript config |
-| `packages/ralph/package.json` | Package config with bin entry |
-| `packages/ralph/tsconfig.json` | Project TS config |
-| `packages/ralph/src/types.ts` | Zod schemas + derived types |
-| `packages/ralph/src/state.ts` | State management (read/write/migrate state.json) |
-| `packages/ralph/src/progress.ts` | PROGRESS.md parsing (sections, counts) |
-| `packages/ralph/src/templates.ts` | Mustache-style template rendering |
-| `packages/ralph/src/git.ts` | Git operations (branch, commit, push) |
-| `packages/ralph/src/display.ts` | Banner, status, list output with chalk |
-| `packages/ralph/src/phases.ts` | Phase state machine + transitions |
-| `packages/ralph/src/engine.ts` | Claude/Codex CLI execution + stream piping |
-| `packages/ralph/src/formatters/claude-stream.ts` | Claude stream-json parser |
-| `packages/ralph/src/formatters/codex-stream.ts` | Codex JSONL parser |
-| `packages/ralph/src/cli.ts` | Argument parsing |
-| `packages/ralph/src/loop.ts` | Main iteration loop |
-| `packages/ralph/src/index.ts` | Entry point (wires CLI + loop) |
-| `packages/ralph/prompts/*.md` | Copied from src/bin/prompts/ |
-| `packages/ralph/templates/*.md` | Copied from src/bin/templates/ |
+| File                                             | Purpose                                          |
+| ------------------------------------------------ | ------------------------------------------------ |
+| `nx.json`                                        | Nx workspace config                              |
+| `package.json`                                   | Root workspace (bun workspaces)                  |
+| `tsconfig.base.json`                             | Shared TypeScript config                         |
+| `packages/ralph/package.json`                    | Package config with bin entry                    |
+| `packages/ralph/tsconfig.json`                   | Project TS config                                |
+| `packages/ralph/src/types.ts`                    | Zod schemas + derived types                      |
+| `packages/ralph/src/state.ts`                    | State management (read/write/migrate state.json) |
+| `packages/ralph/src/progress.ts`                 | PROGRESS.md parsing (sections, counts)           |
+| `packages/ralph/src/templates.ts`                | Mustache-style template rendering                |
+| `packages/ralph/src/git.ts`                      | Git operations (branch, commit, push)            |
+| `packages/ralph/src/display.ts`                  | Banner, status, list output with chalk           |
+| `packages/ralph/src/phases.ts`                   | Phase state machine + transitions                |
+| `packages/ralph/src/engine.ts`                   | Claude/Codex CLI execution + stream piping       |
+| `packages/ralph/src/formatters/claude-stream.ts` | Claude stream-json parser                        |
+| `packages/ralph/src/formatters/codex-stream.ts`  | Codex JSONL parser                               |
+| `packages/ralph/src/cli.ts`                      | Argument parsing                                 |
+| `packages/ralph/src/loop.ts`                     | Main iteration loop                              |
+| `packages/ralph/src/index.ts`                    | Entry point (wires CLI + loop)                   |
+| `packages/ralph/prompts/*.md`                    | Copied from src/bin/prompts/                     |
+| `packages/ralph/templates/*.md`                  | Copied from src/bin/templates/                   |
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `.gitignore` | Add `node_modules/`, `dist/`, `bun.lock` |
-| `Makefile` | Update install target to use built output from `dist/` |
+| File         | Change                                                 |
+| ------------ | ------------------------------------------------------ |
+| `.gitignore` | Add `node_modules/`, `dist/`, `bun.lock`               |
+| `Makefile`   | Update install target to use built output from `dist/` |
 
 ## Files Removed
 
@@ -67,12 +67,12 @@ None in the initial conversion. The existing `src/bin/` shell scripts remain unt
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|-----------|
-| Bun stream compat with `claude` CLI | Test early in Section 2 with a manual spawn; fall back to Node child_process if needed |
-| Static file resolution when installed vs dev | Use `import.meta.dir` for Bun; add runtime path resolution helper |
-| State.json backward compat | Zod schema uses `.default()` and `.optional()` for new fields; `migrate_state()` port handles legacy |
-| Nx version churn | Pin exact versions in package.json |
+| Risk                                         | Mitigation                                                                                           |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Bun stream compat with `claude` CLI          | Test early in Section 2 with a manual spawn; fall back to Node child_process if needed               |
+| Static file resolution when installed vs dev | Use `import.meta.dir` for Bun; add runtime path resolution helper                                    |
+| State.json backward compat                   | Zod schema uses `.default()` and `.optional()` for new fields; `migrate_state()` port handles legacy |
+| Nx version churn                             | Pin exact versions in package.json                                                                   |
 
 ## Open Questions
 
