@@ -15,9 +15,9 @@
 
 ## Section 3 — Read Document & Create Task Tests
 
-- [ ] Write `ralph_read_document` tests: read each document type (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md), missing document returns error, missing task returns error
-- [ ] Write `ralph_create_task` tests: creates state.json and STEERING.md, duplicate task returns error, custom engine/model applied, default engine/model used when omitted
-- [ ] Run tests to verify passing
+- [x] Write `ralph_read_document` tests: read each document type (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md), missing document returns error, missing task returns error
+- [x] Write `ralph_create_task` tests: creates state.json and STEERING.md, duplicate task returns error, custom engine/model applied, default engine/model used when omitted
+- [x] Run tests to verify passing
 
 ## Section 4 — Run, Advance Phase & Update Steering Tests
 

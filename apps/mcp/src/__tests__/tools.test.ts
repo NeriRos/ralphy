@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
@@ -241,5 +241,113 @@ describe("ralph_get_task", () => {
     expect(data.currentSection).toBeNull();
     expect(data.documents).toEqual([]);
     expect(data.steering).toBeNull();
+  });
+});
+
+describe("ralph_read_document", () => {
+  test("reads RESEARCH.md", async () => {
+    const taskDir = createTask(tempDir, "doc-task");
+    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research\nFindings.");
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "doc-task", document: "RESEARCH.md" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toBe("# Research\nFindings.");
+  });
+
+  test("reads PLAN.md", async () => {
+    const taskDir = createTask(tempDir, "doc-task");
+    writeFileSync(join(taskDir, "PLAN.md"), "# Plan\nSteps here.");
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "doc-task", document: "PLAN.md" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toBe("# Plan\nSteps here.");
+  });
+
+  test("reads PROGRESS.md", async () => {
+    const taskDir = createTask(tempDir, "doc-task");
+    writeFileSync(join(taskDir, "PROGRESS.md"), "- [x] Done\n- [ ] Pending");
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "doc-task", document: "PROGRESS.md" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toBe("- [x] Done\n- [ ] Pending");
+  });
+
+  test("reads STEERING.md", async () => {
+    const taskDir = createTask(tempDir, "doc-task");
+    writeFileSync(join(taskDir, "STEERING.md"), "# Steering\nGuidance.");
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "doc-task", document: "STEERING.md" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toBe("# Steering\nGuidance.");
+  });
+
+  test("returns error for missing document", async () => {
+    createTask(tempDir, "no-doc-task");
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "no-doc-task", document: "RESEARCH.md" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("RESEARCH.md");
+    expect(result.content[0]!.text).toContain("no-doc-task");
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+
+    const result = await handler({ name: "nonexistent", document: "PLAN.md" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("nonexistent");
+  });
+});
+
+describe("ralph_create_task", () => {
+  test("creates state.json and STEERING.md", async () => {
+    const handler = captureHandlers(tempDir)("ralph_create_task");
+
+    const result = await handler({ name: "new-task", prompt: "Do something" });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { created: string; phase: string };
+    expect(data.created).toBe("new-task");
+    expect(data.phase).toBe("research");
+
+    // Verify files exist on disk
+    expect(existsSync(join(tempDir, "new-task", "state.json"))).toBe(true);
+    expect(existsSync(join(tempDir, "new-task", "STEERING.md"))).toBe(true);
+  });
+
+  test("returns error for duplicate task", async () => {
+    createTask(tempDir, "dup-task");
+    const handler = captureHandlers(tempDir)("ralph_create_task");
+
+    const result = await handler({ name: "dup-task", prompt: "Duplicate" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("dup-task");
+    expect(result.content[0]!.text).toContain("already exists");
+  });
+
+  test("applies custom engine and model", async () => {
+    const handler = captureHandlers(tempDir)("ralph_create_task");
+
+    await handler({ name: "custom-task", prompt: "Custom", engine: "openai", model: "gpt-4" });
+
+    const stateRaw = readFileSync(join(tempDir, "custom-task", "state.json"), "utf-8");
+    const state = JSON.parse(stateRaw) as { engine: string; model: string };
+    expect(state.engine).toBe("openai");
+    expect(state.model).toBe("gpt-4");
+  });
+
+  test("uses default engine and model when omitted", async () => {
+    const handler = captureHandlers(tempDir)("ralph_create_task");
+
+    await handler({ name: "default-task", prompt: "Defaults" });
+
+    const stateRaw = readFileSync(join(tempDir, "default-task", "state.json"), "utf-8");
+    const state = JSON.parse(stateRaw) as { engine: string; model: string };
+    expect(state.engine).toBe("claude");
+    expect(state.model).toBe("opus");
   });
 });
