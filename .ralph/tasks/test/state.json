@@ -1,0 +1,57 @@
+{
+  "version": "1",
+  "name": "test",
+  "prompt": "run lint on all projects",
+  "phase": "research",
+  "phaseIteration": 3,
+  "totalIterations": 3,
+  "createdAt": "2026-03-03T21:09:17.891Z",
+  "lastModified": "2026-03-03T21:11:08.151Z",
+  "engine": "claude",
+  "model": "opus",
+  "status": "active",
+  "usage": {
+    "total_cost_usd": 0,
+    "total_duration_ms": 0,
+    "total_turns": 0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_cache_read_input_tokens": 0,
+    "total_cache_creation_input_tokens": 0
+  },
+  "history": [
+    {
+      "timestamp": "2026-03-03T21:09:19.238Z",
+      "startedAt": "2026-03-03T21:09:17.935Z",
+      "endedAt": "2026-03-03T21:09:19.238Z",
+      "phase": "research",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "opus",
+      "result": "failed:exit-1"
+    },
+    {
+      "timestamp": "2026-03-03T21:10:52.152Z",
+      "startedAt": "2026-03-03T21:10:50.638Z",
+      "endedAt": "2026-03-03T21:10:52.152Z",
+      "phase": "research",
+      "iteration": 2,
+      "engine": "claude",
+      "model": "opus",
+      "result": "failed:exit-1"
+    },
+    {
+      "timestamp": "2026-03-03T21:11:08.151Z",
+      "startedAt": "2026-03-03T21:11:06.857Z",
+      "endedAt": "2026-03-03T21:11:08.151Z",
+      "phase": "research",
+      "iteration": 3,
+      "engine": "claude",
+      "model": "opus",
+      "result": "failed:exit-1"
+    }
+  ],
+  "metadata": {
+    "branch": "main"
+  }
+}

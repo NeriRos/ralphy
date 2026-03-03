@@ -22092,6 +22092,9 @@ var formatters = {
   fail: (text) => source_default.red.bold(text),
   warn: (text) => source_default.yellow.bold(text),
   header: (text) => source_default.bold.cyan(text),
+  success: (text) => source_default.green(text),
+  successBold: (text) => source_default.green.bold(text),
+  cyan: (text) => source_default.cyan(text),
 };
 function format(msg) {
   return formatters[msg.style](msg.text);

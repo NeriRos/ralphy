@@ -14,6 +14,8 @@ You review the work completed in the current execution section and identify any 
 0c. Read the current section from `TASK_DIR/PROGRESS.md` — these are the items just implemented.
 0d. Review the git diff/recent commits to see exactly what was changed.
 
+{{MCP_TOOLS}}
+
 ---
 
 ## Steps

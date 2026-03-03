@@ -32,6 +32,7 @@ function parseArgs(argv) {
     noExecute: false,
     delay: 0,
     log: false,
+    verbose: false,
   };
   let expectModel = false;
   let expectName = false;
@@ -789,9 +790,15 @@ var formatters = {
   fail: (text) => source_default.red.bold(text),
   warn: (text) => source_default.yellow.bold(text),
   header: (text) => source_default.bold.cyan(text),
+  success: (text) => source_default.green(text),
+  successBold: (text) => source_default.green.bold(text),
+  cyan: (text) => source_default.cyan(text),
 };
 function format(msg) {
   return formatters[msg.style](msg.text);
+}
+function styled(text, style) {
+  return format({ text, style });
 }
 function log(msg) {
   console.log(typeof msg === "string" ? msg : format(msg));
@@ -5293,7 +5300,7 @@ function resolveTemplatePath(name) {
 var { spawn } = globalThis.Bun;
 
 // packages/engine/src/formatters/claude-stream.ts
-var SEP2 = source_default.gray("\u2501".repeat(50));
+var SEP2 = styled("\u2501".repeat(50), "gray");
 function formatCost(usd) {
   return (Math.round(usd * 100) / 100).toFixed(2);
 }
@@ -5356,16 +5363,17 @@ function processClaudeLine(line, state, options = {}) {
         if (model === "unknown") {
           if (verbose) {
             output.push(
-              `${source_default.red.bold("\u26A0 FAILED TO PARSE MODEL")} ${source_default.dim(`(${sid}\u2026)`)}`,
+              `${styled("\u26A0 FAILED TO PARSE MODEL", "fail")} ${styled(`(${sid}\u2026)`, "dim")}`,
             );
             output.push(
-              source_default.dim(
+              styled(
                 "  Check log file for raw JSON output. Run with --log to capture full output.",
+                "dim",
               ),
             );
           } else {
             output.push(
-              `${source_default.red("\u2717")} ${source_default.bold("UNKNOWN")} ${source_default.dim(`(${sid}\u2026) - see --log`)}`,
+              `${styled("\u2717", "error")} ${styled("UNKNOWN", "bold")} ${styled(`(${sid}\u2026) - see --log`, "dim")}`,
             );
           }
         } else {
@@ -5374,18 +5382,18 @@ function processClaudeLine(line, state, options = {}) {
             const ntools = Array.isArray(event.tools) ? event.tools.length : 0;
             output.push(SEP2);
             output.push(
-              `  ${source_default.dim("model:")} ${source_default.bold(model)}  ${source_default.dim(`session: ${sid}\u2026  v${ver}  tools: ${ntools}`)}`,
+              `  ${styled("model:", "dim")} ${styled(model, "bold")}  ${styled(`session: ${sid}\u2026  v${ver}  tools: ${ntools}`, "dim")}`,
             );
             output.push(SEP2);
           } else {
             output.push(
-              `${source_default.gray("\u2500\u2500")} ${source_default.bold(model)} ${source_default.gray(`(${sid}\u2026)`)}`,
+              `${styled("\u2500\u2500", "gray")} ${styled(model, "bold")} ${styled(`(${sid}\u2026)`, "gray")}`,
             );
           }
         }
       } else if (subtype === "task_started" && verbose) {
         const desc = event.description ?? "";
-        if (desc) output.push(`  ${source_default.dim(`\u22B3 agent: ${desc}`)}`);
+        if (desc) output.push(`  ${styled(`\u22B3 agent: ${desc}`, "dim")}`);
       }
       break;
     }
@@ -5399,18 +5407,18 @@ function processClaudeLine(line, state, options = {}) {
           const text = block.text;
           if (text)
             output.push(`
-${source_default.bold(text)}`);
+${styled(text, "bold")}`);
         } else if (btype === "tool_use") {
           state.toolCount++;
           const name = block.name ?? "?";
           const inputSummary = extractToolInputSummary(block.input ?? {});
           if (verbose) {
             output.push(`
-  ${source_default.cyan.bold(`\u25B6 ${name}`)}`);
-            if (inputSummary) output.push(`    ${source_default.dim(inputSummary)}`);
+  ${styled(`\u25B6 ${name}`, "header")}`);
+            if (inputSummary) output.push(`    ${styled(inputSummary, "dim")}`);
           } else {
-            let line2 = `  ${source_default.cyan("\u25B6")} ${source_default.cyan(name)}`;
-            if (inputSummary) line2 += ` ${source_default.dim(inputSummary)}`;
+            let line2 = `  ${styled("\u25B6", "cyan")} ${styled(name, "cyan")}`;
+            if (inputSummary) line2 += ` ${styled(inputSummary, "dim")}`;
             output.push(line2);
           }
         } else if (btype === "thinking") {
@@ -5420,18 +5428,16 @@ ${source_default.bold(text)}`);
               const lines = thinking.split(`
 `);
               output.push(`
-  ${source_default.gray.italic("\uD83D\uDCAD thinking")}`);
+  ${styled("\uD83D\uDCAD thinking", "gray")}`);
               for (const tl of lines.slice(0, 3)) {
-                output.push(`  ${source_default.gray(tl)}`);
+                output.push(`  ${styled(tl, "gray")}`);
               }
               if (lines.length > 3) {
-                output.push(
-                  `  ${source_default.gray(`  \u2026 (${lines.length - 3} more lines)`)}`,
-                );
+                output.push(`  ${styled(`  \u2026 (${lines.length - 3} more lines)`, "gray")}`);
               }
             }
           } else {
-            output.push(`  ${source_default.gray("\uD83D\uDCAD")}`);
+            output.push(`  ${styled("\uD83D\uDCAD", "gray")}`);
           }
         }
       }
@@ -5456,16 +5462,16 @@ ${source_default.bold(text)}`);
 `);
               const preview = lines.slice(0, 6);
               for (const pl of preview) {
-                output.push(`    ${source_default.dim(pl)}`);
+                output.push(`    ${styled(pl, "dim")}`);
               }
               if (lines.length > 6) {
-                output.push(`    ${source_default.dim(`\u2026 (${lines.length - 6} more lines)`)}`);
+                output.push(`    ${styled(`\u2026 (${lines.length - 6} more lines)`, "dim")}`);
               }
             }
           }
         }
       } else {
-        output.push(` ${source_default.green("\u2713")}`);
+        output.push(` ${styled("\u2713", "success")}`);
       }
       break;
     }
@@ -5485,16 +5491,16 @@ ${source_default.bold(text)}`);
       if (subtype === "error") {
         const errmsg = event.result ?? "unknown error";
         output.push(`
-${source_default.red.bold("\u2717 Error")} ${source_default.red(errmsg)}`);
+${styled("\u2717 Error", "fail")} ${styled(errmsg, "error")}`);
       } else {
         if (verbose) {
           output.push(`
-${source_default.green.bold("\u2713 Done")}  ${source_default.dim(info)}`);
+${styled("\u2713 Done", "successBold")}  ${styled(info, "dim")}`);
           output.push(`${SEP2}
 `);
         } else {
           output.push(`
-${source_default.green("\u2713 done")}  ${source_default.dim(info)}`);
+${styled("\u2713 done", "success")}  ${styled(info, "dim")}`);
         }
       }
       break;
@@ -6119,7 +6125,7 @@ function buildTaskPrompt(state, taskDir) {
   }
   const phasePrompt = storage.read(resolvePromptPath(`task_${phase}`));
   if (phasePrompt !== null) {
-    prompt += phasePrompt;
+    prompt += renderTemplate(phasePrompt, buildTemplateVars(state, taskDir));
   }
   switch (phase) {
     case "plan": {
@@ -6176,6 +6182,23 @@ function buildTaskPrompt(state, taskDir) {
   return prompt;
 }
 function buildTemplateVars(state, taskDir) {
+  const mcpTools =
+    state.engine === "claude"
+      ? [
+          "",
+          "## MCP Tools Available",
+          "",
+          "You have access to ralph MCP tools. **Use these instead of shell commands where applicable:**",
+          "",
+          "- `ralph_advance_phase(name)` \u2014 Advance this task to the next phase. **Use this instead of `./loop.sh advance`.**",
+          "- `ralph_read_document(name, document)` \u2014 Read task documents (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md)",
+          "- `ralph_get_task(name)` \u2014 Get task status, metadata, and progress",
+          "",
+          `Task name: \`${state.name}\``,
+          "",
+        ].join(`
+`)
+      : "";
   return {
     TASK_NAME: state.name,
     TASK_DIR: taskDir,
@@ -6183,6 +6206,7 @@ function buildTemplateVars(state, taskDir) {
     DATE: new Date().toISOString().split("T")[0],
     PHASE: state.phase,
     PHASE_ITERATION: String(state.phaseIteration),
+    MCP_TOOLS: mcpTools,
   };
 }
 function scaffoldTaskFiles(taskDir) {
