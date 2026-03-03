@@ -2,6 +2,27 @@
   "name": "cli",
   "sourceRoot": "apps/cli/src",
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json apps/cli/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check apps/cli/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check:circular": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "madge --circular --extensions ts apps/cli/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {

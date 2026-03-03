@@ -8,9 +8,11 @@
     "./phases": "./src/phases.ts",
     "./progress": "./src/progress.ts",
     "./git": "./src/git.ts",
-    "./templates": "./src/templates.ts"
+    "./templates": "./src/templates.ts",
+    "./storage": "./src/storage.ts"
   },
   "dependencies": {
+    "@ralphy/context": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

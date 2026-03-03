@@ -2,6 +2,27 @@
   "name": "types",
   "sourceRoot": "packages/types/src",
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json packages/types/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check packages/types/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check:circular": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "madge --circular --extensions ts packages/types/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {

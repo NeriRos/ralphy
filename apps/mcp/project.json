@@ -2,6 +2,27 @@
   "name": "mcp",
   "sourceRoot": "apps/mcp/src",
   "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json apps/mcp/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check apps/mcp/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check:circular": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "madge --circular --extensions ts apps/mcp/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {
