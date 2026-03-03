@@ -2,10 +2,10 @@
 
 ## Section 1 — Test Infrastructure & Registration
 
-- [ ] Add `test` target to `apps/mcp/project.json` (`bun test apps/mcp/src`)
-- [ ] Create `apps/mcp/src/__tests__/tools.test.ts` with imports, mocking setup (mock `commitState` via `mock.module`, mock `child_process.spawn`), and shared helpers (`makeState`, temp dir setup/teardown, `withStorage` wrapper)
-- [ ] Write `registerTools` test: verify all 7 tools are registered with correct names by creating a mock `McpServer` with a `registerTool` spy
-- [ ] Run tests to verify infrastructure works
+- [x] Add `test` target to `apps/mcp/project.json` (`bun test apps/mcp/src`)
+- [x] Create `apps/mcp/src/__tests__/tools.test.ts` with imports, mocking setup (mock `commitState` via `mock.module`, mock `child_process.spawn`), and shared helpers (`makeState`, temp dir setup/teardown, `withStorage` wrapper)
+- [x] Write `registerTools` test: verify all 7 tools are registered with correct names by creating a mock `McpServer` with a `registerTool` spy
+- [x] Run tests to verify infrastructure works
 
 ## Section 2 — List & Get Task Tests
 

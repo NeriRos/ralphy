@@ -29,6 +29,13 @@
         "command": "bun build apps/mcp/src/index.ts --outdir dist/mcp --target bun"
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test apps/mcp/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
