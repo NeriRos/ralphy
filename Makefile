@@ -46,18 +46,16 @@ init-tasks:
 	@touch "$(INSTALL_PATH)/tasks/.gitkeep"
 
 configure-mcp:
-	@mkdir -p "$(BASE_PATH)/.claude"
 	@MCP_PATH="$$(cd "$(INSTALL_PATH)/bin" && pwd)/mcp.js"; \
-	SETTINGS="$(BASE_PATH)/.claude/settings.local.json"; \
-	if [ -f "$$SETTINGS" ]; then \
-		if command -v jq &> /dev/null; then \
-			jq --arg mcp "$$MCP_PATH" '.mcpServers.ralph = {"command": "bun", "args": [$$mcp]}' "$$SETTINGS" > "$$SETTINGS.tmp" && \
-			mv "$$SETTINGS.tmp" "$$SETTINGS"; \
-		fi; \
+	MCP_FILE="$(BASE_PATH)/.mcp.json"; \
+	ENTRY="{\"type\":\"stdio\",\"command\":\"bun\",\"args\":[\"$$MCP_PATH\"],\"env\":{}}"; \
+	if [ -f "$$MCP_FILE" ]; then \
+		jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' "$$MCP_FILE" > "$$MCP_FILE.tmp" && \
+		mv "$$MCP_FILE.tmp" "$$MCP_FILE"; \
 	else \
-		echo "{\"mcpServers\":{\"ralph\":{\"command\":\"bun\",\"args\":[\"$$MCP_PATH\"]}}}" | jq . > "$$SETTINGS"; \
+		echo "{}" | jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' > "$$MCP_FILE"; \
 	fi
-	@echo "  ✓ MCP server configured"
+	@echo "  ✓ MCP server configured in .mcp.json"
 
 configure-package:
 	@if [ -f "$(BASE_PATH)/package.json" ] && command -v jq &> /dev/null; then \
