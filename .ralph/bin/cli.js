@@ -5095,6 +5095,37 @@ function ensureState(taskDir) {
 
 // packages/core/src/phases.ts
 import { join as join3 } from "path";
+
+// packages/core/src/templates.ts
+import { resolve, dirname as dirname2 } from "path";
+import { readdirSync as readdirSync2 } from "fs";
+import { fileURLToPath } from "url";
+var __dirname2 = dirname2(fileURLToPath(import.meta.url));
+var packageRoot = resolve(__dirname2, "..");
+function renderTemplate(content, vars) {
+  let result = content;
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replaceAll(`{{${key}}}`, value);
+  }
+  return result;
+}
+function resolvePromptPath(name) {
+  return resolve(packageRoot, "prompts", `${name}.md`);
+}
+function resolveTemplatePath(name) {
+  return resolve(packageRoot, "templates", `${name}.md`);
+}
+function resolveChecklistDir() {
+  return resolve(packageRoot, "templates", "checklists");
+}
+function listChecklists() {
+  const dir = resolveChecklistDir();
+  return readdirSync2(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, ""));
+}
+
+// packages/core/src/phases.ts
 function recordPhaseTransition(state, from, to, result) {
   const now = new Date().toISOString();
   return {
@@ -5127,7 +5158,7 @@ function advancePhase(state, taskDir) {
     }
     case "plan": {
       const plan = storage.read(join3(taskDir, "PLAN.md"));
-      const progressContent = storage.read(join3(taskDir, "PROGRESS.md"));
+      let progressContent = storage.read(join3(taskDir, "PROGRESS.md"));
       if (plan === null || progressContent === null) {
         throw new Error("Cannot advance from plan \u2014 PLAN.md and PROGRESS.md must both exist");
       }
@@ -5135,6 +5166,8 @@ function advancePhase(state, taskDir) {
       if (unchecked === 0) {
         throw new Error("Cannot advance to exec \u2014 PROGRESS.md has no unchecked items");
       }
+      progressContent = appendChecklists(progressContent);
+      storage.write(join3(taskDir, "PROGRESS.md"), progressContent);
       return recordPhaseTransition(state, "plan", "exec");
     }
     case "exec": {
@@ -5231,6 +5264,27 @@ function autoTransitionAfterReview(state, taskDir) {
   writeState(taskDir, updated);
   return updated;
 }
+function appendChecklists(progress) {
+  const storage = getStorage();
+  const dir = resolveChecklistDir();
+  const names = listChecklists();
+  const sectionMatches = progress.match(/^## Section \d+/gm);
+  let nextSection = (sectionMatches?.length ?? 0) + 1;
+  for (const name of names) {
+    const raw = storage.read(join3(dir, `${name}.md`));
+    if (raw === null) continue;
+    const h1Match = raw.match(/^# (.+)\n/);
+    const title = h1Match ? h1Match[1] : "Checklist";
+    const body = h1Match ? raw.slice(h1Match[0].length).replace(/^\n+/, "") : raw;
+    progress += `
+## Section ${nextSection} \u2014 ${title}
+
+${body.trimEnd()}
+`;
+    nextSection++;
+  }
+  return progress;
+}
 
 // packages/core/src/git.ts
 import { execSync as execSync2 } from "child_process";
@@ -5276,25 +5330,6 @@ function commitState(taskDir, message) {
 
 // apps/cli/src/loop.ts
 import { join as join5 } from "path";
-
-// packages/core/src/templates.ts
-import { resolve, dirname as dirname2 } from "path";
-import { fileURLToPath } from "url";
-var __dirname2 = dirname2(fileURLToPath(import.meta.url));
-var packageRoot = resolve(__dirname2, "..");
-function renderTemplate(content, vars) {
-  let result = content;
-  for (const [key, value] of Object.entries(vars)) {
-    result = result.replaceAll(`{{${key}}}`, value);
-  }
-  return result;
-}
-function resolvePromptPath(name) {
-  return resolve(packageRoot, "prompts", `${name}.md`);
-}
-function resolveTemplatePath(name) {
-  return resolve(packageRoot, "templates", `${name}.md`);
-}
 
 // packages/engine/src/engine.ts
 var { spawn } = globalThis.Bun;
@@ -5949,15 +5984,16 @@ function handleEngineFailure(exitCode) {
       };
   }
 }
-function buildClaudeArgs(model, prompt) {
+function buildClaudeArgs(model) {
   return [
     "-p",
-    prompt,
+    "-",
     "--dangerously-skip-permissions",
     "--model",
     model,
     "--output-format",
     "stream-json",
+    "--verbose",
   ];
 }
 function buildCodexArgs() {
@@ -5966,21 +6002,17 @@ function buildCodexArgs() {
 async function runEngine(opts) {
   const { engine, model, prompt } = opts;
   const isClaude = engine === "claude";
-  const cmd = isClaude
-    ? ["claude", ...buildClaudeArgs(model, prompt)]
-    : ["codex", ...buildCodexArgs()];
+  const cmd = isClaude ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
   const proc = spawn({
     cmd,
-    stdin: isClaude ? "ignore" : "pipe",
+    stdin: "pipe",
     stdout: "pipe",
     stderr: isClaude ? "inherit" : "pipe",
   });
-  if (!isClaude) {
-    const stdin = proc.stdin;
-    stdin.write(new TextEncoder().encode(prompt));
-    await stdin.flush();
-    stdin.end();
-  }
+  const stdin = proc.stdin;
+  stdin.write(new TextEncoder().encode(prompt));
+  await stdin.flush();
+  stdin.end();
   const stdout = proc.stdout;
   let usage = null;
   if (engine === "claude") {
@@ -6156,15 +6188,6 @@ function buildTaskPrompt(state, taskDir) {
 ` + section;
         }
       }
-      for (const tmplName of ["checklist_static", "checklist_tests", "checklist_deploy"]) {
-        const content = storage.read(resolveTemplatePath(tmplName));
-        if (content !== null) {
-          const rendered = renderTemplate(content, buildTemplateVars(state, taskDir));
-          prompt +=
-            `
-` + rendered;
-        }
-      }
       break;
     }
     case "review": {
@@ -6198,6 +6221,8 @@ function buildTemplateVars(state, taskDir) {
           "- `ralph_advance_phase(name)` \u2014 Advance this task to the next phase. **Use this instead of `./loop.sh advance`.**",
           "- `ralph_read_document(name, document)` \u2014 Read task documents (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md)",
           "- `ralph_get_task(name)` \u2014 Get task status, metadata, and progress",
+          "- `ralph_list_checklists()` \u2014 List available verification checklists with their contents",
+          '- `ralph_apply_checklist(name, checklists)` \u2014 Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
           "",
           `Task name: \`${state.name}\``,
           "",

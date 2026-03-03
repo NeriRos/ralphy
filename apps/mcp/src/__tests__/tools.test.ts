@@ -86,7 +86,7 @@ function parseResult(result: ToolResult): unknown {
 // ---------------------------------------------------------------------------
 
 describe("registerTools", () => {
-  test("registers all 7 tools with correct names", () => {
+  test("registers all 9 tools with correct names", () => {
     const registeredTools: string[] = [];
     const mockServer = {
       registerTool: mock((name: string) => {
@@ -96,7 +96,7 @@ describe("registerTools", () => {
 
     registerTools(mockServer, tempDir);
 
-    expect((mockServer.registerTool as ReturnType<typeof mock>).mock.calls.length).toBe(7);
+    expect((mockServer.registerTool as ReturnType<typeof mock>).mock.calls.length).toBe(9);
     expect(registeredTools).toEqual([
       "ralph_list_tasks",
       "ralph_get_task",
@@ -105,6 +105,8 @@ describe("registerTools", () => {
       "ralph_run_task",
       "ralph_advance_phase",
       "ralph_update_steering",
+      "ralph_list_checklists",
+      "ralph_apply_checklist",
     ]);
   });
 });
@@ -498,5 +500,85 @@ describe("ralph_update_steering", () => {
     const result = await handler({ name: "nonexistent", content: "New content" });
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("nonexistent");
+  });
+});
+
+describe("ralph_list_checklists", () => {
+  test("returns available checklists with content", async () => {
+    const handler = captureHandlers(tempDir)("ralph_list_checklists");
+    const result = await handler({});
+
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as {
+      checklists: { name: string; content: string }[];
+    };
+    expect(data.checklists.length).toBeGreaterThan(0);
+
+    const names = data.checklists.map((c) => c.name);
+    expect(names).toContain("checklist_static");
+    expect(names).toContain("checklist_tests");
+
+    // Each checklist should have content
+    for (const cl of data.checklists) {
+      expect(cl.content.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("ralph_apply_checklist", () => {
+  test("appends checklists as numbered sections to PROGRESS.md", async () => {
+    const taskDir = createTask(tempDir, "cl-task");
+    writeFileSync(join(taskDir, "PROGRESS.md"), "## Section 1 — Setup\n\n- [ ] First item\n");
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+    const result = await handler({
+      name: "cl-task",
+      checklists: ["checklist_static", "checklist_tests"],
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { applied: string[]; totalSections: number };
+    expect(data.applied).toEqual(["checklist_static", "checklist_tests"]);
+    expect(data.totalSections).toBe(3);
+
+    // Verify PROGRESS.md was updated
+    const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+    expect(progress).toContain("## Section 2 — Static Analysis");
+    expect(progress).toContain("## Section 3 — Tests");
+    expect(progress).toContain("**Lint**");
+    expect(progress).toContain("**Unit tests**");
+  });
+
+  test("returns error when PROGRESS.md does not exist", async () => {
+    createTask(tempDir, "no-progress-task");
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+    const result = await handler({
+      name: "no-progress-task",
+      checklists: ["checklist_static"],
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("PROGRESS.md");
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+    const result = await handler({ name: "ghost", checklists: ["checklist_static"] });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("ghost");
+  });
+
+  test("skips unknown checklist names gracefully", async () => {
+    const taskDir = createTask(tempDir, "skip-task");
+    writeFileSync(join(taskDir, "PROGRESS.md"), "## Section 1 — Setup\n\n- [ ] Item\n");
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+    const result = await handler({
+      name: "skip-task",
+      checklists: ["nonexistent_checklist"],
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { applied: string[] };
+    expect(data.applied).toEqual([]);
   });
 });

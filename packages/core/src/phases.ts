@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { type State, type Phase } from "@ralphy/types";
 import { writeState } from "./state";
 import { countProgress } from "./progress";
+import { resolveChecklistDir, listChecklists } from "./templates";
 import { getStorage } from "@ralphy/context";
 
 /**
@@ -68,7 +69,7 @@ export function advancePhase(state: State, taskDir: string): State {
 
     case "plan": {
       const plan = storage.read(join(taskDir, "PLAN.md"));
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      let progressContent = storage.read(join(taskDir, "PROGRESS.md"));
       if (plan === null || progressContent === null) {
         throw new Error("Cannot advance from plan — PLAN.md and PROGRESS.md must both exist");
       }
@@ -76,6 +77,11 @@ export function advancePhase(state: State, taskDir: string): State {
       if (unchecked === 0) {
         throw new Error("Cannot advance to exec — PROGRESS.md has no unchecked items");
       }
+
+      // Auto-append checklists as final sections of PROGRESS.md
+      progressContent = appendChecklists(progressContent);
+      storage.write(join(taskDir, "PROGRESS.md"), progressContent);
+
       return recordPhaseTransition(state, "plan", "exec");
     }
 
@@ -199,4 +205,31 @@ export function autoTransitionAfterReview(state: State, taskDir: string): State 
   );
   writeState(taskDir, updated);
   return updated;
+}
+
+/**
+ * Append all checklists from templates/checklists/ as new numbered sections
+ * at the end of PROGRESS.md content. Titles are extracted from each file's H1 heading.
+ */
+function appendChecklists(progress: string): string {
+  const storage = getStorage();
+  const dir = resolveChecklistDir();
+  const names = listChecklists();
+
+  const sectionMatches = progress.match(/^## Section \d+/gm);
+  let nextSection = (sectionMatches?.length ?? 0) + 1;
+
+  for (const name of names) {
+    const raw = storage.read(join(dir, `${name}.md`));
+    if (raw === null) continue;
+
+    const h1Match = raw.match(/^# (.+)\n/);
+    const title = h1Match ? h1Match[1]! : "Checklist";
+    const body = h1Match ? raw.slice(h1Match[0].length).replace(/^\n+/, "") : raw;
+
+    progress += `\n## Section ${nextSection} — ${title}\n\n${body.trimEnd()}\n`;
+    nextSection++;
+  }
+
+  return progress;
 }

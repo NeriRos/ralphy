@@ -33,8 +33,8 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
-	@cp -r packages/core/prompts "$(INSTALL_PATH)/bin/"
-	@cp -r packages/core/templates "$(INSTALL_PATH)/bin/"
+	@cp -r packages/core/prompts "$(INSTALL_PATH)/"
+	@cp -r packages/core/templates "$(INSTALL_PATH)/"
 	@echo "  ✓ Copied prompts and templates"
 
 init-tasks:

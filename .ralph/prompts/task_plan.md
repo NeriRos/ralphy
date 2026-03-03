@@ -68,7 +68,11 @@ Rules:
 - **Order by dependency** — critical-path items first within each section
 - **Keep sections reasonably sized** — 3-8 items per section is ideal
 
-### 5. Commit and advance
+### 5. Append verification checklists
+
+Use `ralph_list_checklists` to see available verification checklists, then `ralph_apply_checklist` to append the relevant ones as final sections of PROGRESS.md before advancing to exec. Checklists are auto-appended during phase transition as a fallback, but explicitly choosing which ones to include is preferred.
+
+### 6. Commit and advance
 
 ```
 git add TASK_DIR/PLAN.md TASK_DIR/PROGRESS.md

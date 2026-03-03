@@ -6,7 +6,7 @@ import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
 import { commitState } from "@ralphy/core/git";
-import { resolveTemplatePath } from "@ralphy/core/templates";
+import { resolveTemplatePath, resolveChecklistDir, listChecklists } from "@ralphy/core/templates";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import type { Phase } from "@ralphy/types";
 
@@ -398,4 +398,132 @@ export function registerTools(server: McpServer, tasksDir: string): void {
       });
     },
   );
+
+  // --- ralph_list_checklists ---
+  server.registerTool(
+    "ralph_list_checklists",
+    {
+      description: "List available verification checklists with their contents",
+      inputSchema: {},
+    },
+    async () => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const dir = resolveChecklistDir();
+          const names = listChecklists();
+          const checklists = names.map((name) => ({
+            name,
+            content: storage.read(join(dir, `${name}.md`)) ?? "",
+          }));
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ checklists }, null, 2) }],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error listing checklists: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+
+  // --- ralph_apply_checklist ---
+  server.registerTool(
+    "ralph_apply_checklist",
+    {
+      description:
+        "Append verification checklists as new sections at the end of a task's PROGRESS.md",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        checklists: z
+          .array(z.string())
+          .describe('Checklist names to append (e.g. ["checklist_static", "checklist_tests"])'),
+      },
+    },
+    async ({ name, checklists }) => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const taskDir = join(tasksDir, name);
+          if (storage.read(join(taskDir, "state.json")) === null) {
+            return {
+              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
+              isError: true,
+            };
+          }
+
+          const progressPath = join(taskDir, "PROGRESS.md");
+          let progress = storage.read(progressPath);
+          if (progress === null) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `PROGRESS.md does not exist for task '${name}'`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          // Count existing sections to auto-number
+          const sectionMatches = progress.match(/^## Section \d+/gm);
+          let nextSection = (sectionMatches?.length ?? 0) + 1;
+
+          const dir = resolveChecklistDir();
+          const applied: string[] = [];
+
+          for (const cl of checklists) {
+            const raw = storage.read(join(dir, `${cl}.md`));
+            if (raw === null) continue;
+
+            const { title, body } = parseChecklist(raw);
+            progress += `\n## Section ${nextSection} — ${title}\n\n${body.trimEnd()}\n`;
+            nextSection++;
+            applied.push(cl);
+          }
+
+          storage.write(progressPath, progress);
+
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ applied, totalSections: nextSection - 1 }, null, 2),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error applying checklists: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+}
+
+/**
+ * Parse a checklist file: extract the H1 title and the remaining body.
+ * If no H1 is found, falls back to "Checklist".
+ */
+function parseChecklist(content: string): { title: string; body: string } {
+  const match = content.match(/^# (.+)\n/);
+  if (match) {
+    return { title: match[1]!, body: content.slice(match[0].length).replace(/^\n+/, "") };
+  }
+  return { title: "Checklist", body: content };
 }

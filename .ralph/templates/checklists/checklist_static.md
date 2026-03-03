@@ -1,6 +1,4 @@
-## Checklist — Static Analysis
-
-Run these on affected code. Fix all errors before committing.
+# Static Analysis
 
 - [ ] **Lint** — run the project linter (see `CLAUDE.md` for command). Zero errors, zero warnings.
 - [ ] **Typecheck** — run the type checker. Zero errors.

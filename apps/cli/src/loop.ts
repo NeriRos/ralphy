@@ -75,14 +75,6 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
           prompt += "\n" + section;
         }
       }
-      // Append rendered checklist templates
-      for (const tmplName of ["checklist_static", "checklist_tests", "checklist_deploy"]) {
-        const content = storage.read(resolveTemplatePath(tmplName));
-        if (content !== null) {
-          const rendered = renderTemplate(content, buildTemplateVars(state, taskDir));
-          prompt += "\n" + rendered;
-        }
-      }
       break;
     }
 
@@ -117,6 +109,8 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
           "- `ralph_advance_phase(name)` — Advance this task to the next phase. **Use this instead of `./loop.sh advance`.**",
           "- `ralph_read_document(name, document)` — Read task documents (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md)",
           "- `ralph_get_task(name)` — Get task status, metadata, and progress",
+          "- `ralph_list_checklists()` — List available verification checklists with their contents",
+          '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
           "",
           `Task name: \`${state.name}\``,
           "",

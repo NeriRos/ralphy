@@ -20944,6 +20944,25 @@ function countProgress(content) {
   return { checked, unchecked, total: checked + unchecked };
 }
 
+// packages/core/src/templates.ts
+import { resolve, dirname as dirname2 } from "path";
+import { readdirSync as readdirSync2 } from "fs";
+import { fileURLToPath } from "url";
+var __dirname2 = dirname2(fileURLToPath(import.meta.url));
+var packageRoot = resolve(__dirname2, "..");
+function resolveTemplatePath(name) {
+  return resolve(packageRoot, "templates", `${name}.md`);
+}
+function resolveChecklistDir() {
+  return resolve(packageRoot, "templates", "checklists");
+}
+function listChecklists() {
+  const dir = resolveChecklistDir();
+  return readdirSync2(dir)
+    .filter((f) => f.endsWith(".md"))
+    .map((f) => f.replace(/\.md$/, ""));
+}
+
 // packages/core/src/phases.ts
 function recordPhaseTransition(state, from, to, result) {
   const now = new Date().toISOString();
@@ -20977,7 +20996,7 @@ function advancePhase(state, taskDir) {
     }
     case "plan": {
       const plan = storage.read(join2(taskDir, "PLAN.md"));
-      const progressContent = storage.read(join2(taskDir, "PROGRESS.md"));
+      let progressContent = storage.read(join2(taskDir, "PROGRESS.md"));
       if (plan === null || progressContent === null) {
         throw new Error("Cannot advance from plan \u2014 PLAN.md and PROGRESS.md must both exist");
       }
@@ -20985,6 +21004,8 @@ function advancePhase(state, taskDir) {
       if (unchecked === 0) {
         throw new Error("Cannot advance to exec \u2014 PROGRESS.md has no unchecked items");
       }
+      progressContent = appendChecklists(progressContent);
+      storage.write(join2(taskDir, "PROGRESS.md"), progressContent);
       return recordPhaseTransition(state, "plan", "exec");
     }
     case "exec": {
@@ -21030,6 +21051,27 @@ function setPhase(state, taskDir, targetPhase) {
   writeState(taskDir, updated);
   return updated;
 }
+function appendChecklists(progress) {
+  const storage = getStorage();
+  const dir = resolveChecklistDir();
+  const names = listChecklists();
+  const sectionMatches = progress.match(/^## Section \d+/gm);
+  let nextSection = (sectionMatches?.length ?? 0) + 1;
+  for (const name of names) {
+    const raw = storage.read(join2(dir, `${name}.md`));
+    if (raw === null) continue;
+    const h1Match = raw.match(/^# (.+)\n/);
+    const title = h1Match ? h1Match[1] : "Checklist";
+    const body = h1Match ? raw.slice(h1Match[0].length).replace(/^\n+/, "") : raw;
+    progress += `
+## Section ${nextSection} \u2014 ${title}
+
+${body.trimEnd()}
+`;
+    nextSection++;
+  }
+  return progress;
+}
 
 // packages/core/src/git.ts
 import { execSync as execSync2 } from "child_process";
@@ -21050,15 +21092,6 @@ function commitState(taskDir, message) {
     gitAdd([stateFile]);
     gitCommit(message);
   } catch {}
-}
-
-// packages/core/src/templates.ts
-import { resolve, dirname as dirname2 } from "path";
-import { fileURLToPath } from "url";
-var __dirname2 = dirname2(fileURLToPath(import.meta.url));
-var packageRoot = resolve(__dirname2, "..");
-function resolveTemplatePath(name) {
-  return resolve(packageRoot, "templates", `${name}.md`);
 }
 
 // apps/mcp/src/tools.ts
@@ -21416,6 +21449,121 @@ function registerTools(server, tasksDir) {
       });
     },
   );
+  server.registerTool(
+    "ralph_list_checklists",
+    {
+      description: "List available verification checklists with their contents",
+      inputSchema: {},
+    },
+    async () => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const dir = resolveChecklistDir();
+          const names = listChecklists();
+          const checklists = names.map((name) => ({
+            name,
+            content: storage.read(join4(dir, `${name}.md`)) ?? "",
+          }));
+          return {
+            content: [{ type: "text", text: JSON.stringify({ checklists }, null, 2) }],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error listing checklists: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+  server.registerTool(
+    "ralph_apply_checklist",
+    {
+      description:
+        "Append verification checklists as new sections at the end of a task's PROGRESS.md",
+      inputSchema: {
+        name: exports_external.string().describe("Task name"),
+        checklists: exports_external
+          .array(exports_external.string())
+          .describe('Checklist names to append (e.g. ["checklist_static", "checklist_tests"])'),
+      },
+    },
+    async ({ name, checklists }) => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const taskDir = join4(tasksDir, name);
+          if (storage.read(join4(taskDir, "state.json")) === null) {
+            return {
+              content: [{ type: "text", text: `Task '${name}' does not exist` }],
+              isError: true,
+            };
+          }
+          const progressPath = join4(taskDir, "PROGRESS.md");
+          let progress = storage.read(progressPath);
+          if (progress === null) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `PROGRESS.md does not exist for task '${name}'`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          const sectionMatches = progress.match(/^## Section \d+/gm);
+          let nextSection = (sectionMatches?.length ?? 0) + 1;
+          const dir = resolveChecklistDir();
+          const applied = [];
+          for (const cl of checklists) {
+            const raw = storage.read(join4(dir, `${cl}.md`));
+            if (raw === null) continue;
+            const { title, body } = parseChecklist(raw);
+            progress += `
+## Section ${nextSection} \u2014 ${title}
+
+${body.trimEnd()}
+`;
+            nextSection++;
+            applied.push(cl);
+          }
+          storage.write(progressPath, progress);
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({ applied, totalSections: nextSection - 1 }, null, 2),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error applying checklists: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+}
+function parseChecklist(content) {
+  const match = content.match(/^# (.+)\n/);
+  if (match) {
+    return { title: match[1], body: content.slice(match[0].length).replace(/^\n+/, "") };
+  }
+  return { title: "Checklist", body: content };
 }
 
 // apps/mcp/src/prompts.ts
