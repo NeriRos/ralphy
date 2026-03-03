@@ -129,6 +129,9 @@ function parseArgs(argv) {
       case "--log":
         result.log = true;
         break;
+      case "--verbose":
+        result.verbose = true;
+        break;
       default:
         if (/^\d+$/.test(arg)) {
           result.maxIterations = parseInt(arg, 10);
