@@ -31,9 +31,9 @@
 
 ## Section 5 — Phase Transitions
 
-- [ ] Create `packages/ralph/src/phases.ts`: `advancePhase(state, taskDir)` (research→plan→exec, with no-execute stop), `setPhase(state, taskDir, targetPhase)`, `autoTransitionAfterExec(state, taskDir)`, `autoTransitionAfterReview(state, taskDir)`, `recordPhaseTransition(state, from, to)`, `inferPhaseFromFiles(taskDir)`
-- [ ] Implement the exec↔review loop logic: exec always → review; review → exec (if issues) or done (if clean)
-- [ ] Write tests for phase transitions covering all state machine paths in `packages/ralph/src/__tests__/phases.test.ts`
+- [x] Create `packages/ralph/src/phases.ts`: `advancePhase(state, taskDir)` (research→plan→exec, with no-execute stop), `setPhase(state, taskDir, targetPhase)`, `autoTransitionAfterExec(state, taskDir)`, `autoTransitionAfterReview(state, taskDir)`, `recordPhaseTransition(state, from, to)`, `inferPhaseFromFiles(taskDir)`
+- [x] Implement the exec↔review loop logic: exec always → review; review → exec (if issues) or done (if clean)
+- [x] Write tests for phase transitions covering all state machine paths in `packages/ralph/src/__tests__/phases.test.ts`
 
 ## Section 6 — Stream Formatters
 
