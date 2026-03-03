@@ -50,10 +50,10 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
     }
   }
 
-  // 2. Phase prompt
+  // 2. Phase prompt (rendered with template vars including MCP_TOOLS)
   const phasePrompt = storage.read(resolvePromptPath(`task_${phase}`));
   if (phasePrompt !== null) {
-    prompt += phasePrompt;
+    prompt += renderTemplate(phasePrompt, buildTemplateVars(state, taskDir));
   }
 
   // 3. Phase-specific context
@@ -106,6 +106,23 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
  * Build the template variable map for renderTemplate.
  */
 function buildTemplateVars(state: State, taskDir: string): Record<string, string> {
+  const mcpTools =
+    state.engine === "claude"
+      ? [
+          "",
+          "## MCP Tools Available",
+          "",
+          "You have access to ralph MCP tools. **Use these instead of shell commands where applicable:**",
+          "",
+          "- `ralph_advance_phase(name)` — Advance this task to the next phase. **Use this instead of `./loop.sh advance`.**",
+          "- `ralph_read_document(name, document)` — Read task documents (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md)",
+          "- `ralph_get_task(name)` — Get task status, metadata, and progress",
+          "",
+          `Task name: \`${state.name}\``,
+          "",
+        ].join("\n")
+      : "";
+
   return {
     TASK_NAME: state.name,
     TASK_DIR: taskDir,
@@ -113,6 +130,7 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
     DATE: new Date().toISOString().split("T")[0]!,
     PHASE: state.phase,
     PHASE_ITERATION: String(state.phaseIteration),
+    MCP_TOOLS: mcpTools,
   };
 }
 

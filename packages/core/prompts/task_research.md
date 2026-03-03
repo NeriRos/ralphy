@@ -13,6 +13,8 @@ You are starting a new task. Your job is to deeply research the codebase to unde
 0b. Read `TASK_DIR/state.json` for task context: current phase, iteration count, history of previous runs, and any metadata.
 0c. Never assume something is missing without searching first — use grep/glob to confirm.
 
+{{MCP_TOOLS}}
+
 ---
 
 ## Steps
@@ -59,7 +61,7 @@ git add TASK_DIR/RESEARCH.md
 git commit -m "research: <task-name>"
 ```
 
-Then advance to the planning phase so the next iteration starts correctly:
+Then advance to the planning phase so the next iteration starts correctly. Use `ralph_advance_phase` MCP tool if available, otherwise fall back to:
 
 ```
 ./loop.sh advance --name "{{TASK_NAME}}"
@@ -79,7 +81,7 @@ If you hit a blocker (task description is ambiguous, critical information is mis
 
 - **RESEARCH ONLY. Do NOT implement anything. Do NOT write application code. Do NOT create PLAN.md or PROGRESS.md.**
 - If RESEARCH.md already exists, you are refining it — read it first, identify gaps, then enhance.
-- Phase iteration: {{PHASE_ITERATION}}. After committing, run `./loop.sh advance` to move to planning.
+- Phase iteration: {{PHASE_ITERATION}}. After committing, advance to planning (use `ralph_advance_phase` MCP tool if available, otherwise `./loop.sh advance`).
 - Read actual files — don't guess at what's in them.
 - Use parallel subagents aggressively to explore the codebase.
 - The quality of the plan depends entirely on the quality of this research. Be thorough.

@@ -21418,6 +21418,139 @@ function registerTools(server, tasksDir) {
   );
 }
 
+// apps/mcp/src/prompts.ts
+function registerPrompts(server) {
+  server.registerPrompt(
+    "ralph-create",
+    {
+      title: "Create Ralph Task",
+      description: "Create a new ralph task",
+      argsSchema: {
+        name: exports_external.string().describe("Task name"),
+        prompt: exports_external.string().describe("Task description"),
+      },
+    },
+    async ({ name, prompt }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Create a new ralph task named "${name}" with the following prompt:
+
+${prompt}`,
+          },
+        },
+      ],
+    }),
+  );
+  server.registerPrompt(
+    "ralph-list",
+    {
+      title: "List Ralph Tasks",
+      description: "List all active ralph tasks with status",
+    },
+    async () => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: "List all ralph tasks and show their current phase, status, and progress.",
+          },
+        },
+      ],
+    }),
+  );
+  server.registerPrompt(
+    "ralph-status",
+    {
+      title: "Ralph Task Status",
+      description: "Get detailed status of a specific task",
+      argsSchema: {
+        name: exports_external.string().describe("Task name"),
+      },
+    },
+    async ({ name }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Get the detailed status of ralph task "${name}", including its phase, progress, and any steering guidance.`,
+          },
+        },
+      ],
+    }),
+  );
+  server.registerPrompt(
+    "ralph-run",
+    {
+      title: "Run Ralph Task",
+      description: "Run a ralph task in the background",
+      argsSchema: {
+        name: exports_external.string().describe("Task name"),
+      },
+    },
+    async ({ name }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Run ralph task "${name}" in the background.`,
+          },
+        },
+      ],
+    }),
+  );
+  server.registerPrompt(
+    "ralph-advance",
+    {
+      title: "Advance Ralph Task",
+      description: "Advance a ralph task to its next phase",
+      argsSchema: {
+        name: exports_external.string().describe("Task name"),
+      },
+    },
+    async ({ name }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Advance ralph task "${name}" to its next phase.`,
+          },
+        },
+      ],
+    }),
+  );
+  server.registerPrompt(
+    "ralph-steer",
+    {
+      title: "Steer Ralph Task",
+      description: "Update STEERING.md with new guidance for a task",
+      argsSchema: {
+        name: exports_external.string().describe("Task name"),
+        guidance: exports_external.string().describe("Steering guidance to add"),
+      },
+    },
+    async ({ name, guidance }) => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Update the STEERING.md for ralph task "${name}" with the following guidance:
+
+${guidance}`,
+          },
+        },
+      ],
+    }),
+  );
+}
+
 // node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 =
@@ -21990,6 +22123,7 @@ async function main() {
     version: "1.0.0",
   });
   registerTools(server, tasksDir);
+  registerPrompts(server);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

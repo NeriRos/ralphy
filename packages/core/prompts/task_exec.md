@@ -11,6 +11,8 @@ You implement one section of a task plan. The current section and verification c
 0c. Study existing source code using parallel subagents. **Read at least 2 existing files in the same area** you will be working in to understand the exact patterns before writing new code.
 0d. Never assume something is missing without searching first — use grep/glob to confirm before listing gaps.
 
+{{MCP_TOOLS}}
+
 ---
 
 ## Steps
@@ -86,7 +88,7 @@ Before committing, review all changes made in this section:
 - `git add` the specific files you changed (not `git add -A`)
 - `git commit` with a descriptive message summarizing the section's work
 - `git push`
-- Check PROGRESS.md for remaining unchecked items. If **all items across all sections** are now checked, advance to done:
+- Check PROGRESS.md for remaining unchecked items. If **all items across all sections** are now checked, advance to done. Use `ralph_advance_phase` MCP tool if available, otherwise fall back to:
   ```
   ./loop.sh advance --name "{{TASK_NAME}}"
   ```

@@ -130,6 +130,60 @@ describe("buildTaskPrompt", () => {
     }));
 });
 
+describe("MCP tools injection", () => {
+  test("includes MCP tools block when engine is claude", () =>
+    withStorage(() => {
+      const state = makeState({ engine: "claude", phase: "research" });
+      writeState(tempDir, state);
+
+      const prompt = buildTaskPrompt(state, tempDir);
+      expect(prompt).toContain("MCP Tools Available");
+      expect(prompt).toContain("ralph_advance_phase");
+      expect(prompt).toContain("ralph_read_document");
+      expect(prompt).toContain("ralph_get_task");
+      expect(prompt).toContain("Task name: `test-task`");
+    }));
+
+  test("omits MCP tools block when engine is codex", () =>
+    withStorage(() => {
+      const state = { ...makeState({ engine: "codex" as "claude" | "codex", phase: "research" }) };
+      writeState(tempDir, state);
+
+      const prompt = buildTaskPrompt(state, tempDir);
+      expect(prompt).not.toContain("MCP Tools Available");
+      expect(prompt).not.toContain("ralph_get_task");
+    }));
+
+  test("MCP tools block appears in all phases for claude engine", () =>
+    withStorage(() => {
+      for (const phase of ["research", "plan", "exec", "review"] as const) {
+        const state = { ...makeState({ engine: "claude" }), phase };
+        writeState(tempDir, state);
+        // Add PROGRESS.md for exec/review phases
+        if (phase === "exec" || phase === "review") {
+          writeFileSync(join(tempDir, "PROGRESS.md"), "## Section 1 — Test\n- [ ] Item\n", "utf-8");
+        }
+
+        const prompt = buildTaskPrompt(state, tempDir);
+        expect(prompt).toContain("MCP Tools Available");
+      }
+    }));
+
+  test("template variables are rendered in phase prompts", () =>
+    withStorage(() => {
+      const state = makeState({ engine: "claude", phase: "research" });
+      writeState(tempDir, state);
+
+      const prompt = buildTaskPrompt(state, tempDir);
+      // TASK_NAME should be rendered
+      expect(prompt).toContain('--name "test-task"');
+      // Raw template var should NOT appear
+      expect(prompt).not.toContain("{{TASK_NAME}}");
+      expect(prompt).not.toContain("{{MCP_TOOLS}}");
+      expect(prompt).not.toContain("{{PHASE_ITERATION}}");
+    }));
+});
+
 describe("parseArgs → buildTaskPrompt integration", () => {
   test("research phase produces non-empty prompt", () =>
     withStorage(() => {
