@@ -9,9 +9,9 @@
 
 ## Section 2 — List & Get Task Tests
 
-- [ ] Write `ralph_list_tasks` tests: empty directory, single task, multiple tasks, filtering completed tasks (`includeCompleted: false` skips done phase), tasks with and without PROGRESS.md
-- [ ] Write `ralph_get_task` tests: existing task returns full details (progress, documents, steering, metadata, historyLength), missing task returns error with `isError: true`, task with missing optional documents
-- [ ] Run tests to verify passing
+- [x] Write `ralph_list_tasks` tests: empty directory, single task, multiple tasks, filtering completed tasks (`includeCompleted: false` skips done phase), tasks with and without PROGRESS.md
+- [x] Write `ralph_get_task` tests: existing task returns full details (progress, documents, steering, metadata, historyLength), missing task returns error with `isError: true`, task with missing optional documents
+- [x] Run tests to verify passing
 
 ## Section 3 — Read Document & Create Task Tests
 
