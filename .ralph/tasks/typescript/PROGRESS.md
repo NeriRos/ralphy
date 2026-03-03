@@ -56,9 +56,9 @@
 
 ## Section 9 — Build, Install, and End-to-End Verification
 
-- [ ] Configure Nx build target in `packages/ralph/project.json` or `package.json` nx config; verify `bunx nx build ralph` produces output in `dist/`
-- [ ] Update `Makefile` install target to build first (`bunx nx build ralph`), then copy `dist/` output to `.ralph/bin/`
-- [ ] Add `"ralph"` script to root `package.json`: `"ralph": "bun packages/ralph/src/index.ts"`
-- [ ] End-to-end smoke test: run `bun packages/ralph/src/index.ts list` and `bun packages/ralph/src/index.ts status --name typescript` against existing task state
-- [ ] Verify existing `.ralph/tasks/typescript/state.json` loads and parses correctly through the new code
-- [ ] Run full test suite: `bun test`
+- [x] Configure Nx build target in `packages/ralph/project.json` or `package.json` nx config; verify `bunx nx build ralph` produces output in `dist/`
+- [x] Update `Makefile` install target to build first (`bunx nx build ralph`), then copy `dist/` output to `.ralph/bin/`
+- [x] Add `"ralph"` script to root `package.json`: `"ralph": "bun packages/ralph/src/index.ts"`
+- [x] End-to-end smoke test: run `bun packages/ralph/src/index.ts list` and `bun packages/ralph/src/index.ts status --name typescript` against existing task state
+- [x] Verify existing `.ralph/tasks/typescript/state.json` loads and parses correctly through the new code
+- [x] Run full test suite: `bun test`

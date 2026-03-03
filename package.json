@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "workspaces": ["packages/*"],
+  "scripts": {
+    "ralph": "bun packages/ralph/src/index.ts"
+  },
   "devDependencies": {
     "nx": "22.5.3",
     "typescript": "^5.8.0"

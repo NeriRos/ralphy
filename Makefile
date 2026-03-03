@@ -21,10 +21,18 @@ help:
 
 install:
 	@echo "Installing to: $(INSTALL_PATH)"
-	@mkdir -p "$(INSTALL_PATH)"
-	@# Copy bin and .gitignore, preserve existing tasks directory
-	@cp -r src/bin "$(INSTALL_PATH)/"
+	@# Build the ralph package first
+	@echo "  Building ralph..."
+	@bunx nx build ralph
+	@mkdir -p "$(INSTALL_PATH)/bin"
+	@# Copy built output and static assets
+	@cp packages/ralph/dist/index.js "$(INSTALL_PATH)/bin/"
+	@cp -r packages/ralph/prompts "$(INSTALL_PATH)/bin/"
+	@cp -r packages/ralph/templates "$(INSTALL_PATH)/bin/"
+	@# Copy legacy bin files and .gitignore
+	@cp src/bin/loop.sh "$(INSTALL_PATH)/bin/" 2>/dev/null || true
 	@cp src/gitignore "$(INSTALL_PATH)/.gitignore" 2>/dev/null || true
+	@# Preserve existing tasks directory
 	@if [ ! -d "$(INSTALL_PATH)/tasks" ]; then \
 		mkdir -p "$(INSTALL_PATH)/tasks"; \
 	else \
