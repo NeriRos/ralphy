@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "name": "typescript",
+  "prompt": "I want to turn the current project into typescript node with nx and bun - use the latest versions",
+  "phase": "research",
+  "phaseIteration": 0,
+  "totalIterations": 0,
+  "createdAt": "2026-03-03T15:56:49Z",
+  "lastModified": "2026-03-03T15:56:49Z",
+  "engine": "claude",
+  "model": "opus",
+  "status": "active",
+  "usage": {
+    "total_cost_usd": 0,
+    "total_duration_ms": 0,
+    "total_turns": 0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_cache_read_input_tokens": 0,
+    "total_cache_creation_input_tokens": 0
+  },
+  "history": [],
+  "metadata": {
+    "branch": "main"
+  }
+}
