@@ -1,0 +1,15 @@
+{
+  "name": "ralph",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/lib.ts",
+    "./state": "./src/state.ts",
+    "./phases": "./src/phases.ts",
+    "./progress": "./src/progress.ts",
+    "./git": "./src/git.ts",
+    "./templates": "./src/templates.ts",
+    "./types": "./src/types.ts"
+  }
+}
