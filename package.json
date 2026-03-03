@@ -1,0 +1,10 @@
+{
+  "name": "ralphy",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "nx": "22.5.3",
+    "typescript": "^5.8.0"
+  }
+}

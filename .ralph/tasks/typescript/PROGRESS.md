@@ -2,12 +2,12 @@
 
 ## Section 1 — Nx Workspace Scaffolding
 
-- [ ] Initialize Nx workspace: create `nx.json`, root `package.json` (with `"workspaces": ["packages/*"]`, `"type": "module"`), `tsconfig.base.json`
-- [ ] Run `bun install` to generate `bun.lock`
-- [ ] Create `packages/ralph/package.json` with `"bin"` entry pointing to `src/index.ts`, dependencies (`chalk`, `zod`), dev dependencies (`typescript`, `@types/node`)
-- [ ] Create `packages/ralph/tsconfig.json` extending `../../tsconfig.base.json` with `"include": ["src"]`
-- [ ] Update root `.gitignore` to add `node_modules/`, `dist/`, `bun.lock`
-- [ ] Verify `bun install` succeeds and `bunx nx --version` works
+- [x] Initialize Nx workspace: create `nx.json`, root `package.json` (with `"workspaces": ["packages/*"]`, `"type": "module"`), `tsconfig.base.json`
+- [x] Run `bun install` to generate `bun.lock`
+- [x] Create `packages/ralph/package.json` with `"bin"` entry pointing to `src/index.ts`, dependencies (`chalk`, `zod`), dev dependencies (`typescript`, `@types/node`)
+- [x] Create `packages/ralph/tsconfig.json` extending `../../tsconfig.base.json` with `"include": ["src"]`
+- [x] Update root `.gitignore` to add `node_modules/`, `dist/`, `bun.lock`
+- [x] Verify `bun install` succeeds and `bunx nx --version` works
 
 ## Section 2 — Types, Schemas, and Static Assets
 
