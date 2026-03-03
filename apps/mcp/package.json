@@ -1,10 +1,10 @@
 {
-  "name": "mcp",
+  "name": "@ralphy/mcp",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "core": "workspace:*",
-    "types": "workspace:*"
+    "@ralphy/core": "workspace:*",
+    "@ralphy/types": "workspace:*"
   }
 }

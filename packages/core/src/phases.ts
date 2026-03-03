@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { type State, type Phase } from "types";
+import { type State, type Phase } from "@ralphy/types";
 import { writeState } from "./state";
 import { countProgress } from "./progress";
 

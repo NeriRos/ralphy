@@ -10,12 +10,12 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { readState, writeState, buildInitialState } from "core/state";
-import { advancePhase, setPhase } from "core/phases";
-import { countProgress, extractCurrentSection } from "core/progress";
-import { commitState } from "core/git";
-import { resolveTemplatePath } from "core/templates";
-import type { Phase } from "types";
+import { readState, writeState, buildInitialState } from "@ralphy/core/state";
+import { advancePhase, setPhase } from "@ralphy/core/phases";
+import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
+import { commitState } from "@ralphy/core/git";
+import { resolveTemplatePath } from "@ralphy/core/templates";
+import type { Phase } from "@ralphy/types";
 
 const DOCUMENTS = ["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"] as const;
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
 import { showBanner, showStatus, showList } from "../display";
-import { buildInitialState } from "core/state";
+import { buildInitialState } from "@ralphy/core/state";
 
 let tempDir: string;
 let logs: string[];

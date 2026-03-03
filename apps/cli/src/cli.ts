@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Engine, Mode } from "types";
+import type { Engine, Mode } from "@ralphy/types";
 
 export interface ParsedArgs {
   mode: Mode;

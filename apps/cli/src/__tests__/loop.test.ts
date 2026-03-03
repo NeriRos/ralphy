@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
 import { buildTaskPrompt } from "../loop";
-import { buildInitialState, writeState } from "core/state";
-import type { State } from "types";
-import type { BuildInitialStateOpts } from "core/state";
+import { buildInitialState, writeState } from "@ralphy/core/state";
+import type { State } from "@ralphy/types";
+import type { BuildInitialStateOpts } from "@ralphy/core/state";
 
 let tempDir: string;
 

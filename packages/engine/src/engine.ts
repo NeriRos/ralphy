@@ -1,5 +1,5 @@
 import { spawn } from "bun";
-import { type Engine } from "types";
+import { type Engine } from "@ralphy/types";
 import { processClaudeLine, type ClaudeUsageStats } from "./formatters/claude-stream";
 import { processCodexLine } from "./formatters/codex-stream";
 

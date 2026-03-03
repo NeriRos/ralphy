@@ -4,11 +4,11 @@ import { resolve, join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { parseArgs } from "./cli";
 import { showList, showStatus } from "./display";
-import { readState, ensureState, writeState } from "core/state";
-import { advancePhase, setPhase } from "core/phases";
-import { commitState } from "core/git";
+import { readState, ensureState, writeState } from "@ralphy/core/state";
+import { advancePhase, setPhase } from "@ralphy/core/phases";
+import { commitState } from "@ralphy/core/git";
 import { mainLoop } from "./loop";
-import type { Phase } from "types";
+import type { Phase } from "@ralphy/types";
 
 /**
  * Resolve the .ralph/tasks directory by walking up from cwd.

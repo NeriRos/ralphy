@@ -12,7 +12,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
-import type { State } from "types";
+import type { State } from "@ralphy/types";
 
 let tempDir: string;
 

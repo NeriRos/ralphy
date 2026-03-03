@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { StateSchema, type State, type Phase } from "types";
+import { StateSchema, type State, type Phase } from "@ralphy/types";
 
 const STATE_FILE = "state.json";
 

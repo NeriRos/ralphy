@@ -1,11 +1,11 @@
 {
-  "name": "cli",
+  "name": "@ralphy/cli",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "core": "workspace:*",
-    "engine": "workspace:*",
-    "types": "workspace:*"
+    "@ralphy/core": "workspace:*",
+    "@ralphy/engine": "workspace:*",
+    "@ralphy/types": "workspace:*"
   }
 }

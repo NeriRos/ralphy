@@ -1,5 +1,5 @@
 {
-  "name": "engine",
+  "name": "@ralphy/engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,6 @@
     "./formatters/codex-stream": "./src/formatters/codex-stream.ts"
   },
   "dependencies": {
-    "types": "workspace:*"
+    "@ralphy/types": "workspace:*"
   }
 }

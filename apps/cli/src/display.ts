@@ -1,8 +1,8 @@
 import chalk from "chalk";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { State } from "types";
-import { countProgress } from "core/progress";
+import type { State } from "@ralphy/types";
+import { countProgress } from "@ralphy/core/progress";
 
 const SEP = chalk.gray("━".repeat(44));
 

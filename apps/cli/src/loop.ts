@@ -1,13 +1,13 @@
 import { readFileSync, existsSync, copyFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
-import type { State, Phase } from "types";
-import { readState, writeState, updateState, buildInitialState } from "core/state";
-import { extractCurrentSection, countProgress } from "core/progress";
-import { renderTemplate, resolvePromptPath, resolveTemplatePath } from "core/templates";
-import { runEngine, handleEngineFailure, type EngineResult } from "engine/engine";
-import { autoTransitionAfterExec, autoTransitionAfterReview } from "core/phases";
-import { gitPush } from "core/git";
+import type { State, Phase } from "@ralphy/types";
+import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
+import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
+import { renderTemplate, resolvePromptPath, resolveTemplatePath } from "@ralphy/core/templates";
+import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
+import { autoTransitionAfterExec, autoTransitionAfterReview } from "@ralphy/core/phases";
+import { gitPush } from "@ralphy/core/git";
 import { showBanner } from "./display";
 
 export interface LoopOptions {
