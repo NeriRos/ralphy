@@ -26,7 +26,7 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bun build apps/mcp/src/index.ts --outdir apps/mcp/dist --target bun"
+        "command": "bun build apps/mcp/src/index.ts --outdir dist/mcp --target bun"
       }
     },
     "typecheck": {
