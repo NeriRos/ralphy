@@ -5949,13 +5949,13 @@ function handleEngineFailure(exitCode) {
       };
   }
 }
-function buildClaudeArgs(model) {
+function buildClaudeArgs(model, prompt) {
   return [
     "-p",
+    prompt,
     "--dangerously-skip-permissions",
     "--model",
     model,
-    "--verbose",
     "--output-format",
     "stream-json",
   ];
@@ -5965,17 +5965,22 @@ function buildCodexArgs() {
 }
 async function runEngine(opts) {
   const { engine, model, prompt } = opts;
-  const cmd =
-    engine === "claude" ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
+  const isClaude = engine === "claude";
+  const cmd = isClaude
+    ? ["claude", ...buildClaudeArgs(model, prompt)]
+    : ["codex", ...buildCodexArgs()];
   const proc = spawn({
     cmd,
-    stdin: "pipe",
+    stdin: isClaude ? "ignore" : "pipe",
     stdout: "pipe",
-    stderr: engine === "codex" ? "pipe" : "inherit",
+    stderr: isClaude ? "inherit" : "pipe",
   });
-  const stdin = proc.stdin;
-  stdin.write(new TextEncoder().encode(prompt));
-  stdin.end();
+  if (!isClaude) {
+    const stdin = proc.stdin;
+    stdin.write(new TextEncoder().encode(prompt));
+    await stdin.flush();
+    stdin.end();
+  }
   const stdout = proc.stdout;
   let usage = null;
   if (engine === "claude") {

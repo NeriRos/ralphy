@@ -56,13 +56,13 @@ export function handleEngineFailure(exitCode: number): {
 /**
  * Build the CLI arguments for the engine subprocess.
  */
-function buildClaudeArgs(model: string): string[] {
+function buildClaudeArgs(model: string, prompt: string): string[] {
   return [
     "-p",
+    prompt,
     "--dangerously-skip-permissions",
     "--model",
     model,
-    "--verbose",
     "--output-format",
     "stream-json",
   ];
@@ -82,20 +82,25 @@ function buildCodexArgs(): string[] {
 export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const { engine, model, prompt } = opts;
 
-  const cmd =
-    engine === "claude" ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
+  const isClaude = engine === "claude";
+  const cmd = isClaude
+    ? ["claude", ...buildClaudeArgs(model, prompt)]
+    : ["codex", ...buildCodexArgs()];
 
   const proc = spawn({
     cmd,
-    stdin: "pipe",
+    stdin: isClaude ? "ignore" : "pipe",
     stdout: "pipe",
-    stderr: engine === "codex" ? "pipe" : "inherit",
+    stderr: isClaude ? "inherit" : "pipe",
   });
 
-  // Write prompt to stdin and close
-  const stdin = proc.stdin as import("bun").FileSink;
-  stdin.write(new TextEncoder().encode(prompt));
-  stdin.end();
+  // For codex, write prompt to stdin
+  if (!isClaude) {
+    const stdin = proc.stdin as import("bun").FileSink;
+    stdin.write(new TextEncoder().encode(prompt));
+    await stdin.flush();
+    stdin.end();
+  }
 
   // Stream stdout line-by-line through the formatter
   const stdout = proc.stdout as ReadableStream<Uint8Array>;
