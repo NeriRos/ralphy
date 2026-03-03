@@ -13,6 +13,7 @@ export interface ParsedArgs {
   noExecute: boolean;
   delay: number;
   log: boolean;
+  verbose: boolean;
 }
 
 const VALID_MODES = new Set<string>(["task", "list", "status", "advance", "set-phase"]);
@@ -51,6 +52,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     noExecute: false,
     delay: 0,
     log: false,
+    verbose: false,
   };
 
   let expectModel = false;
@@ -155,6 +157,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--log":
         result.log = true;
+        break;
+      case "--verbose":
+        result.verbose = true;
         break;
       default:
         // Check if it's a bare number (max iterations)
