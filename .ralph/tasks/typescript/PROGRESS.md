@@ -49,10 +49,10 @@
 
 ## Section 8 — Main Loop and Entry Point
 
-- [ ] Create `packages/ralph/src/loop.ts`: main iteration loop porting the shell main loop — init/resume task, build prompt (read STEERING.md + phase prompt + template vars), run engine, handle transitions, check STOP signal, `shouldContinue()` logic
-- [ ] Create `packages/ralph/src/index.ts`: entry point with `#!/usr/bin/env bun` shebang; wire `parseArgs` → mode routing (task/list/status/advance/set-phase) → loop or display
-- [ ] Wire `buildTaskPrompt(state, taskDir)` — concatenate STEERING.md content + rendered phase prompt with all template variables
-- [ ] Write integration test: parse args → build prompt → verify prompt content in `packages/ralph/src/__tests__/loop.test.ts`
+- [x] Create `packages/ralph/src/loop.ts`: main iteration loop porting the shell main loop — init/resume task, build prompt (read STEERING.md + phase prompt + template vars), run engine, handle transitions, check STOP signal, `shouldContinue()` logic
+- [x] Create `packages/ralph/src/index.ts`: entry point with `#!/usr/bin/env bun` shebang; wire `parseArgs` → mode routing (task/list/status/advance/set-phase) → loop or display
+- [x] Wire `buildTaskPrompt(state, taskDir)` — concatenate STEERING.md content + rendered phase prompt with all template variables
+- [x] Write integration test: parse args → build prompt → verify prompt content in `packages/ralph/src/__tests__/loop.test.ts`
 
 ## Section 9 — Build, Install, and End-to-End Verification
 
