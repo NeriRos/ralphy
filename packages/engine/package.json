@@ -9,6 +9,7 @@
     "./formatters/codex-stream": "./src/formatters/codex-stream.ts"
   },
   "dependencies": {
+    "@ralphy/output": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

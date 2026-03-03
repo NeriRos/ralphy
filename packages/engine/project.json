@@ -1,6 +1,7 @@
 {
   "name": "engine",
   "sourceRoot": "packages/engine/src",
+  "tags": ["scope:cli"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",

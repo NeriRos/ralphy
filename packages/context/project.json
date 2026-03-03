@@ -1,0 +1,5 @@
+{
+  "name": "context",
+  "sourceRoot": "packages/context/src",
+  "tags": ["scope:shared"]
+}

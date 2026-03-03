@@ -1,6 +1,7 @@
 {
   "name": "types",
   "sourceRoot": "packages/types/src",
+  "tags": ["scope:shared"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",

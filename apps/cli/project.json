@@ -1,6 +1,7 @@
 {
   "name": "cli",
   "sourceRoot": "apps/cli/src",
+  "tags": ["scope:cli"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",

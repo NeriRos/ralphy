@@ -1,0 +1,5 @@
+{
+  "name": "output",
+  "sourceRoot": "packages/output/src",
+  "tags": ["scope:shared"]
+}

@@ -2,6 +2,13 @@
 module.exports = {
   forbidden: [
     {
+      name: "mcp-no-engine",
+      severity: "error",
+      comment: "MCP app must not import the engine package (scope:cli only)",
+      from: { path: "^apps/mcp" },
+      to: { path: "^packages/engine" },
+    },
+    {
       name: "no-circular",
       severity: "error",
       comment: "No circular dependencies allowed",

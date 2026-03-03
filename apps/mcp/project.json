@@ -1,6 +1,7 @@
 {
   "name": "mcp",
   "sourceRoot": "apps/mcp/src",
+  "tags": ["scope:mcp"],
   "targets": {
     "lint": {
       "executor": "nx:run-commands",
