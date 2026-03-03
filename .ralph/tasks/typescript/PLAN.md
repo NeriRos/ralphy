@@ -1,84 +1,80 @@
-# Plan: Convert ralphy to TypeScript + Nx + Bun
+# Plan — typescript
+
+> Convert the ralphy project from bash scripts to TypeScript with Nx and Bun.
 
 ## Summary
 
-Convert the ralphy shell-based task execution system into a TypeScript project using Nx as the build system and Bun as the package manager. The ~1700 lines of shell code (loop.sh + two formatters) decompose into ~12 TypeScript modules organized by domain.
+Rewrite the shell-based task orchestration system (`loop.sh` + formatters) as a TypeScript project in an Nx monorepo using Bun as the runtime and package manager. The result is a `packages/ralph` package that compiles to a CLI binary, replacing `src/bin/`.
 
 ## Approach
 
-1. **Scaffold first** — Set up Nx workspace, tsconfig, package.json with Bun before writing any application code
-2. **Types before logic** — Define Zod schemas and TypeScript types for state.json, phases, and config upfront
-3. **Core modules bottom-up** — Port the dependency-free core modules (state, progress, template, phase) first
-4. **CLI and display next** — Port argument parsing (using `commander`) and terminal output (using `picocolors`)
-5. **Engine layer** — Port prompt builder and engine runner (subprocess spawning for claude/codex)
-6. **Formatters** — Convert JSONL stream parsers from bash+jq to TypeScript
-7. **Main loop last** — Wire everything together in index.ts
-8. **Install mechanism** — Replace Makefile with an Nx build target + install script
-9. **Preserve shell originals** — Keep `src/bin/` intact during conversion; new TS code lives in `src/` at the module level
+1. **Scaffold the Nx workspace** at the repo root alongside existing files
+2. **Create the `packages/ralph` package** with TypeScript config
+3. **Port bottom-up** — types/schemas first, then standalone utilities, then orchestration, then CLI entry
+4. **Copy static assets** (prompts, templates) into the package — read at runtime via `import.meta.dir`
+5. **Replace Makefile** with an Nx build target + bun install script
+6. **Preserve backward compatibility** — existing `.ralph/tasks/` state.json files must work unchanged
 
-## Key Architectural Decisions
+## Architectural Decisions
 
-- **Single-project Nx layout** — Not a monorepo. One `project.json` at root.
-- **Bun as package manager only** — Use `@nx/js:node` for runtime execution (avoids Bun IPC issues with Nx)
-- **Disable Nx TUI** — Known display issues with Bun; set `"tui": { "enabled": false }`
-- **ESM throughout** — `"type": "module"` in package.json, ESM imports in all TS files
-- **Assets as files, not imports** — Prompts and templates stay as markdown files in `assets/`, read at runtime via `import.meta.dirname`
-- **Formatters in-process** — Instead of piping through separate formatter scripts, integrate formatter logic directly into the engine runner
-- **Atomic writes** — Use write-to-temp-then-rename pattern for state.json updates (matching current shell behavior)
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Package manager | Bun | User requested; fast installs, native TS execution |
+| Module system | ESM (`"type": "module"`) | Modern standard, Bun-native |
+| CLI framework | Manual parser (port existing) | Existing arg parser is simple; no need for commander/yargs |
+| Colors | `chalk` | Clean API, widely used; replaces raw ANSI codes |
+| Schema validation | `zod` | Type-safe state.json parsing, derive TS types |
+| Test framework | `bun:test` | Zero-config with Bun, fast |
+| Stream parsing | `readline` + line-by-line | Direct port of existing line-based shell parsers |
+| Static files | Runtime `fs.readFileSync` via `import.meta.dir` | Simple, Bun-native path resolution |
+| Build output | `dist/` via Nx | Standard Nx convention |
 
-## Files Created/Modified
+## Files Created
 
-### New Files
 | File | Purpose |
-|---|---|
+|------|---------|
 | `nx.json` | Nx workspace config |
-| `package.json` | Dependencies, scripts, bin entry |
-| `tsconfig.base.json` | Base TS config |
-| `tsconfig.json` | Project TS config |
-| `project.json` | Nx project targets (build, test, lint, typecheck) |
-| `src/index.ts` | CLI entry point + main loop |
-| `src/cli/args.ts` | Argument parsing with commander |
-| `src/core/state.ts` | state.json CRUD + Zod schema |
-| `src/core/phase.ts` | Phase state machine + transitions |
-| `src/core/progress.ts` | PROGRESS.md parsing |
-| `src/core/template.ts` | Template rendering + scaffolding |
-| `src/engine/prompt.ts` | Prompt assembly |
-| `src/engine/runner.ts` | Engine subprocess execution |
-| `src/formatters/claude.ts` | Claude stream JSONL parser |
-| `src/formatters/codex.ts` | Codex stream JSONL parser |
-| `src/display/terminal.ts` | Banner, status, list display |
-| `src/utils/git.ts` | Git helpers |
-| `src/types.ts` | Shared types and Zod schemas |
-| `assets/prompts/*.md` | Copied from src/bin/prompts/ |
-| `assets/templates/*.md` | Copied from src/bin/templates/ |
-| `assets/gitignore` | Copied from src/gitignore |
-| `scripts/install.ts` | Replaces Makefile install target |
-| `vitest.config.ts` | Test configuration |
+| `package.json` | Root workspace (bun workspaces) |
+| `tsconfig.base.json` | Shared TypeScript config |
+| `packages/ralph/package.json` | Package config with bin entry |
+| `packages/ralph/tsconfig.json` | Project TS config |
+| `packages/ralph/src/types.ts` | Zod schemas + derived types |
+| `packages/ralph/src/state.ts` | State management (read/write/migrate state.json) |
+| `packages/ralph/src/progress.ts` | PROGRESS.md parsing (sections, counts) |
+| `packages/ralph/src/templates.ts` | Mustache-style template rendering |
+| `packages/ralph/src/git.ts` | Git operations (branch, commit, push) |
+| `packages/ralph/src/display.ts` | Banner, status, list output with chalk |
+| `packages/ralph/src/phases.ts` | Phase state machine + transitions |
+| `packages/ralph/src/engine.ts` | Claude/Codex CLI execution + stream piping |
+| `packages/ralph/src/formatters/claude-stream.ts` | Claude stream-json parser |
+| `packages/ralph/src/formatters/codex-stream.ts` | Codex JSONL parser |
+| `packages/ralph/src/cli.ts` | Argument parsing |
+| `packages/ralph/src/loop.ts` | Main iteration loop |
+| `packages/ralph/src/index.ts` | Entry point (wires CLI + loop) |
+| `packages/ralph/prompts/*.md` | Copied from src/bin/prompts/ |
+| `packages/ralph/templates/*.md` | Copied from src/bin/templates/ |
 
-### Preserved Files
-- `src/bin/` — Shell originals kept for reference during conversion
-- `skills-lock.json` — Unchanged
-- `.claude/` — Unchanged
+## Files Modified
 
-### Removed (after conversion verified)
-- `Makefile` — Replaced by scripts/install.ts
-- `src/bin/` — After all shell functionality is ported and tested
+| File | Change |
+|------|--------|
+| `.gitignore` | Add `node_modules/`, `dist/`, `bun.lock` |
+| `Makefile` | Update install target to use built output from `dist/` |
 
-## Risks & Open Questions
+## Files Removed
 
-1. **Bun + Nx compatibility** — Bun IPC limitations may cause issues. Mitigation: disable TUI, use Node.js runtime executor.
-2. **Self-installation loop** — Building ralphy updates `dist/`, which is installed into `.ralph/`. Must ensure build doesn't trigger during its own execution.
-3. **Backward compat** — Existing `.ralph/` installs in other projects expect shell scripts. The install script needs to fully replace the shell artifacts.
-4. **Asset resolution** — `import.meta.dirname` works in ESM but path resolution needs testing when installed vs running from source.
+None in the initial conversion. The existing `src/bin/` shell scripts remain until the TS version is validated.
 
-## Dependencies
+## Risks & Mitigations
 
-| Package | Version | Purpose |
-|---|---|---|
-| `nx` | ^21 | Build system |
-| `@nx/js` | ^21 | TypeScript build/typecheck |
-| `typescript` | ^5.7 | Language |
-| `commander` | ^13 | CLI argument parsing |
-| `picocolors` | ^1 | Terminal colors |
-| `zod` | ^3 | Schema validation |
-| `vitest` | ^3 | Testing |
+| Risk | Mitigation |
+|------|-----------|
+| Bun stream compat with `claude` CLI | Test early in Section 2 with a manual spawn; fall back to Node child_process if needed |
+| Static file resolution when installed vs dev | Use `import.meta.dir` for Bun; add runtime path resolution helper |
+| State.json backward compat | Zod schema uses `.default()` and `.optional()` for new fields; `migrate_state()` port handles legacy |
+| Nx version churn | Pin exact versions in package.json |
+
+## Open Questions
+
+- Should the old `src/bin/` shell scripts be removed in this task or a follow-up? (Plan assumes: keep them, remove later)
+- Should we add a `bun run ralph` alias in root package.json scripts? (Plan assumes: yes)
