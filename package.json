@@ -16,6 +16,11 @@
     "check:circular": "madge --circular --extensions ts packages/*/src apps/*/src",
     "check:deps": "depcruise packages/*/src apps/*/src --config .dependency-cruiser.cjs",
     "check:unused": "knip",
+    "lint:ci": "nx affected -t lint",
+    "fmt:ci": "nx affected -t fmt:check",
+    "typecheck:ci": "nx affected -t typecheck",
+    "test:ci": "nx affected -t test",
+    "check:circular:ci": "nx affected -t check:circular",
     "prepare": "husky"
   },
   "dependencies": {
