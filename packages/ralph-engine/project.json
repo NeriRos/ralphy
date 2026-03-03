@@ -1,0 +1,20 @@
+{
+  "name": "ralph-engine",
+  "sourceRoot": "packages/ralph-engine/src",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p packages/ralph-engine/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/ralph-engine/src",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

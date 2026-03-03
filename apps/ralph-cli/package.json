@@ -1,10 +1,11 @@
 {
-  "name": "ralph-mcp",
+  "name": "ralph-cli",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
     "ralph-core": "workspace:*",
+    "ralph-engine": "workspace:*",
     "ralph-types": "workspace:*"
   }
 }

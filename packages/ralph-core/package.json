@@ -1,0 +1,16 @@
+{
+  "name": "ralph-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./state": "./src/state.ts",
+    "./phases": "./src/phases.ts",
+    "./progress": "./src/progress.ts",
+    "./git": "./src/git.ts",
+    "./templates": "./src/templates.ts"
+  },
+  "dependencies": {
+    "ralph-types": "workspace:*"
+  }
+}

@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   let projectDir = process.cwd();
   const dirIdx = args.indexOf("--dir");
   if (dirIdx !== -1 && args[dirIdx + 1]) {
-    projectDir = resolve(args[dirIdx + 1]);
+    projectDir = resolve(args[dirIdx + 1]!);
   }
 
   const tasksDir = resolveTasksDir(projectDir);

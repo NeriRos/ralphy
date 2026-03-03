@@ -10,12 +10,12 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { readState, writeState, buildInitialState } from "ralph/state";
-import { advancePhase, setPhase } from "ralph/phases";
-import { countProgress, extractCurrentSection } from "ralph/progress";
-import { commitState } from "ralph/git";
-import { resolveTemplatePath } from "ralph/templates";
-import type { Phase } from "ralph/types";
+import { readState, writeState, buildInitialState } from "ralph-core/state";
+import { advancePhase, setPhase } from "ralph-core/phases";
+import { countProgress, extractCurrentSection } from "ralph-core/progress";
+import { commitState } from "ralph-core/git";
+import { resolveTemplatePath } from "ralph-core/templates";
+import type { Phase } from "ralph-types";
 
 const DOCUMENTS = ["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"] as const;
 
@@ -25,7 +25,9 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     "ralph_list_tasks",
     {
       description: "List all ralph tasks with their phase, status, and progress",
-      inputSchema: { includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase") },
+      inputSchema: {
+        includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase"),
+      },
     },
     async ({ includeCompleted }) => {
       try {
@@ -72,7 +74,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         return { content: [{ type: "text", text: JSON.stringify({ tasks }, null, 2) }] };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error listing tasks: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error listing tasks: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -133,7 +140,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error getting task '${name}': ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error getting task '${name}': ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -147,7 +159,9 @@ export function registerTools(server: McpServer, tasksDir: string): void {
       description: "Read a document file from a task directory",
       inputSchema: {
         name: z.string().describe("Task name"),
-        document: z.enum(["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"]).describe("Document to read"),
+        document: z
+          .enum(["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"])
+          .describe("Document to read"),
       },
     },
     async ({ name, document }) => {
@@ -155,7 +169,9 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         const filePath = join(tasksDir, name, document);
         if (!existsSync(filePath)) {
           return {
-            content: [{ type: "text", text: `Document '${document}' does not exist for task '${name}'` }],
+            content: [
+              { type: "text", text: `Document '${document}' does not exist for task '${name}'` },
+            ],
             isError: true,
           };
         }
@@ -163,7 +179,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         return { content: [{ type: "text", text: content }] };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error reading document: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error reading document: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -194,7 +215,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
 
         mkdirSync(taskDir, { recursive: true });
 
-        const state = buildInitialState({ name, prompt, engine, model });
+        const state = buildInitialState({
+          name,
+          prompt,
+          ...(engine !== undefined && { engine }),
+          ...(model !== undefined && { model }),
+        });
         writeState(taskDir, state);
 
         // Scaffold STEERING.md from template
@@ -203,15 +229,29 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         if (existsSync(templatePath)) {
           copyFileSync(templatePath, steeringPath);
         } else {
-          writeFileSync(steeringPath, "# Steering — User Guidance\n\n**Edit this file anytime to steer the task.**\n", "utf-8");
+          writeFileSync(
+            steeringPath,
+            "# Steering — User Guidance\n\n**Edit this file anytime to steer the task.**\n",
+            "utf-8",
+          );
         }
 
         return {
-          content: [{ type: "text", text: JSON.stringify({ created: name, phase: state.phase, taskDir }, null, 2) }],
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ created: name, phase: state.phase, taskDir }, null, 2),
+            },
+          ],
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error creating task: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error creating task: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -240,7 +280,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
           };
         }
 
-        const args = ["run", "packages/ralph/src/index.ts", "task", "--name", name];
+        const args = ["run", "apps/ralph-cli/src/index.ts", "task", "--name", name];
         if (maxIterations) args.push("--max-iterations", String(maxIterations));
         if (engine) args.push("--engine", engine);
         if (model) args.push("--model", model);
@@ -253,11 +293,18 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         child.unref();
 
         return {
-          content: [{ type: "text", text: JSON.stringify({ started: name, pid: child.pid }, null, 2) }],
+          content: [
+            { type: "text", text: JSON.stringify({ started: name, pid: child.pid }, null, 2) },
+          ],
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error running task: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error running task: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -297,7 +344,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error advancing phase: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error advancing phase: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
@@ -332,7 +384,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         };
       } catch (err) {
         return {
-          content: [{ type: "text", text: `Error updating steering: ${err instanceof Error ? err.message : err}` }],
+          content: [
+            {
+              type: "text",
+              text: `Error updating steering: ${err instanceof Error ? err.message : err}`,
+            },
+          ],
           isError: true,
         };
       }
