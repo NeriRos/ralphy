@@ -1,7 +1,7 @@
-import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { StateSchema, type State, type Phase } from "@ralphy/types";
+import { getStorage } from "@ralphy/context";
 
 const STATE_FILE = "state.json";
 
@@ -10,22 +10,21 @@ const STATE_FILE = "state.json";
  */
 export function readState(taskDir: string): State {
   const filePath = join(taskDir, STATE_FILE);
-  const raw = readFileSync(filePath, "utf-8");
+  const raw = getStorage().read(filePath);
+  if (raw === null) throw new Error(`state.json not found in ${taskDir}`);
   return StateSchema.parse(JSON.parse(raw));
 }
 
 /**
- * Write state.json to a task directory using atomic write (tmp + rename).
+ * Write state.json to a task directory.
  */
 export function writeState(taskDir: string, state: State): void {
   const filePath = join(taskDir, STATE_FILE);
-  const tmpPath = `${filePath}.tmp`;
-  writeFileSync(tmpPath, JSON.stringify(state, null, 2) + "\n", "utf-8");
-  renameSync(tmpPath, filePath);
+  getStorage().write(filePath, JSON.stringify(state, null, 2) + "\n");
 }
 
 /**
- * Read state, apply an updater function, and write back atomically.
+ * Read state, apply an updater function, and write back.
  */
 export function updateState(taskDir: string, updater: (state: State) => State): State {
   const state = readState(taskDir);
@@ -70,11 +69,13 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
  * Infer the current phase from files present in a task directory.
  */
 function inferPhaseFromFiles(taskDir: string): Phase {
-  if (!existsSync(join(taskDir, "RESEARCH.md"))) return "research";
-  if (!existsSync(join(taskDir, "PLAN.md")) || !existsSync(join(taskDir, "PROGRESS.md")))
-    return "plan";
+  const storage = getStorage();
+  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return "research";
 
-  const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+  const plan = storage.read(join(taskDir, "PLAN.md"));
+  const progress = storage.read(join(taskDir, "PROGRESS.md"));
+  if (plan === null || progress === null) return "plan";
+
   const unchecked = (progress.match(/^- \[ \]/gm) ?? []).length;
   return unchecked === 0 ? "done" : "exec";
 }
@@ -97,15 +98,16 @@ export function migrateState(taskDir: string): State {
  */
 export function ensureState(taskDir: string): State {
   const filePath = join(taskDir, STATE_FILE);
-  if (existsSync(filePath)) {
+  const storage = getStorage();
+  if (storage.read(filePath) !== null) {
     return readState(taskDir);
   }
 
   // Check if this is an existing task that predates state tracking
   const hasFiles =
-    existsSync(join(taskDir, "RESEARCH.md")) ||
-    existsSync(join(taskDir, "PLAN.md")) ||
-    existsSync(join(taskDir, "PROGRESS.md"));
+    storage.read(join(taskDir, "RESEARCH.md")) !== null ||
+    storage.read(join(taskDir, "PLAN.md")) !== null ||
+    storage.read(join(taskDir, "PROGRESS.md")) !== null;
 
   if (hasFiles) {
     return migrateState(taskDir);

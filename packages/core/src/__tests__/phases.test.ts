@@ -8,6 +8,7 @@ import {
   autoTransitionAfterReview,
 } from "../phases";
 import { buildInitialState, writeState, readState } from "../state";
+import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -15,6 +16,7 @@ import { rmSync } from "node:fs";
 import type { State } from "@ralphy/types";
 
 let tempDir: string;
+const withStorage = <T>(fn: () => T): T => runWithContext(createDefaultContext(), fn);
 
 function makeState(overrides: Partial<State> = {}): State {
   const base = buildInitialState({ name: "test", prompt: "p" });
@@ -30,38 +32,47 @@ afterEach(() => {
 });
 
 describe("inferPhaseFromFiles", () => {
-  test("returns research when no files exist", () => {
-    expect(inferPhaseFromFiles(tempDir)).toBe("research");
-  });
+  test("returns research when no files exist", () =>
+    withStorage(() => {
+      expect(inferPhaseFromFiles(tempDir)).toBe("research");
+    }));
 
-  test("returns plan when only RESEARCH.md exists", () => {
-    writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
-    expect(inferPhaseFromFiles(tempDir)).toBe("plan");
-  });
+  test("returns plan when only RESEARCH.md exists", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
+      expect(inferPhaseFromFiles(tempDir)).toBe("plan");
+    }));
 
-  test("returns plan when PLAN.md exists but not PROGRESS.md", () => {
-    writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    expect(inferPhaseFromFiles(tempDir)).toBe("plan");
-  });
+  test("returns plan when PLAN.md exists but not PROGRESS.md", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      expect(inferPhaseFromFiles(tempDir)).toBe("plan");
+    }));
 
-  test("returns exec when PROGRESS.md has unchecked items", () => {
-    writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## Section 1\n- [x] Done\n- [ ] Todo\n", "utf-8");
-    expect(inferPhaseFromFiles(tempDir)).toBe("exec");
-  });
+  test("returns exec when PROGRESS.md has unchecked items", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "## Section 1\n- [x] Done\n- [ ] Todo\n",
+        "utf-8",
+      );
+      expect(inferPhaseFromFiles(tempDir)).toBe("exec");
+    }));
 
-  test("returns done when all items are checked", () => {
-    writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    writeFileSync(
-      join(tempDir, "PROGRESS.md"),
-      "## Section 1\n- [x] Done\n- [x] Also done\n",
-      "utf-8",
-    );
-    expect(inferPhaseFromFiles(tempDir)).toBe("done");
-  });
+  test("returns done when all items are checked", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "## Section 1\n- [x] Done\n- [x] Also done\n",
+        "utf-8",
+      );
+      expect(inferPhaseFromFiles(tempDir)).toBe("done");
+    }));
 });
 
 describe("recordPhaseTransition", () => {
@@ -108,165 +119,184 @@ describe("recordPhaseTransition", () => {
 });
 
 describe("advancePhase", () => {
-  test("research → plan when RESEARCH.md exists", () => {
-    writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
-    const state = makeState({ phase: "research" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("plan");
-  });
+  test("research → plan when RESEARCH.md exists", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
+      const state = makeState({ phase: "research" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("plan");
+    }));
 
-  test("research → throws when RESEARCH.md missing", () => {
-    const state = makeState({ phase: "research" });
-    expect(() => advancePhase(state, tempDir)).toThrow("RESEARCH.md");
-  });
+  test("research → throws when RESEARCH.md missing", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "research" });
+      expect(() => advancePhase(state, tempDir)).toThrow("RESEARCH.md");
+    }));
 
-  test("plan → exec when PLAN.md and PROGRESS.md exist with unchecked items", () => {
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [ ] Todo\n", "utf-8");
-    const state = makeState({ phase: "plan" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("exec");
-  });
+  test("plan → exec when PLAN.md and PROGRESS.md exist with unchecked items", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [ ] Todo\n", "utf-8");
+      const state = makeState({ phase: "plan" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("exec");
+    }));
 
-  test("plan → throws when PLAN.md missing", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [ ] Todo\n", "utf-8");
-    const state = makeState({ phase: "plan" });
-    expect(() => advancePhase(state, tempDir)).toThrow("PLAN.md");
-  });
+  test("plan → throws when PLAN.md missing", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [ ] Todo\n", "utf-8");
+      const state = makeState({ phase: "plan" });
+      expect(() => advancePhase(state, tempDir)).toThrow("PLAN.md");
+    }));
 
-  test("plan → throws when PROGRESS.md missing", () => {
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    const state = makeState({ phase: "plan" });
-    expect(() => advancePhase(state, tempDir)).toThrow("PROGRESS.md");
-  });
+  test("plan → throws when PROGRESS.md missing", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      const state = makeState({ phase: "plan" });
+      expect(() => advancePhase(state, tempDir)).toThrow("PROGRESS.md");
+    }));
 
-  test("plan → throws when PROGRESS.md has no unchecked items", () => {
-    writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n", "utf-8");
-    const state = makeState({ phase: "plan" });
-    expect(() => advancePhase(state, tempDir)).toThrow("no unchecked items");
-  });
+  test("plan → throws when PROGRESS.md has no unchecked items", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n", "utf-8");
+      const state = makeState({ phase: "plan" });
+      expect(() => advancePhase(state, tempDir)).toThrow("no unchecked items");
+    }));
 
-  test("exec → review", () => {
-    const state = makeState({ phase: "exec" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("review");
-  });
+  test("exec → review", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "exec" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("review");
+    }));
 
-  test("review → exec when issues found", () => {
-    writeFileSync(
-      join(tempDir, "PROGRESS.md"),
-      "## S1\n- [x] Item — ⚠️ Issue: bug\n- [ ] Todo\n",
-      "utf-8",
-    );
-    const state = makeState({ phase: "review" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("exec");
-    expect(updated.history[0]!.result).toContain("issues found");
-  });
+  test("review → exec when issues found", () =>
+    withStorage(() => {
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "## S1\n- [x] Item — ⚠️ Issue: bug\n- [ ] Todo\n",
+        "utf-8",
+      );
+      const state = makeState({ phase: "review" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("exec");
+      expect(updated.history[0]!.result).toContain("issues found");
+    }));
 
-  test("review → done when no issues and all items checked", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
-    const state = makeState({ phase: "review" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("done");
-    expect(updated.status).toBe("completed");
-  });
+  test("review → done when no issues and all items checked", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
+      const state = makeState({ phase: "review" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("done");
+      expect(updated.status).toBe("completed");
+    }));
 
-  test("review → exec when no issues but unchecked items remain", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
-    const state = makeState({ phase: "review" });
-    const updated = advancePhase(state, tempDir);
-    expect(updated.phase).toBe("exec");
-    expect(updated.history[0]!.result).toContain("next section");
-  });
+  test("review → exec when no issues but unchecked items remain", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
+      const state = makeState({ phase: "review" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("exec");
+      expect(updated.history[0]!.result).toContain("next section");
+    }));
 
-  test("done → throws", () => {
-    const state = makeState({ phase: "done" });
-    expect(() => advancePhase(state, tempDir)).toThrow("already done");
-  });
+  test("done → throws", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "done" });
+      expect(() => advancePhase(state, tempDir)).toThrow("already done");
+    }));
 });
 
 describe("setPhase", () => {
-  test("sets phase directly and persists to disk", () => {
-    const state = makeState({ phase: "research" });
-    writeState(tempDir, state);
-    const updated = setPhase(state, tempDir, "exec");
-    expect(updated.phase).toBe("exec");
-    expect(updated.history[0]!.result).toBe("set-phase: research -> exec");
+  test("sets phase directly and persists to disk", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "research" });
+      writeState(tempDir, state);
+      const updated = setPhase(state, tempDir, "exec");
+      expect(updated.phase).toBe("exec");
+      expect(updated.history[0]!.result).toBe("set-phase: research -> exec");
 
-    const persisted = readState(tempDir);
-    expect(persisted.phase).toBe("exec");
-  });
+      const persisted = readState(tempDir);
+      expect(persisted.phase).toBe("exec");
+    }));
 });
 
 describe("autoTransitionAfterExec", () => {
-  test("stays in exec when unchecked items remain", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
-    const state = makeState({ phase: "exec" });
-    writeState(tempDir, state);
-    const updated = autoTransitionAfterExec(state, tempDir);
-    expect(updated.phase).toBe("exec");
-    expect(updated.history).toHaveLength(0);
-  });
+  test("stays in exec when unchecked items remain", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
+      const state = makeState({ phase: "exec" });
+      writeState(tempDir, state);
+      const updated = autoTransitionAfterExec(state, tempDir);
+      expect(updated.phase).toBe("exec");
+      expect(updated.history).toHaveLength(0);
+    }));
 
-  test("advances to review when all items checked", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
-    const state = makeState({ phase: "exec" });
-    writeState(tempDir, state);
-    const updated = autoTransitionAfterExec(state, tempDir);
-    expect(updated.phase).toBe("review");
+  test("advances to review when all items checked", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
+      const state = makeState({ phase: "exec" });
+      writeState(tempDir, state);
+      const updated = autoTransitionAfterExec(state, tempDir);
+      expect(updated.phase).toBe("review");
 
-    const persisted = readState(tempDir);
-    expect(persisted.phase).toBe("review");
-  });
+      const persisted = readState(tempDir);
+      expect(persisted.phase).toBe("review");
+    }));
 
-  test("returns state unchanged when PROGRESS.md missing", () => {
-    const state = makeState({ phase: "exec" });
-    const updated = autoTransitionAfterExec(state, tempDir);
-    expect(updated.phase).toBe("exec");
-  });
+  test("returns state unchanged when PROGRESS.md missing", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "exec" });
+      const updated = autoTransitionAfterExec(state, tempDir);
+      expect(updated.phase).toBe("exec");
+    }));
 });
 
 describe("autoTransitionAfterReview", () => {
-  test("loops back to exec when issues found", () => {
-    writeFileSync(
-      join(tempDir, "PROGRESS.md"),
-      "## S1\n- [x] Item — ⚠️ Issue: bug\n- [ ] Todo\n",
-      "utf-8",
-    );
-    const state = makeState({ phase: "review" });
-    writeState(tempDir, state);
-    const updated = autoTransitionAfterReview(state, tempDir);
-    expect(updated.phase).toBe("exec");
-    expect(updated.history[0]!.result).toContain("issues found");
-  });
+  test("loops back to exec when issues found", () =>
+    withStorage(() => {
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "## S1\n- [x] Item — ⚠️ Issue: bug\n- [ ] Todo\n",
+        "utf-8",
+      );
+      const state = makeState({ phase: "review" });
+      writeState(tempDir, state);
+      const updated = autoTransitionAfterReview(state, tempDir);
+      expect(updated.phase).toBe("exec");
+      expect(updated.history[0]!.result).toContain("issues found");
+    }));
 
-  test("advances to done when no issues and all items checked", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
-    const state = makeState({ phase: "review" });
-    writeState(tempDir, state);
-    const updated = autoTransitionAfterReview(state, tempDir);
-    expect(updated.phase).toBe("done");
-    expect(updated.status).toBe("completed");
+  test("advances to done when no issues and all items checked", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
+      const state = makeState({ phase: "review" });
+      writeState(tempDir, state);
+      const updated = autoTransitionAfterReview(state, tempDir);
+      expect(updated.phase).toBe("done");
+      expect(updated.status).toBe("completed");
 
-    const persisted = readState(tempDir);
-    expect(persisted.phase).toBe("done");
-    expect(persisted.status).toBe("completed");
-  });
+      const persisted = readState(tempDir);
+      expect(persisted.phase).toBe("done");
+      expect(persisted.status).toBe("completed");
+    }));
 
-  test("advances to exec when no issues but unchecked items remain", () => {
-    writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
-    const state = makeState({ phase: "review" });
-    writeState(tempDir, state);
-    const updated = autoTransitionAfterReview(state, tempDir);
-    expect(updated.phase).toBe("exec");
-    expect(updated.history[0]!.result).toContain("next section");
-  });
+  test("advances to exec when no issues but unchecked items remain", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
+      const state = makeState({ phase: "review" });
+      writeState(tempDir, state);
+      const updated = autoTransitionAfterReview(state, tempDir);
+      expect(updated.phase).toBe("exec");
+      expect(updated.history[0]!.result).toContain("next section");
+    }));
 
-  test("returns state unchanged when PROGRESS.md missing", () => {
-    const state = makeState({ phase: "review" });
-    const updated = autoTransitionAfterReview(state, tempDir);
-    expect(updated.phase).toBe("review");
-  });
+  test("returns state unchanged when PROGRESS.md missing", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "review" });
+      const updated = autoTransitionAfterReview(state, tempDir);
+      expect(updated.phase).toBe("review");
+    }));
 });

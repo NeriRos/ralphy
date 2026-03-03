@@ -1,4 +1,3 @@
-import { readFileSync, existsSync, copyFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import type { State, Phase } from "@ralphy/types";
@@ -8,6 +7,7 @@ import { renderTemplate, resolvePromptPath, resolveTemplatePath } from "@ralphy/
 import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
 import { autoTransitionAfterExec, autoTransitionAfterReview } from "@ralphy/core/phases";
 import { gitPush } from "@ralphy/core/git";
+import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import { showBanner } from "./display";
 
 export interface LoopOptions {
@@ -33,9 +33,9 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
   let prompt = "";
 
   // 1. Inject STEERING.md at the top
-  const steeringPath = join(taskDir, "STEERING.md");
-  if (existsSync(steeringPath)) {
-    const steering = readFileSync(steeringPath, "utf-8");
+  const storage = getStorage();
+  const steering = storage.read(join(taskDir, "STEERING.md"));
+  if (steering !== null) {
     const lines = steering
       .split("\n")
       .filter((line) => !line.startsWith("#"))
@@ -50,35 +50,34 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
   }
 
   // 2. Phase prompt
-  const phasePromptPath = resolvePromptPath(`task_${phase}`);
-  if (existsSync(phasePromptPath)) {
-    prompt += readFileSync(phasePromptPath, "utf-8");
+  const phasePrompt = storage.read(resolvePromptPath(`task_${phase}`));
+  if (phasePrompt !== null) {
+    prompt += phasePrompt;
   }
 
   // 3. Phase-specific context
   switch (phase) {
     case "plan": {
-      const researchPath = join(taskDir, "RESEARCH.md");
-      if (existsSync(researchPath)) {
+      const research = storage.read(join(taskDir, "RESEARCH.md"));
+      if (research !== null) {
         prompt += "\n---\n\n## Research Findings\n\n";
-        prompt += readFileSync(researchPath, "utf-8");
+        prompt += research;
       }
       break;
     }
 
     case "exec": {
-      const progressPath = join(taskDir, "PROGRESS.md");
-      if (existsSync(progressPath)) {
-        const section = extractCurrentSection(readFileSync(progressPath, "utf-8"));
+      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (progressContent !== null) {
+        const section = extractCurrentSection(progressContent);
         if (section) {
           prompt += "\n" + section;
         }
       }
       // Append rendered checklist templates
       for (const tmplName of ["checklist_static", "checklist_tests", "checklist_deploy"]) {
-        const tmplPath = resolveTemplatePath(tmplName);
-        if (existsSync(tmplPath)) {
-          const content = readFileSync(tmplPath, "utf-8");
+        const content = storage.read(resolveTemplatePath(tmplName));
+        if (content !== null) {
           const rendered = renderTemplate(content, buildTemplateVars(state, taskDir));
           prompt += "\n" + rendered;
         }
@@ -87,10 +86,10 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
     }
 
     case "review": {
-      const progressPath = join(taskDir, "PROGRESS.md");
-      if (existsSync(progressPath)) {
+      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (progressContent !== null) {
         prompt += "\n---\n\n## Current Section (to review)\n\n";
-        const section = extractCurrentSection(readFileSync(progressPath, "utf-8"));
+        const section = extractCurrentSection(progressContent);
         if (section) {
           prompt += section;
         }
@@ -121,11 +120,11 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
  * Currently copies STEERING.md template if missing.
  */
 function scaffoldTaskFiles(taskDir: string): void {
-  const steeringDest = join(taskDir, "STEERING.md");
-  if (!existsSync(steeringDest)) {
-    const tmplPath = resolveTemplatePath("STEERING");
-    if (existsSync(tmplPath)) {
-      copyFileSync(tmplPath, steeringDest);
+  const storage = getStorage();
+  if (storage.read(join(taskDir, "STEERING.md")) === null) {
+    const tmpl = storage.read(resolveTemplatePath("STEERING"));
+    if (tmpl !== null) {
+      storage.write(join(taskDir, "STEERING.md"), tmpl);
     }
   }
 }
@@ -136,14 +135,15 @@ function scaffoldTaskFiles(taskDir: string): void {
  * Returns the reason string if stopped, null otherwise.
  */
 function checkStopSignal(taskDir: string): string | null {
+  const storage = getStorage();
   const stopFile = join(taskDir, "STOP");
-  if (!existsSync(stopFile)) return null;
+  const reason = storage.read(stopFile);
+  if (reason === null) return null;
 
-  const reason = readFileSync(stopFile, "utf-8").trim();
-  unlinkSync(stopFile);
+  storage.remove(stopFile);
 
   console.log(`\n${chalk.yellow.bold("STOP signal detected.")}`);
-  console.log(`Reason: ${reason}`);
+  console.log(`Reason: ${reason.trim()}`);
 
   updateState(taskDir, (s) => ({
     ...s,
@@ -241,15 +241,17 @@ function sleep(seconds: number): Promise<void> {
  * runs the engine, handles transitions, and checks stop signals.
  */
 export async function mainLoop(opts: LoopOptions): Promise<void> {
-  const taskDir = join(opts.tasksDir, opts.name);
+  return runWithContext(createDefaultContext(), () => _mainLoop(opts));
+}
 
-  // Ensure task directory exists
-  const { mkdirSync } = await import("node:fs");
-  mkdirSync(taskDir, { recursive: true });
+async function _mainLoop(opts: LoopOptions): Promise<void> {
+  const taskDir = join(opts.tasksDir, opts.name);
+  const storage = getStorage();
 
   // Init or resume state
   let state: State;
-  if (existsSync(join(taskDir, "state.json"))) {
+  const existingState = storage.read(join(taskDir, "state.json"));
+  if (existingState !== null) {
     state = readState(taskDir);
     // Update engine/model if caller specified different ones
     if (state.engine !== opts.engine || state.model !== opts.model) {
@@ -289,9 +291,9 @@ export async function mainLoop(opts: LoopOptions): Promise<void> {
 
     if (!shouldContinue(state, iteration, opts)) {
       if (state.phase === "done") {
-        const progressPath = join(taskDir, "PROGRESS.md");
-        if (existsSync(progressPath)) {
-          const { checked, unchecked } = countProgress(readFileSync(progressPath, "utf-8"));
+        const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+        if (progressContent !== null) {
+          const { checked, unchecked } = countProgress(progressContent);
           console.log(
             `\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`,
           );
@@ -316,9 +318,8 @@ export async function mainLoop(opts: LoopOptions): Promise<void> {
     console.log(` Phase: ${phase} (iteration ${state.phaseIteration})`);
 
     if (phase === "exec" || phase === "review") {
-      const progressPath = join(taskDir, "PROGRESS.md");
-      if (existsSync(progressPath)) {
-        const progressContent = readFileSync(progressPath, "utf-8");
+      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (progressContent !== null) {
         const section = extractCurrentSection(progressContent);
         if (section) {
           const firstLine = section.split("\n")[0];

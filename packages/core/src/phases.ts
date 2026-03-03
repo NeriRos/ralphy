@@ -1,18 +1,20 @@
-import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { type State, type Phase } from "@ralphy/types";
 import { writeState } from "./state";
 import { countProgress } from "./progress";
+import { getStorage } from "@ralphy/context";
 
 /**
  * Infer the current phase from files present in a task directory.
  */
 export function inferPhaseFromFiles(taskDir: string): Phase {
-  if (!existsSync(join(taskDir, "RESEARCH.md"))) return "research";
-  if (!existsSync(join(taskDir, "PLAN.md")) || !existsSync(join(taskDir, "PROGRESS.md")))
-    return "plan";
+  const storage = getStorage();
+  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return "research";
 
-  const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+  const plan = storage.read(join(taskDir, "PLAN.md"));
+  const progress = storage.read(join(taskDir, "PROGRESS.md"));
+  if (plan === null || progress === null) return "plan";
+
   const { unchecked } = countProgress(progress);
   return unchecked === 0 ? "done" : "exec";
 }
@@ -54,20 +56,23 @@ export function recordPhaseTransition(
 export function advancePhase(state: State, taskDir: string): State {
   const current = state.phase as Phase;
 
+  const storage = getStorage();
+
   switch (current) {
     case "research": {
-      if (!existsSync(join(taskDir, "RESEARCH.md"))) {
+      if (storage.read(join(taskDir, "RESEARCH.md")) === null) {
         throw new Error("Cannot advance from research — RESEARCH.md does not exist yet");
       }
       return recordPhaseTransition(state, "research", "plan");
     }
 
     case "plan": {
-      if (!existsSync(join(taskDir, "PLAN.md")) || !existsSync(join(taskDir, "PROGRESS.md"))) {
+      const plan = storage.read(join(taskDir, "PLAN.md"));
+      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (plan === null || progressContent === null) {
         throw new Error("Cannot advance from plan — PLAN.md and PROGRESS.md must both exist");
       }
-      const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
-      const { unchecked } = countProgress(progress);
+      const { unchecked } = countProgress(progressContent);
       if (unchecked === 0) {
         throw new Error("Cannot advance to exec — PROGRESS.md has no unchecked items");
       }
@@ -79,7 +84,7 @@ export function advancePhase(state: State, taskDir: string): State {
     }
 
     case "review": {
-      const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+      const progress = storage.read(join(taskDir, "PROGRESS.md")) ?? "";
       const hasIssues = /⚠️/.test(progress);
       if (hasIssues) {
         return recordPhaseTransition(state, "review", "exec", "issues found -> loop back to exec");
@@ -130,9 +135,9 @@ export function setPhase(state: State, taskDir: string, targetPhase: Phase): Sta
  * If all items are checked, advance to review. Otherwise stay in exec.
  */
 export function autoTransitionAfterExec(state: State, taskDir: string): State {
-  if (!existsSync(join(taskDir, "PROGRESS.md"))) return state;
+  const progress = getStorage().read(join(taskDir, "PROGRESS.md"));
+  if (progress === null) return state;
 
-  const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
   const { unchecked } = countProgress(progress);
 
   if (unchecked > 0) {
@@ -156,9 +161,9 @@ export function autoTransitionAfterExec(state: State, taskDir: string): State {
  * - If no issues but unchecked items remain: advance to exec (next section)
  */
 export function autoTransitionAfterReview(state: State, taskDir: string): State {
-  if (!existsSync(join(taskDir, "PROGRESS.md"))) return state;
+  const progress = getStorage().read(join(taskDir, "PROGRESS.md"));
+  if (progress === null) return state;
 
-  const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
   const hasIssues = /⚠️/.test(progress);
 
   if (hasIssues) {

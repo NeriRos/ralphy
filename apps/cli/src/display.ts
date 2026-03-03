@@ -1,8 +1,8 @@
 import chalk from "chalk";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
 import { countProgress } from "@ralphy/core/progress";
+import { getStorage } from "@ralphy/context";
 
 const SEP = chalk.gray("━".repeat(44));
 
@@ -95,16 +95,16 @@ export function showStatus(state: State, taskDir: string): void {
   console.log(`   Cached tokens:  ${state.usage.total_cache_read_input_tokens}`);
   console.log("--------------------------------------------");
 
+  const storage = getStorage();
   console.log(" Files:");
   for (const f of ["RESEARCH.md", "PLAN.md", "PROGRESS.md"]) {
-    const exists = existsSync(join(taskDir, f));
-    console.log(`   ${exists ? "[x]" : "[ ]"} ${f}`);
+    const content = storage.read(join(taskDir, f));
+    console.log(`   ${content !== null ? "[x]" : "[ ]"} ${f}`);
   }
 
-  const progressPath = join(taskDir, "PROGRESS.md");
-  if (existsSync(progressPath)) {
-    const content = readFileSync(progressPath, "utf-8");
-    const { checked, unchecked } = countProgress(content);
+  const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+  if (progressContent !== null) {
+    const { checked, unchecked } = countProgress(progressContent);
     console.log(` Progress:         ${checked} done / ${unchecked} remaining`);
   }
 
@@ -129,22 +129,22 @@ export function showList(tasksDir: string): void {
 
   let found = false;
 
-  let entries: string[];
-  try {
-    entries = readdirSync(tasksDir);
-  } catch {
+  const storage = getStorage();
+  const entries = storage.list(tasksDir);
+
+  if (entries.length === 0) {
     console.log(" No tasks directory found.");
     console.log("============================================");
     return;
   }
 
   for (const entry of entries) {
-    const stateFile = join(tasksDir, entry, "state.json");
-    if (!existsSync(stateFile)) continue;
+    const raw = storage.read(join(tasksDir, entry, "state.json"));
+    if (raw === null) continue;
 
     let state: Record<string, unknown>;
     try {
-      state = JSON.parse(readFileSync(stateFile, "utf-8"));
+      state = JSON.parse(raw);
     } catch {
       continue;
     }
@@ -159,10 +159,9 @@ export function showList(tasksDir: string): void {
     const prompt = String(state.prompt ?? "").slice(0, 60);
 
     let progressInfo = "";
-    const progressFile = join(tasksDir, entry, "PROGRESS.md");
-    if (existsSync(progressFile)) {
-      const content = readFileSync(progressFile, "utf-8");
-      const { checked, unchecked } = countProgress(content);
+    const progressContent = storage.read(join(tasksDir, entry, "PROGRESS.md"));
+    if (progressContent !== null) {
+      const { checked, unchecked } = countProgress(progressContent);
       progressInfo = ` | progress: ${checked} done / ${unchecked} remaining`;
     }
 

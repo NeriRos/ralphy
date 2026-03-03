@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+// --- Storage ---
+
+export interface StorageProvider {
+  /** Read a key. Returns null if it does not exist. */
+  read(path: string): string | null;
+  /** Write a key. Creates parent directories (or equivalent) as needed. */
+  write(path: string, content: string): void;
+  /** Delete a key. No-op if it does not exist. */
+  remove(path: string): void;
+  /** List child keys / entries under a prefix. Returns empty array if prefix does not exist. */
+  list(prefix: string): string[];
+}
+
 // --- Type aliases ---
 
 export type Phase = "research" | "plan" | "exec" | "review" | "done";
