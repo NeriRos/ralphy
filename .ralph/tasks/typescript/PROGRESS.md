@@ -19,9 +19,9 @@
 
 ## Section 3 — State Management and Progress Parsing
 
-- [ ] Create `packages/ralph/src/state.ts`: `readState(taskDir)`, `writeState(taskDir, state)` (atomic write via tmp+rename), `updateState(taskDir, updater)`, `buildInitialState(opts)`, `migrateState(taskDir)`, `ensureState(taskDir)`
-- [ ] Create `packages/ralph/src/progress.ts`: `extractCurrentSection(content)` (port AWK logic — find first section with unchecked items), `countProgress(content)` returning `{ checked, unchecked, total }`
-- [ ] Write tests for state read/write round-trip, atomic write behavior, and progress parsing in `packages/ralph/src/__tests__/state.test.ts` and `packages/ralph/src/__tests__/progress.test.ts`
+- [x] Create `packages/ralph/src/state.ts`: `readState(taskDir)`, `writeState(taskDir, state)` (atomic write via tmp+rename), `updateState(taskDir, updater)`, `buildInitialState(opts)`, `migrateState(taskDir)`, `ensureState(taskDir)`
+- [x] Create `packages/ralph/src/progress.ts`: `extractCurrentSection(content)` (port AWK logic — find first section with unchecked items), `countProgress(content)` returning `{ checked, unchecked, total }`
+- [x] Write tests for state read/write round-trip, atomic write behavior, and progress parsing in `packages/ralph/src/__tests__/state.test.ts` and `packages/ralph/src/__tests__/progress.test.ts`
 
 ## Section 4 — Git Operations and Display
 
