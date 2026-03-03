@@ -11,11 +11,11 @@
 
 ## Section 2 — Types, Schemas, and Static Assets
 
-- [ ] Create `packages/ralph/src/types.ts`: Zod schemas for `State`, `Usage`, `HistoryEntry`, plus `Phase`, `Engine`, `Mode` type aliases; export inferred types
-- [ ] Copy `src/bin/prompts/*.md` to `packages/ralph/prompts/` (4 files)
-- [ ] Copy `src/bin/templates/*.md` to `packages/ralph/templates/` (6 files)
-- [ ] Create `packages/ralph/src/templates.ts`: `renderTemplate(content, vars)` using `String.replaceAll`, `resolvePromptPath(name)` and `resolveTemplatePath(name)` using `import.meta.dir`
-- [ ] Write tests for `renderTemplate` and schema parsing in `packages/ralph/src/__tests__/types.test.ts`
+- [x] Create `packages/ralph/src/types.ts`: Zod schemas for `State`, `Usage`, `HistoryEntry`, plus `Phase`, `Engine`, `Mode` type aliases; export inferred types
+- [x] Copy `src/bin/prompts/*.md` to `packages/ralph/prompts/` (4 files)
+- [x] Copy `src/bin/templates/*.md` to `packages/ralph/templates/` (7 files)
+- [x] Create `packages/ralph/src/templates.ts`: `renderTemplate(content, vars)` using `String.replaceAll`, `resolvePromptPath(name)` and `resolveTemplatePath(name)` using `import.meta.url`
+- [x] Write tests for `renderTemplate` and schema parsing in `packages/ralph/src/__tests__/types.test.ts`
 
 ## Section 3 — State Management and Progress Parsing
 
