@@ -21,10 +21,12 @@ const DOCUMENTS = ["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"] as co
 
 export function registerTools(server: McpServer, tasksDir: string): void {
   // --- ralph_list_tasks ---
-  server.tool(
+  server.registerTool(
     "ralph_list_tasks",
-    "List all ralph tasks with their phase, status, and progress",
-    { includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase") },
+    {
+      description: "List all ralph tasks with their phase, status, and progress",
+      inputSchema: { includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase") },
+    },
     async ({ includeCompleted }) => {
       try {
         if (!existsSync(tasksDir)) {
@@ -78,10 +80,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_get_task ---
-  server.tool(
+  server.registerTool(
     "ralph_get_task",
-    "Get detailed information about a specific task",
-    { name: z.string().describe("Task name") },
+    {
+      description: "Get detailed information about a specific task",
+      inputSchema: { name: z.string().describe("Task name") },
+    },
     async ({ name }) => {
       try {
         const taskDir = join(tasksDir, name);
@@ -137,12 +141,14 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_read_document ---
-  server.tool(
+  server.registerTool(
     "ralph_read_document",
-    "Read a document file from a task directory",
     {
-      name: z.string().describe("Task name"),
-      document: z.enum(["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"]).describe("Document to read"),
+      description: "Read a document file from a task directory",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        document: z.enum(["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"]).describe("Document to read"),
+      },
     },
     async ({ name, document }) => {
       try {
@@ -165,14 +171,16 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_create_task ---
-  server.tool(
+  server.registerTool(
     "ralph_create_task",
-    "Create a new ralph task with initial state and steering file",
     {
-      name: z.string().describe("Task name (used as directory name)"),
-      prompt: z.string().describe("Task prompt/description"),
-      engine: z.string().optional().describe("Engine to use (default: claude)"),
-      model: z.string().optional().describe("Model to use (default: opus)"),
+      description: "Create a new ralph task with initial state and steering file",
+      inputSchema: {
+        name: z.string().describe("Task name (used as directory name)"),
+        prompt: z.string().describe("Task prompt/description"),
+        engine: z.string().optional().describe("Engine to use (default: claude)"),
+        model: z.string().optional().describe("Model to use (default: opus)"),
+      },
     },
     async ({ name, prompt, engine, model }) => {
       try {
@@ -211,14 +219,16 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_run_task ---
-  server.tool(
+  server.registerTool(
     "ralph_run_task",
-    "Start running a task in the background (spawns a detached subprocess)",
     {
-      name: z.string().describe("Task name"),
-      maxIterations: z.number().optional().describe("Maximum iterations to run"),
-      engine: z.string().optional().describe("Engine override"),
-      model: z.string().optional().describe("Model override"),
+      description: "Start running a task in the background (spawns a detached subprocess)",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        maxIterations: z.number().optional().describe("Maximum iterations to run"),
+        engine: z.string().optional().describe("Engine override"),
+        model: z.string().optional().describe("Model override"),
+      },
     },
     async ({ name, maxIterations, engine, model }) => {
       try {
@@ -255,12 +265,14 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_advance_phase ---
-  server.tool(
+  server.registerTool(
     "ralph_advance_phase",
-    "Advance a task to its next phase, or set a specific phase",
     {
-      name: z.string().describe("Task name"),
-      phase: z.string().optional().describe("Target phase (if omitted, advances to next phase)"),
+      description: "Advance a task to its next phase, or set a specific phase",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        phase: z.string().optional().describe("Target phase (if omitted, advances to next phase)"),
+      },
     },
     async ({ name, phase }) => {
       try {
@@ -293,12 +305,14 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_update_steering ---
-  server.tool(
+  server.registerTool(
     "ralph_update_steering",
-    "Update the STEERING.md file for a task with new guidance",
     {
-      name: z.string().describe("Task name"),
-      content: z.string().describe("New STEERING.md content"),
+      description: "Update the STEERING.md file for a task with new guidance",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        content: z.string().describe("New STEERING.md content"),
+      },
     },
     async ({ name, content }) => {
       try {
