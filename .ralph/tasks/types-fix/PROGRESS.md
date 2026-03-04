@@ -24,9 +24,9 @@
 
 ## Section 4 — Tests
 
-- [ ] **Unit tests** — run tests for affected libraries/modules. If tests don't exist for new code, create them.
-- [ ] **Integration tests** _(if applicable)_ — run if your changes touch API routes, database queries, or cross-module boundaries.
-- [ ] **E2E tests** _(if applicable)_ — run if your changes affect user-facing flows (see `CLAUDE.md` for e2e command).
+- [x] **Unit tests** — engine (45 pass), cli (48 pass). All affected packages green.
+- [x] **Integration tests** _(if applicable)_ — N/A, changes are pure type refactoring with no API/DB/cross-module boundary changes.
+- [x] **E2E tests** _(if applicable)_ — N/A, no user-facing flow changes.
 
 ## Section 5 — Deploy
 
