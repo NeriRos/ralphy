@@ -1,3 +1,16 @@
+---
+name: review
+order: 4
+requires: []
+next: exec
+autoAdvance: allChecked
+loopBack: exec
+terminal: false
+context:
+  - type: currentSection
+    label: "Current Section (to review)"
+---
+
 # Task — Review Phase
 
 You review the work completed in the current execution section and identify any issues that need to be fixed.
@@ -56,14 +69,14 @@ If there are errors:
 If you found **any problems**, add them to `PROGRESS.md` under the current section:
 
 ```markdown
-- [x] Item name — ⚠️ Issue: [clear description of what's wrong]
+- [x] Item name — Issue: [clear description of what's wrong]
 ```
 
 Example:
 
 ```markdown
-- [x] Add login button — ⚠️ Issue: Button missing error handling for failed login attempts
-- [x] Create auth service — ⚠️ Issue: Type error on line 42: cannot assign string to AuthToken
+- [x] Add login button — Issue: Button missing error handling for failed login attempts
+- [x] Create auth service — Issue: Type error on line 42: cannot assign string to AuthToken
 ```
 
 Include enough detail that an implementation agent can fix the issue directly without re-reading the code.

@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { type State, type Phase } from "@ralphy/types";
+import type { State } from "@ralphy/types";
+import { getPhase, getNextPhase, loadPhases } from "@ralphy/phases";
 import { writeState } from "./state";
 import { countProgress } from "./progress";
 import { resolveChecklistDir, listChecklists } from "./templates";
@@ -8,16 +9,34 @@ import { getStorage } from "@ralphy/context";
 /**
  * Infer the current phase from files present in a task directory.
  */
-export function inferPhaseFromFiles(taskDir: string): Phase {
+export function inferPhaseFromFiles(taskDir: string): string {
   const storage = getStorage();
-  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return "research";
+  const phases = loadPhases();
 
-  const plan = storage.read(join(taskDir, "PLAN.md"));
+  // Walk phases in order; the first whose `requires` are not all met is the answer.
+  for (const phase of phases) {
+    if (phase.terminal) continue;
+    const missing = phase.requires.some((f) => storage.read(join(taskDir, f)) === null);
+    if (missing) {
+      // Find the previous phase (the one before this one that would produce the required files)
+      const idx = phases.indexOf(phase);
+      if (idx > 0) return phases[idx - 1]!.name;
+      return phases[0]!.name;
+    }
+  }
+
+  // All requires met — check if progress items remain
   const progress = storage.read(join(taskDir, "PROGRESS.md"));
-  if (plan === null || progress === null) return "plan";
+  if (progress) {
+    const { unchecked } = countProgress(progress);
+    if (unchecked === 0) {
+      const terminal = phases.find((p) => p.terminal);
+      return terminal?.name ?? "done";
+    }
+  }
 
-  const { unchecked } = countProgress(progress);
-  return unchecked === 0 ? "done" : "exec";
+  // Default to exec if all files present but items remain
+  return phases.find((p) => p.name === "exec")?.name ?? phases[phases.length - 1]!.name;
 }
 
 /**
@@ -25,8 +44,8 @@ export function inferPhaseFromFiles(taskDir: string): Phase {
  */
 export function recordPhaseTransition(
   state: State,
-  from: Phase,
-  to: Phase,
+  from: string,
+  to: string,
   result?: string,
 ): State {
   const now = new Date().toISOString();
@@ -50,82 +69,85 @@ export function recordPhaseTransition(
 }
 
 /**
- * Advance to the next phase in the sequence: research → plan → exec.
- * Validates that required files exist before advancing.
- * Throws if advancement is not possible.
+ * Advance to the next phase. Validates that required files exist before advancing.
+ * Uses dynamic phase configs for all transition logic.
  */
 export function advancePhase(state: State, taskDir: string): State {
-  const current = state.phase as Phase;
-
+  const current = state.phase;
+  const config = getPhase(current);
   const storage = getStorage();
 
-  switch (current) {
-    case "research": {
-      if (storage.read(join(taskDir, "RESEARCH.md")) === null) {
-        throw new Error("Cannot advance from research — RESEARCH.md does not exist yet");
-      }
-      return recordPhaseTransition(state, "research", "plan");
+  if (config.terminal) {
+    throw new Error("Task is already done. Nothing to advance.");
+  }
+
+  // Handle loopBack phases (e.g. review) — these have special transition logic
+  // and skip requires validation since the target already had its files created earlier
+  if (config.loopBack) {
+    const progress = storage.read(join(taskDir, "PROGRESS.md")) ?? "";
+    const hasIssues = /⚠️/.test(progress);
+    if (hasIssues) {
+      return recordPhaseTransition(state, current, config.loopBack, "issues found -> loop back");
     }
-
-    case "plan": {
-      const plan = storage.read(join(taskDir, "PLAN.md"));
-      let progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (plan === null || progressContent === null) {
-        throw new Error("Cannot advance from plan — PLAN.md and PROGRESS.md must both exist");
-      }
-      const { unchecked } = countProgress(progressContent);
-      if (unchecked === 0) {
-        throw new Error("Cannot advance to exec — PROGRESS.md has no unchecked items");
-      }
-
-      // Auto-append checklists as final sections of PROGRESS.md
-      progressContent = appendChecklists(progressContent);
-      storage.write(join(taskDir, "PROGRESS.md"), progressContent);
-
-      return recordPhaseTransition(state, "plan", "exec");
-    }
-
-    case "exec": {
-      return recordPhaseTransition(state, "exec", "review");
-    }
-
-    case "review": {
-      const progress = storage.read(join(taskDir, "PROGRESS.md")) ?? "";
-      const hasIssues = /⚠️/.test(progress);
-      if (hasIssues) {
-        return recordPhaseTransition(state, "review", "exec", "issues found -> loop back to exec");
-      }
-      const { unchecked } = countProgress(progress);
-      if (unchecked === 0) {
+    const { unchecked } = countProgress(progress);
+    if (unchecked === 0) {
+      const terminal = loadPhases().find((p) => p.terminal);
+      if (terminal) {
         const updated = recordPhaseTransition(
           state,
-          "review",
-          "done",
+          current,
+          terminal.name,
           "no issues found -> advance to done",
         );
         return { ...updated, status: "completed" };
       }
-      return recordPhaseTransition(
-        state,
-        "review",
-        "exec",
-        "no issues found -> advance to next section",
-      );
     }
-
-    case "done":
-      throw new Error("Task is already done. Nothing to advance.");
-
-    default:
-      throw new Error(`Unknown phase: ${current}`);
+    const nextName = getNextPhase(current);
+    if (!nextName) throw new Error(`No next phase after ${current}`);
+    return recordPhaseTransition(
+      state,
+      current,
+      nextName,
+      "no issues found -> advance to next section",
+    );
   }
+
+  // Resolve the target phase
+  const nextName = getNextPhase(current);
+  if (!nextName) {
+    throw new Error(`No next phase after ${current}`);
+  }
+
+  const nextConfig = getPhase(nextName);
+
+  // Validate requires for the target phase
+  for (const file of nextConfig.requires) {
+    if (storage.read(join(taskDir, file)) === null) {
+      throw new Error(`Cannot advance to ${nextName} — ${file} does not exist yet`);
+    }
+  }
+
+  // Special handling: when advancing from plan to exec, validate progress has items and append checklists
+  if (nextName === "exec" && current === "plan") {
+    let progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+    if (progressContent !== null) {
+      const { unchecked } = countProgress(progressContent);
+      if (unchecked === 0) {
+        throw new Error("Cannot advance to exec — PROGRESS.md has no unchecked items");
+      }
+      progressContent = appendChecklists(progressContent);
+      storage.write(join(taskDir, "PROGRESS.md"), progressContent);
+    }
+  }
+
+  return recordPhaseTransition(state, current, nextName);
 }
 
 /**
  * Set the phase directly, bypassing validation.
  */
-export function setPhase(state: State, taskDir: string, targetPhase: Phase): State {
-  const from = state.phase as Phase;
+export function setPhase(state: State, taskDir: string, targetPhase: string): State {
+  const from = state.phase;
   const updated = recordPhaseTransition(
     state,
     from,
@@ -137,79 +159,93 @@ export function setPhase(state: State, taskDir: string, targetPhase: Phase): Sta
 }
 
 /**
- * Auto-transition after an exec iteration.
- * If all items are checked, advance to review. Otherwise stay in exec.
+ * Generic auto-transition after any iteration.
+ * Uses phase config to determine behavior:
+ * - If `loopBack` is set and issues found → transition to loopBack phase
+ * - If `autoAdvance === "allChecked"` and all items checked → advance
+ * - Otherwise stay in current phase
  */
-export function autoTransitionAfterExec(state: State, taskDir: string): State {
-  const progress = getStorage().read(join(taskDir, "PROGRESS.md"));
+export function autoTransitionAfterIteration(state: State, taskDir: string): State {
+  const config = getPhase(state.phase);
+  const storage = getStorage();
+  const progress = storage.read(join(taskDir, "PROGRESS.md"));
   if (progress === null) return state;
 
-  const { unchecked } = countProgress(progress);
-
-  if (unchecked > 0) {
-    return state;
+  // Check for loopBack (issues found)
+  if (config.loopBack) {
+    const hasIssues = /⚠️/.test(progress);
+    if (hasIssues) {
+      const updated = recordPhaseTransition(
+        state,
+        state.phase,
+        config.loopBack,
+        "issues found -> loop back",
+      );
+      writeState(taskDir, updated);
+      return updated;
+    }
   }
 
-  const updated = recordPhaseTransition(
-    state,
-    "exec",
-    "review",
-    "all items checked -> auto-advance to review",
-  );
-  writeState(taskDir, updated);
-  return updated;
-}
+  // Check for autoAdvance
+  if (config.autoAdvance === "allChecked") {
+    const { unchecked } = countProgress(progress);
+    if (unchecked === 0) {
+      // If loopBack is set (review phase), go to terminal when all checked
+      if (config.loopBack) {
+        const terminal = loadPhases().find((p) => p.terminal);
+        if (terminal) {
+          const updated = recordPhaseTransition(
+            state,
+            state.phase,
+            terminal.name,
+            "all items checked -> advance to done",
+          );
+          const final = { ...updated, status: "completed" };
+          writeState(taskDir, final);
+          return final;
+        }
+      }
 
-/**
- * Auto-transition after a review iteration.
- * - If issues found (⚠️ markers): loop back to exec
- * - If no issues and all items checked: advance to done
- * - If no issues but unchecked items remain: advance to exec (next section)
- */
-export function autoTransitionAfterReview(state: State, taskDir: string): State {
-  const progress = getStorage().read(join(taskDir, "PROGRESS.md"));
-  if (progress === null) return state;
-
-  const hasIssues = /⚠️/.test(progress);
-
-  if (hasIssues) {
-    const updated = recordPhaseTransition(
-      state,
-      "review",
-      "exec",
-      "issues found -> loop back to exec",
-    );
-    writeState(taskDir, updated);
-    return updated;
+      // Otherwise advance to next phase
+      const nextName = getNextPhase(state.phase);
+      if (nextName) {
+        const updated = recordPhaseTransition(
+          state,
+          state.phase,
+          nextName,
+          "all items checked -> auto-advance",
+        );
+        writeState(taskDir, updated);
+        return updated;
+      }
+    }
   }
 
-  const { unchecked } = countProgress(progress);
-
-  if (unchecked === 0) {
-    const updated = recordPhaseTransition(
-      state,
-      "review",
-      "done",
-      "no issues found -> advance to done",
-    );
-    const final = { ...updated, status: "completed" };
-    writeState(taskDir, final);
-    return final;
+  // No loopBack and review-style phase: check for next section advancement
+  if (config.loopBack && config.autoAdvance === "allChecked") {
+    const { unchecked } = countProgress(progress);
+    if (unchecked > 0) {
+      // Still items remaining, advance to next (exec) for the next section
+      const nextName = getNextPhase(state.phase);
+      if (nextName) {
+        const updated = recordPhaseTransition(
+          state,
+          state.phase,
+          nextName,
+          "no issues found -> advance to next section",
+        );
+        writeState(taskDir, updated);
+        return updated;
+      }
+    }
   }
 
-  const updated = recordPhaseTransition(
-    state,
-    "review",
-    "exec",
-    "no issues found -> advance to next section",
-  );
-  writeState(taskDir, updated);
-  return updated;
+  return state;
 }
 
 /**
  * Append all checklists from templates/checklists/ as new numbered sections
- * at the end of PROGRESS.md content. Titles are extracted from each file's H1 heading.
+ * at the end of PROGRESS.md content.
  */
 function appendChecklists(progress: string): string {
   const storage = getStorage();

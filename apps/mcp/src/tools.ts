@@ -8,7 +8,7 @@ import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
 import { commitState } from "@ralphy/core/git";
 import { resolveTemplatePath, resolveChecklistDir, listChecklists } from "@ralphy/core/templates";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-import type { Phase } from "@ralphy/types";
+import { getPhase } from "@ralphy/phases";
 
 const DOCUMENTS = ["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"] as const;
 
@@ -34,7 +34,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
 
             try {
               const state = readState(taskDir);
-              if (!includeCompleted && state.phase === "done") continue;
+              try {
+                const phaseConfig = getPhase(state.phase);
+                if (!includeCompleted && phaseConfig.terminal) continue;
+              } catch {
+                // Unknown phase — include it
+              }
 
               let progress = null;
               const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
@@ -327,7 +332,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
           let updated;
           if (phase) {
             // setPhase writes state internally
-            updated = setPhase(state, taskDir, phase as Phase);
+            updated = setPhase(state, taskDir, phase);
           } else {
             // advancePhase does NOT write state — caller must do it
             updated = advancePhase(state, taskDir);

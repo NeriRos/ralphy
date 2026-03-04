@@ -15,9 +15,43 @@ export interface StorageProvider {
 
 // --- Type aliases ---
 
-export type Phase = "research" | "plan" | "exec" | "review" | "done";
+export type Phase = string;
 export type Engine = "claude" | "codex";
 export type Mode = "task" | "list" | "status" | "advance" | "set-phase";
+
+// --- Phase config types ---
+
+export const ContextEntrySchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("file"),
+    file: z.string(),
+    label: z.string(),
+  }),
+  z.object({
+    type: z.literal("currentSection"),
+    label: z.string(),
+  }),
+]);
+
+export type ContextEntry = z.infer<typeof ContextEntrySchema>;
+
+export const PhaseFrontmatterSchema = z.object({
+  name: z.string(),
+  order: z.number(),
+  requires: z.array(z.string()).default([]),
+  next: z.string().nullable().default(null),
+  autoAdvance: z.enum(["allChecked"]).nullable().default(null),
+  loopBack: z.string().nullable().default(null),
+  terminal: z.boolean().default(false),
+  context: z.array(ContextEntrySchema).default([]),
+});
+
+export type PhaseFrontmatter = z.infer<typeof PhaseFrontmatterSchema>;
+
+export interface PhaseConfig extends PhaseFrontmatter {
+  /** The markdown body (prompt content) after the frontmatter. */
+  prompt: string;
+}
 
 // --- Zod schemas ---
 

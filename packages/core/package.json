@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ralphy/context": "workspace:*",
+    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

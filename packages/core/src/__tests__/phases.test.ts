@@ -4,8 +4,7 @@ import {
   recordPhaseTransition,
   advancePhase,
   setPhase,
-  autoTransitionAfterExec,
-  autoTransitionAfterReview,
+  autoTransitionAfterIteration,
 } from "../phases";
 import { buildInitialState, writeState, readState } from "../state";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
@@ -223,39 +222,37 @@ describe("setPhase", () => {
     }));
 });
 
-describe("autoTransitionAfterExec", () => {
-  test("stays in exec when unchecked items remain", () =>
+describe("autoTransitionAfterIteration", () => {
+  test("exec: stays when unchecked items remain", () =>
     withStorage(() => {
       writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
       const state = makeState({ phase: "exec" });
       writeState(tempDir, state);
-      const updated = autoTransitionAfterExec(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("exec");
       expect(updated.history).toHaveLength(0);
     }));
 
-  test("advances to review when all items checked", () =>
+  test("exec: advances to review when all items checked", () =>
     withStorage(() => {
       writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
       const state = makeState({ phase: "exec" });
       writeState(tempDir, state);
-      const updated = autoTransitionAfterExec(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("review");
 
       const persisted = readState(tempDir);
       expect(persisted.phase).toBe("review");
     }));
 
-  test("returns state unchanged when PROGRESS.md missing", () =>
+  test("exec: returns state unchanged when PROGRESS.md missing", () =>
     withStorage(() => {
       const state = makeState({ phase: "exec" });
-      const updated = autoTransitionAfterExec(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("exec");
     }));
-});
 
-describe("autoTransitionAfterReview", () => {
-  test("loops back to exec when issues found", () =>
+  test("review: loops back to exec when issues found", () =>
     withStorage(() => {
       writeFileSync(
         join(tempDir, "PROGRESS.md"),
@@ -264,17 +261,17 @@ describe("autoTransitionAfterReview", () => {
       );
       const state = makeState({ phase: "review" });
       writeState(tempDir, state);
-      const updated = autoTransitionAfterReview(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("exec");
       expect(updated.history[0]!.result).toContain("issues found");
     }));
 
-  test("advances to done when no issues and all items checked", () =>
+  test("review: advances to done when no issues and all items checked", () =>
     withStorage(() => {
       writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [x] Also done\n", "utf-8");
       const state = makeState({ phase: "review" });
       writeState(tempDir, state);
-      const updated = autoTransitionAfterReview(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("done");
       expect(updated.status).toBe("completed");
 
@@ -283,20 +280,20 @@ describe("autoTransitionAfterReview", () => {
       expect(persisted.status).toBe("completed");
     }));
 
-  test("advances to exec when no issues but unchecked items remain", () =>
+  test("review: advances to exec when no issues but unchecked items remain", () =>
     withStorage(() => {
       writeFileSync(join(tempDir, "PROGRESS.md"), "## S1\n- [x] Done\n- [ ] Todo\n", "utf-8");
       const state = makeState({ phase: "review" });
       writeState(tempDir, state);
-      const updated = autoTransitionAfterReview(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("exec");
       expect(updated.history[0]!.result).toContain("next section");
     }));
 
-  test("returns state unchanged when PROGRESS.md missing", () =>
+  test("review: returns state unchanged when PROGRESS.md missing", () =>
     withStorage(() => {
       const state = makeState({ phase: "review" });
-      const updated = autoTransitionAfterReview(state, tempDir);
+      const updated = autoTransitionAfterIteration(state, tempDir);
       expect(updated.phase).toBe("review");
     }));
 });

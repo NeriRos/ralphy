@@ -1,11 +1,12 @@
 import { join } from "node:path";
 import chalk from "chalk";
-import type { State, Phase } from "@ralphy/types";
+import type { State } from "@ralphy/types";
 import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
 import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
-import { renderTemplate, resolvePromptPath, resolveTemplatePath } from "@ralphy/core/templates";
+import { renderTemplate, resolveTemplatePath } from "@ralphy/core/templates";
 import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
-import { autoTransitionAfterExec, autoTransitionAfterReview } from "@ralphy/core/phases";
+import { autoTransitionAfterIteration } from "@ralphy/core/phases";
+import { getPhase } from "@ralphy/phases";
 import { gitPush } from "@ralphy/core/git";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import { log, error } from "@ralphy/output";
@@ -26,11 +27,11 @@ export interface LoopOptions {
 /**
  * Build the full prompt for a task iteration by concatenating:
  * 1. STEERING.md content (if present, filtered, max 20 lines)
- * 2. Phase-specific prompt file
- * 3. Phase-specific context (research findings, current section, checklists)
+ * 2. Phase-specific prompt from phase config
+ * 3. Phase-specific context driven by phase config's `context` array
  */
 export function buildTaskPrompt(state: State, taskDir: string): string {
-  const phase = state.phase as Phase;
+  const phaseConfig = getPhase(state.phase);
   let prompt = "";
 
   // 1. Inject STEERING.md at the top
@@ -44,50 +45,41 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
       .slice(0, 20);
     if (lines.length > 0) {
       prompt += "---\n";
-      prompt += "# 📌 User Steering (READ FIRST)\n\n";
+      prompt += "# User Steering (READ FIRST)\n\n";
       prompt += lines.join("\n") + "\n\n";
       prompt += "---\n\n";
     }
   }
 
-  // 2. Phase prompt (rendered with template vars including MCP_TOOLS)
-  const phasePrompt = storage.read(resolvePromptPath(`task_${phase}`));
-  if (phasePrompt !== null) {
-    prompt += renderTemplate(phasePrompt, buildTemplateVars(state, taskDir));
+  // 2. Phase prompt (rendered with template vars)
+  if (phaseConfig.prompt) {
+    prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
   }
 
-  // 3. Phase-specific context
-  switch (phase) {
-    case "plan": {
-      const research = storage.read(join(taskDir, "RESEARCH.md"));
-      if (research !== null) {
-        prompt += "\n---\n\n## Research Findings\n\n";
-        prompt += research;
-      }
-      break;
-    }
-
-    case "exec": {
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (progressContent !== null) {
-        const section = extractCurrentSection(progressContent);
-        if (section) {
-          prompt += "\n" + section;
+  // 3. Context injection driven by phase config
+  for (const entry of phaseConfig.context) {
+    switch (entry.type) {
+      case "file": {
+        const content = storage.read(join(taskDir, entry.file));
+        if (content !== null) {
+          prompt += `\n---\n\n## ${entry.label}\n\n`;
+          prompt += content;
         }
+        break;
       }
-      break;
-    }
-
-    case "review": {
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (progressContent !== null) {
-        prompt += "\n---\n\n## Current Section (to review)\n\n";
-        const section = extractCurrentSection(progressContent);
-        if (section) {
-          prompt += section;
+      case "currentSection": {
+        const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+        if (progressContent !== null) {
+          const section = extractCurrentSection(progressContent);
+          if (section) {
+            if (entry.label) {
+              prompt += `\n---\n\n## ${entry.label}\n\n`;
+            }
+            prompt += "\n" + section;
+          }
         }
+        break;
       }
-      break;
     }
   }
 
@@ -172,7 +164,8 @@ function checkStopSignal(taskDir: string): string | null {
  */
 function shouldContinue(state: State, iteration: number, opts: LoopOptions): boolean {
   if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return false;
-  if (state.phase === "done") return false;
+  const phaseConfig = getPhase(state.phase);
+  if (phaseConfig.terminal) return false;
   if (opts.noExecute && state.phase === "exec") return false;
   return true;
 }
@@ -303,7 +296,8 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     state = readState(taskDir);
 
     if (!shouldContinue(state, iteration, opts)) {
-      if (state.phase === "done") {
+      const phaseConfig = getPhase(state.phase);
+      if (phaseConfig.terminal) {
         const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
         if (progressContent !== null) {
           const { checked, unchecked } = countProgress(progressContent);
@@ -325,23 +319,17 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     log(`\n======== ITERATION ${iteration} ${time} ========\n`);
 
     // Show phase info
-    const phase = state.phase as Phase;
-    log(` Phase: ${phase} (iteration ${state.phaseIteration})`);
+    log(` Phase: ${state.phase} (iteration ${state.phaseIteration})`);
 
-    if (phase === "exec" || phase === "review") {
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (progressContent !== null) {
-        const section = extractCurrentSection(progressContent);
-        if (section) {
-          const firstLine = section.split("\n")[0];
-          log(` Section: ${firstLine}`);
-        }
-        const { checked, unchecked } = countProgress(progressContent);
-        log(` Progress: ${checked} done / ${unchecked} remaining`);
-        if (phase === "review") {
-          log(" (Reviewing section for quality/correctness...)");
-        }
+    const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+    if (progressContent !== null) {
+      const section = extractCurrentSection(progressContent);
+      if (section) {
+        const firstLine = section.split("\n")[0];
+        log(` Section: ${firstLine}`);
       }
+      const { checked, unchecked } = countProgress(progressContent);
+      log(` Progress: ${checked} done / ${unchecked} remaining`);
     }
     log("");
 
@@ -378,8 +366,6 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
       );
 
       if (failure.shouldStop) break;
-      // Non-fatal failures: break this iteration but don't exit the loop
-      // The shell version exits on any failure, so match that behavior
       break;
     }
 
@@ -393,12 +379,8 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
       engineResult.usage,
     );
 
-    // Auto-transition
-    if (phase === "exec") {
-      state = autoTransitionAfterExec(state, taskDir);
-    } else if (phase === "review") {
-      state = autoTransitionAfterReview(state, taskDir);
-    }
+    // Auto-transition using dynamic phase config
+    state = autoTransitionAfterIteration(state, taskDir);
 
     // Push to remote
     try {

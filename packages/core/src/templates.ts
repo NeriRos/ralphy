@@ -17,13 +17,6 @@ export function renderTemplate(content: string, vars: Record<string, string>): s
 }
 
 /**
- * Resolve the absolute path to a prompt file by name (without extension).
- */
-export function resolvePromptPath(name: string): string {
-  return resolve(packageRoot, "prompts", `${name}.md`);
-}
-
-/**
  * Resolve the absolute path to a template file by name (without extension).
  */
 export function resolveTemplatePath(name: string): string {

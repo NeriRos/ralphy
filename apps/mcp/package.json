@@ -7,6 +7,7 @@
     "@ralphy/context": "workspace:*",
     "@ralphy/core": "workspace:*",
     "@ralphy/output": "workspace:*",
+    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

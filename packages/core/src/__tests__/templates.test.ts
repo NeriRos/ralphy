@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { renderTemplate, resolvePromptPath, resolveTemplatePath } from "../templates";
+import { renderTemplate, resolveTemplatePath } from "../templates";
 
 describe("renderTemplate", () => {
   test("replaces single variable", () => {
@@ -23,13 +23,6 @@ describe("renderTemplate", () => {
 
   test("handles empty vars", () => {
     expect(renderTemplate("no vars here", {})).toBe("no vars here");
-  });
-});
-
-describe("resolvePromptPath", () => {
-  test("returns a path ending with prompts/<name>.md", () => {
-    const path = resolvePromptPath("task_exec");
-    expect(path).toMatch(/prompts\/task_exec\.md$/);
   });
 });
 

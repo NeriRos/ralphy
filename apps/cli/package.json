@@ -8,6 +8,7 @@
     "@ralphy/core": "workspace:*",
     "@ralphy/engine": "workspace:*",
     "@ralphy/output": "workspace:*",
+    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { StateSchema, type State, type Phase } from "@ralphy/types";
+import { StateSchema, type State } from "@ralphy/types";
+import { getFirstPhase } from "@ralphy/phases";
 import { getStorage } from "@ralphy/context";
 
 const STATE_FILE = "state.json";
@@ -38,7 +39,7 @@ export interface BuildInitialStateOpts {
   prompt: string;
   engine?: string;
   model?: string;
-  phase?: Phase;
+  phase?: string;
 }
 
 /**
@@ -56,7 +57,7 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
   return StateSchema.parse({
     name: opts.name,
     prompt: opts.prompt,
-    phase: opts.phase ?? "research",
+    phase: opts.phase ?? getFirstPhase().name,
     engine: opts.engine ?? "claude",
     model: opts.model ?? "opus",
     createdAt: now,
@@ -66,11 +67,11 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
 }
 
 /**
- * Infer the current phase from files present in a task directory.
+ * Simple phase inference for legacy migration (avoids circular dep with phases.ts).
  */
-function inferPhaseFromFiles(taskDir: string): Phase {
+function inferPhaseFromFiles(taskDir: string): string {
   const storage = getStorage();
-  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return "research";
+  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return getFirstPhase().name;
 
   const plan = storage.read(join(taskDir, "PLAN.md"));
   const progress = storage.read(join(taskDir, "PROGRESS.md"));

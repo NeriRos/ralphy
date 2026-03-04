@@ -1,3 +1,17 @@
+---
+name: plan
+order: 2
+requires: [RESEARCH.md]
+next: exec
+autoAdvance: null
+loopBack: null
+terminal: false
+context:
+  - type: file
+    file: RESEARCH.md
+    label: "Research Findings"
+---
+
 # Task — Planning Phase
 
 You have a RESEARCH.md with detailed codebase findings. Your job is to create an implementation plan and execution checklist.
