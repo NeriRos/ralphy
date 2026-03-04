@@ -38,7 +38,7 @@ copy-assets:
 	@mkdir -p "$(INSTALL_PATH)/templates"
 	@cp -r packages/phases/checklists "$(INSTALL_PATH)/templates/checklists"
 	@cp -r packages/core/templates/* "$(INSTALL_PATH)/templates/"
-	@cp packages/core/templates/README.md "$(INSTALL_PATH)/README.md"
+	@mv "$(INSTALL_PATH)/templates/README.md" "$(INSTALL_PATH)/README.md"
 	@echo "  ✓ Copied assets"
 
 init-tasks:
