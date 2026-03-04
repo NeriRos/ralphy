@@ -17,6 +17,9 @@ export interface LoopOptions {
   engine: Engine;
   model: string;
   maxIterations: number;
+  maxCostUsd: number;
+  maxRuntimeMinutes: number;
+  maxConsecutiveFailures: number;
   noExecute: boolean;
   delay: number;
   log: boolean;
@@ -159,14 +162,40 @@ function checkStopSignal(taskDir: string): string | null {
 }
 
 /**
- * Determine whether the loop should continue.
+ * Stop reason returned by shouldContinue when the loop must end.
  */
-function shouldContinue(state: State, iteration: number, opts: LoopOptions): boolean {
-  if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return false;
+type StopReason =
+  | null
+  | "maxIterations"
+  | "terminal"
+  | "noExecute"
+  | "costCap"
+  | "runtimeLimit"
+  | "consecutiveFailures";
+
+/**
+ * Determine whether the loop should continue.
+ * Returns null if it should continue, or a reason string if it should stop.
+ */
+function checkStopCondition(
+  state: State,
+  iteration: number,
+  opts: LoopOptions,
+  startTime: number,
+  consecutiveFailures: number,
+): StopReason {
+  if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return "maxIterations";
   const phaseConfig = getPhase(state.phase);
-  if (phaseConfig.terminal) return false;
-  if (opts.noExecute && state.phase === "exec") return false;
-  return true;
+  if (phaseConfig.terminal) return "terminal";
+  if (opts.noExecute && state.phase === "exec") return "noExecute";
+  if (opts.maxCostUsd > 0 && state.usage.total_cost_usd >= opts.maxCostUsd) return "costCap";
+  if (opts.maxRuntimeMinutes > 0) {
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs >= opts.maxRuntimeMinutes * 60_000) return "runtimeLimit";
+  }
+  if (opts.maxConsecutiveFailures > 0 && consecutiveFailures >= opts.maxConsecutiveFailures)
+    return "consecutiveFailures";
+  return null;
 }
 
 /**
@@ -242,6 +271,50 @@ function sleep(seconds: number): Promise<void> {
 }
 
 /**
+ * Log a human-readable message for why the loop stopped.
+ */
+function logStopReason(
+  reason: StopReason,
+  state: State,
+  opts: LoopOptions,
+  taskDir: string,
+  consecutiveFailures: number,
+  storage: ReturnType<typeof getStorage>,
+): void {
+  switch (reason) {
+    case "terminal": {
+      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (progressContent !== null) {
+        const { checked, unchecked } = countProgress(progressContent);
+        log(`\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`);
+      }
+      log(`See: ${taskDir}/PROGRESS.md`);
+      break;
+    }
+    case "noExecute":
+      log("\nResearch and planning complete. Stopping before execution (--no-execute).");
+      log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
+      break;
+    case "maxIterations":
+      log(`\nReached max iterations: ${opts.maxIterations}`);
+      break;
+    case "costCap":
+      log(
+        `\n${styled(`Cost cap reached: $${state.usage.total_cost_usd.toFixed(2)} >= $${opts.maxCostUsd} limit`, "warn")}`,
+      );
+      break;
+    case "runtimeLimit":
+      log(`\n${styled(`Runtime limit reached: ${opts.maxRuntimeMinutes} minute(s)`, "warn")}`);
+      break;
+    case "consecutiveFailures":
+      log(
+        `\n${styled(`Stopped: ${consecutiveFailures} consecutive identical failures detected`, "fail")}`,
+      );
+      break;
+  }
+}
+
+/**
  * Main iteration loop. Initialises or resumes a task, builds prompts,
  * runs the engine, handles transitions, and checks stop signals.
  */
@@ -284,31 +357,31 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     isResume,
     noExecute: opts.noExecute,
     maxIterations: opts.maxIterations,
+    maxCostUsd: opts.maxCostUsd,
+    maxRuntimeMinutes: opts.maxRuntimeMinutes,
+    maxConsecutiveFailures: opts.maxConsecutiveFailures,
     iterationDelay: opts.delay,
     taskPrompt: opts.prompt || state.prompt,
   });
 
   let iteration = 0;
+  const loopStartTime = Date.now();
+  let consecutiveFailures = 0;
+  let lastResult = "";
 
   while (true) {
     // Re-read state at top of each iteration (may have been updated by transitions)
     state = readState(taskDir);
 
-    if (!shouldContinue(state, iteration, opts)) {
-      const phaseConfig = getPhase(state.phase);
-      if (phaseConfig.terminal) {
-        const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-        if (progressContent !== null) {
-          const { checked, unchecked } = countProgress(progressContent);
-          log(`\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`);
-        }
-        log(`See: ${taskDir}/PROGRESS.md`);
-      } else if (opts.noExecute && state.phase === "exec") {
-        log("\nResearch and planning complete. Stopping before execution (--no-execute).");
-        log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
-      } else if (opts.maxIterations > 0 && iteration >= opts.maxIterations) {
-        log(`\nReached max iterations: ${opts.maxIterations}`);
-      }
+    const stopReason = checkStopCondition(
+      state,
+      iteration,
+      opts,
+      loopStartTime,
+      consecutiveFailures,
+    );
+    if (stopReason !== null) {
+      logStopReason(stopReason, state, opts, taskDir, consecutiveFailures, storage);
       break;
     }
 
@@ -355,14 +428,16 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
       const failure = handleEngineFailure(engineResult.exitCode);
       log(`\n${styled(failure.message, "fail")}`);
 
-      updateStateIteration(
-        taskDir,
-        `failed:exit-${engineResult.exitCode}`,
-        iterStart,
-        opts.engine,
-        opts.model,
-        engineResult.usage,
-      );
+      const result = `failed:exit-${engineResult.exitCode}`;
+      updateStateIteration(taskDir, result, iterStart, opts.engine, opts.model, engineResult.usage);
+
+      // Track consecutive failures
+      if (result === lastResult) {
+        consecutiveFailures++;
+      } else {
+        consecutiveFailures = 1;
+        lastResult = result;
+      }
 
       if (failure.shouldStop) break;
       break;
@@ -377,6 +452,10 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
       opts.model,
       engineResult.usage,
     );
+
+    // Reset consecutive failure tracking on success
+    consecutiveFailures = 0;
+    lastResult = "";
 
     // Auto-transition using dynamic phase config
     state = autoTransitionAfterIteration(state, taskDir);
@@ -394,7 +473,10 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     log(`\n======== COMPLETED ITERATION ${iteration} ========\n`);
 
     // Delay between iterations if configured
-    if (shouldContinue(state, iteration, opts) && opts.delay > 0) {
+    if (
+      checkStopCondition(state, iteration, opts, loopStartTime, consecutiveFailures) === null &&
+      opts.delay > 0
+    ) {
       log(`  [wait] Sleeping ${opts.delay}s before next iteration...\n`);
       await sleep(opts.delay);
     }

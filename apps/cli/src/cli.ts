@@ -9,6 +9,9 @@ export interface ParsedArgs {
   model: string;
   engineSet: boolean;
   maxIterations: number;
+  maxCostUsd: number;
+  maxRuntimeMinutes: number;
+  maxConsecutiveFailures: number;
   phase: string;
   noExecute: boolean;
   delay: number;
@@ -33,6 +36,9 @@ const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
  *   --no-execute            Stop after research+plan
  *   --delay N               Seconds between iterations
  *   --log                   Log raw stream JSON
+ *   --max-cost N            Stop when total cost exceeds $N (0 = no limit)
+ *   --max-runtime N         Stop after N minutes of wall-clock time (0 = no limit)
+ *   --max-failures N        Stop after N consecutive failures (default: 5, 0 = disable)
  *   --unlimited             Set max to 0 (unlimited, default)
  *   --timeout N             Deprecated (consumed and ignored)
  *   --push-interval N       Deprecated (consumed and ignored)
@@ -48,6 +54,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
     model: "opus",
     engineSet: false,
     maxIterations: 0,
+    maxCostUsd: 0,
+    maxRuntimeMinutes: 0,
+    maxConsecutiveFailures: 5,
     phase: "",
     noExecute: false,
     delay: 0,
@@ -61,6 +70,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
   let expectPromptFile = false;
   let expectPhase = false;
   let expectDelay = false;
+  let expectMaxCost = false;
+  let expectMaxRuntime = false;
+  let expectMaxFailures = false;
   let expectTimeout = false;
   let expectPushInterval = false;
 
@@ -99,6 +111,21 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (expectDelay) {
       result.delay = parseInt(arg, 10);
       expectDelay = false;
+      continue;
+    }
+    if (expectMaxCost) {
+      result.maxCostUsd = parseFloat(arg);
+      expectMaxCost = false;
+      continue;
+    }
+    if (expectMaxRuntime) {
+      result.maxRuntimeMinutes = parseFloat(arg);
+      expectMaxRuntime = false;
+      continue;
+    }
+    if (expectMaxFailures) {
+      result.maxConsecutiveFailures = parseInt(arg, 10);
+      expectMaxFailures = false;
       continue;
     }
     if (expectTimeout) {
@@ -145,6 +172,15 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--delay":
         expectDelay = true;
+        break;
+      case "--max-cost":
+        expectMaxCost = true;
+        break;
+      case "--max-runtime":
+        expectMaxRuntime = true;
+        break;
+      case "--max-failures":
+        expectMaxFailures = true;
         break;
       case "--timeout":
         expectTimeout = true;

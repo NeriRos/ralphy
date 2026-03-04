@@ -9,6 +9,9 @@ export interface ShowBannerOpts {
   isResume?: boolean;
   noExecute?: boolean;
   maxIterations?: number;
+  maxCostUsd?: number;
+  maxRuntimeMinutes?: number;
+  maxConsecutiveFailures?: number;
   iterationDelay?: number;
   promptFile?: string;
   taskPrompt?: string;
@@ -42,6 +45,16 @@ export function showBanner(state: State, opts: ShowBannerOpts): void {
   const maxLabel =
     opts.maxIterations && opts.maxIterations > 0 ? String(opts.maxIterations) : "unlimited";
   log(` ${styled("Max iters:", "bold")}  ${maxLabel}`);
+
+  if (opts.maxCostUsd && opts.maxCostUsd > 0) {
+    log(` ${styled("Cost cap:", "bold")}   $${opts.maxCostUsd}`);
+  }
+  if (opts.maxRuntimeMinutes && opts.maxRuntimeMinutes > 0) {
+    log(` ${styled("Runtime:", "bold")}    ${opts.maxRuntimeMinutes} min`);
+  }
+  if (opts.maxConsecutiveFailures && opts.maxConsecutiveFailures > 0) {
+    log(` ${styled("Fail limit:", "bold")} ${opts.maxConsecutiveFailures} consecutive`);
+  }
 
   if (opts.iterationDelay && opts.iterationDelay > 0) {
     log(` ${styled("Delay:", "bold")}      ${opts.iterationDelay}s between runs`);

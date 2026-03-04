@@ -263,11 +263,16 @@ export function registerTools(server: McpServer, tasksDir: string): void {
       inputSchema: {
         name: z.string().describe("Task name"),
         maxIterations: z.number().optional().describe("Maximum iterations to run"),
+        maxCostUsd: z.number().optional().describe("Stop when total cost exceeds this USD amount"),
+        maxRuntimeMinutes: z
+          .number()
+          .optional()
+          .describe("Stop after this many minutes of wall-clock time"),
         engine: z.string().optional().describe("Engine override"),
         model: z.string().optional().describe("Model override"),
       },
     },
-    async ({ name, maxIterations, engine, model }) => {
+    async ({ name, maxIterations, maxCostUsd, maxRuntimeMinutes, engine, model }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
           const taskDir = join(tasksDir, name);
@@ -279,7 +284,9 @@ export function registerTools(server: McpServer, tasksDir: string): void {
           }
 
           const args = ["run", "apps/cli/src/index.ts", "task", "--name", name];
-          if (maxIterations) args.push("--max-iterations", String(maxIterations));
+          if (maxIterations) args.push(String(maxIterations));
+          if (maxCostUsd) args.push("--max-cost", String(maxCostUsd));
+          if (maxRuntimeMinutes) args.push("--max-runtime", String(maxRuntimeMinutes));
           if (engine) args.push("--engine", engine);
           if (model) args.push("--model", model);
 
