@@ -10,10 +10,10 @@
 
 ## Section 2 — Fix Engine type in CLI and verify
 
-- [ ] In `apps/cli/src/loop.ts`: Add `Engine` to the existing `@ralphy/types` import. Change `LoopOptions.engine` from `"claude" | "codex"` to `Engine`.
-- [ ] In `apps/cli/src/__tests__/loop.test.ts`: Import `Engine` from `@ralphy/types`. Replace inline `"codex" as "claude" | "codex"` cast with `as Engine`.
-- [ ] Run typecheck to verify zero errors.
-- [ ] Run tests for affected packages to verify no regressions.
+- [x] In `apps/cli/src/loop.ts`: Add `Engine` to the existing `@ralphy/types` import. Change `LoopOptions.engine` from `"claude" | "codex"` to `Engine`.
+- [x] In `apps/cli/src/__tests__/loop.test.ts`: Import `Engine` from `@ralphy/types`. Replace inline `"codex" as "claude" | "codex"` cast with `as Engine`.
+- [x] Run typecheck to verify zero errors.
+- [x] Run tests for affected packages to verify no regressions.
 
 ## Section 3 — Static Analysis
 

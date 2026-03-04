@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { State } from "@ralphy/types";
+import type { State, Engine } from "@ralphy/types";
 import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
 import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
 import { renderTemplate, resolveTemplatePath } from "@ralphy/core/templates";
@@ -14,7 +14,7 @@ import { showBanner } from "./display";
 export interface LoopOptions {
   name: string;
   prompt: string;
-  engine: "claude" | "codex";
+  engine: Engine;
   model: string;
   maxIterations: number;
   noExecute: boolean;

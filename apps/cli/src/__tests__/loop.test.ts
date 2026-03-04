@@ -6,7 +6,7 @@ import { rmSync } from "node:fs";
 import { buildTaskPrompt } from "../loop";
 import { buildInitialState, writeState } from "@ralphy/core/state";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
-import type { State } from "@ralphy/types";
+import type { State, Engine } from "@ralphy/types";
 import type { BuildInitialStateOpts } from "@ralphy/core/state";
 
 let tempDir: string;
@@ -146,7 +146,7 @@ describe("MCP tools injection", () => {
 
   test("omits MCP tools block when engine is codex", () =>
     withStorage(() => {
-      const state = { ...makeState({ engine: "codex" as "claude" | "codex", phase: "research" }) };
+      const state = { ...makeState({ engine: "codex" as Engine, phase: "research" }) };
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
