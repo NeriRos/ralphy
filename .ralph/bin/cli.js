@@ -3474,6 +3474,108 @@ function parseArgs(argv) {
   return result;
 }
 
+// apps/cli/src/display.ts
+import { join } from "path";
+
+// packages/core/src/progress.ts
+function extractCurrentSection(content) {
+  const lines = content.split(`
+`);
+  let sectionHeader = "";
+  let buf = "";
+  let hasUnchecked = false;
+  let inSection = false;
+  for (const line of lines) {
+    if (line.startsWith("## ")) {
+      if (inSection && hasUnchecked) {
+        return (
+          sectionHeader +
+          `
+` +
+          buf
+        );
+      }
+      sectionHeader = line;
+      buf = "";
+      hasUnchecked = false;
+      inSection = true;
+      continue;
+    }
+    if (inSection) {
+      buf +=
+        line +
+        `
+`;
+      if (line.startsWith("- [ ]")) {
+        hasUnchecked = true;
+      }
+    }
+  }
+  if (inSection && hasUnchecked) {
+    return (
+      sectionHeader +
+      `
+` +
+      buf
+    );
+  }
+  return null;
+}
+function countProgress(content) {
+  const checked = (content.match(/^- \[x\]/gm) ?? []).length;
+  const unchecked = (content.match(/^- \[ \]/gm) ?? []).length;
+  return { checked, unchecked, total: checked + unchecked };
+}
+
+// packages/context/src/context.ts
+import { AsyncLocalStorage } from "async_hooks";
+import {
+  readFileSync as readFileSync2,
+  writeFileSync,
+  existsSync,
+  unlinkSync,
+  mkdirSync,
+  readdirSync,
+} from "fs";
+import { dirname } from "path";
+
+class FileSystemProvider {
+  read(path) {
+    if (!existsSync(path)) return null;
+    return readFileSync2(path, "utf-8");
+  }
+  write(path, content) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content, "utf-8");
+  }
+  remove(path) {
+    if (!existsSync(path)) return;
+    unlinkSync(path);
+  }
+  list(prefix) {
+    if (!existsSync(prefix)) return [];
+    return readdirSync(prefix);
+  }
+}
+function createFileSystemProvider() {
+  return new FileSystemProvider();
+}
+var contextStore = new AsyncLocalStorage();
+function getContext() {
+  const ctx = contextStore.getStore();
+  if (!ctx) throw new Error("No AppContext set. Call runWithContext() first.");
+  return ctx;
+}
+function getStorage() {
+  return getContext().storage;
+}
+function runWithContext(ctx, fn) {
+  return contextStore.run(ctx, fn);
+}
+function createDefaultContext() {
+  return { storage: createFileSystemProvider() };
+}
+
 // node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 =
@@ -4006,108 +4108,6 @@ var chalk = createChalk();
 var chalkStderr = createChalk({ level: stderrColor ? stderrColor.level : 0 });
 var source_default = chalk;
 
-// apps/cli/src/display.ts
-import { join } from "path";
-
-// packages/core/src/progress.ts
-function extractCurrentSection(content) {
-  const lines = content.split(`
-`);
-  let sectionHeader = "";
-  let buf = "";
-  let hasUnchecked = false;
-  let inSection = false;
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      if (inSection && hasUnchecked) {
-        return (
-          sectionHeader +
-          `
-` +
-          buf
-        );
-      }
-      sectionHeader = line;
-      buf = "";
-      hasUnchecked = false;
-      inSection = true;
-      continue;
-    }
-    if (inSection) {
-      buf +=
-        line +
-        `
-`;
-      if (line.startsWith("- [ ]")) {
-        hasUnchecked = true;
-      }
-    }
-  }
-  if (inSection && hasUnchecked) {
-    return (
-      sectionHeader +
-      `
-` +
-      buf
-    );
-  }
-  return null;
-}
-function countProgress(content) {
-  const checked = (content.match(/^- \[x\]/gm) ?? []).length;
-  const unchecked = (content.match(/^- \[ \]/gm) ?? []).length;
-  return { checked, unchecked, total: checked + unchecked };
-}
-
-// packages/context/src/context.ts
-import { AsyncLocalStorage } from "async_hooks";
-import {
-  readFileSync as readFileSync2,
-  writeFileSync,
-  existsSync,
-  unlinkSync,
-  mkdirSync,
-  readdirSync,
-} from "fs";
-import { dirname } from "path";
-
-class FileSystemProvider {
-  read(path) {
-    if (!existsSync(path)) return null;
-    return readFileSync2(path, "utf-8");
-  }
-  write(path, content) {
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, content, "utf-8");
-  }
-  remove(path) {
-    if (!existsSync(path)) return;
-    unlinkSync(path);
-  }
-  list(prefix) {
-    if (!existsSync(prefix)) return [];
-    return readdirSync(prefix);
-  }
-}
-function createFileSystemProvider() {
-  return new FileSystemProvider();
-}
-var contextStore = new AsyncLocalStorage();
-function getContext() {
-  const ctx = contextStore.getStore();
-  if (!ctx) throw new Error("No AppContext set. Call runWithContext() first.");
-  return ctx;
-}
-function getStorage() {
-  return getContext().storage;
-}
-function runWithContext(ctx, fn) {
-  return contextStore.run(ctx, fn);
-}
-function createDefaultContext() {
-  return { storage: createFileSystemProvider() };
-}
-
 // packages/output/src/output.ts
 var formatters = {
   bold: (text) => source_default.bold(text),
@@ -4133,47 +4133,47 @@ function log(msg) {
 function error(msg) {
   console.error(typeof msg === "string" ? msg : format(msg));
 }
+function separator(width = 44) {
+  console.log(source_default.gray("\u2501".repeat(width)));
+}
 
 // apps/cli/src/display.ts
-var SEP = source_default.gray("\u2501".repeat(44));
 function showBanner(state, opts) {
-  log(SEP);
-  log(` ${source_default.bold.cyan("Ralph Loop")}`);
-  log(SEP);
-  const resumeTag = opts.isResume ? source_default.dim(" (resumed)") : "";
-  log(` ${source_default.bold("Mode:")}       ${opts.mode}${resumeTag}`);
+  separator();
+  log(` ${styled("Ralph Loop", "header")}`);
+  separator();
+  const resumeTag = opts.isResume ? styled(" (resumed)", "dim") : "";
+  log(` ${styled("Mode:", "bold")}       ${opts.mode}${resumeTag}`);
   if (opts.mode === "task") {
-    log(` ${source_default.bold("Task:")}       ${state.name}`);
+    log(` ${styled("Task:", "bold")}       ${state.name}`);
   }
   const engineLabel = state.engine === "claude" ? `${state.engine} (${state.model})` : state.engine;
-  log(` ${source_default.bold("Engine:")}     ${engineLabel}`);
-  log(` ${source_default.bold("Branch:")}     ${state.metadata.branch ?? "main"}`);
+  log(` ${styled("Engine:", "bold")}     ${engineLabel}`);
+  log(` ${styled("Branch:", "bold")}     ${state.metadata.branch ?? "main"}`);
   if (opts.promptFile) {
-    log(` ${source_default.bold("Prompt:")}     ${opts.promptFile}`);
+    log(` ${styled("Prompt:", "bold")}     ${opts.promptFile}`);
   }
-  log(
-    ` ${source_default.bold("No execute:")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`,
-  );
+  log(` ${styled("No execute:", "bold")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`);
   const maxLabel =
     opts.maxIterations && opts.maxIterations > 0 ? String(opts.maxIterations) : "unlimited";
-  log(` ${source_default.bold("Max iters:")}  ${maxLabel}`);
+  log(` ${styled("Max iters:", "bold")}  ${maxLabel}`);
   if (opts.iterationDelay && opts.iterationDelay > 0) {
-    log(` ${source_default.bold("Delay:")}      ${opts.iterationDelay}s between runs`);
+    log(` ${styled("Delay:", "bold")}      ${opts.iterationDelay}s between runs`);
   }
   if (opts.mode === "task" && opts.taskPrompt) {
     const lines = opts.taskPrompt.split(`
 `);
     const maxLines = 6;
-    log(SEP);
-    log(` ${source_default.bold("Prompt:")}`);
+    separator();
+    log(` ${styled("Prompt:", "bold")}`);
     for (const line of lines.slice(0, maxLines)) {
-      log(`  ${source_default.gray(line)}`);
+      log(`  ${styled(line, "gray")}`);
     }
     if (lines.length > maxLines) {
-      log(source_default.dim(`  \u2026 (${lines.length - maxLines} more lines)`));
+      log(styled(`  \u2026 (${lines.length - maxLines} more lines)`, "dim"));
     }
   }
-  log(SEP);
+  separator();
 }
 function showStatus(state, taskDir) {
   log("============================================");
@@ -4433,8 +4433,8 @@ var util;
     typeof Number.isInteger === "function"
       ? (val) => Number.isInteger(val)
       : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
-  function joinValues(array, separator = " | ") {
-    return array.map((val) => (typeof val === "string" ? `'${val}'` : val)).join(separator);
+  function joinValues(array, separator2 = " | ") {
+    return array.map((val) => (typeof val === "string" ? `'${val}'` : val)).join(separator2);
   }
   util2.joinValues = joinValues;
   util2.jsonStringifyReplacer = (_, value) => {
@@ -8759,7 +8759,7 @@ function resolveTemplatePath(name) {
 var { spawn } = globalThis.Bun;
 
 // packages/engine/src/formatters/claude-stream.ts
-var SEP2 = styled("\u2501".repeat(50), "gray");
+var SEP = styled("\u2501".repeat(50), "gray");
 function formatCost(usd) {
   return (Math.round(usd * 100) / 100).toFixed(2);
 }
@@ -8839,11 +8839,11 @@ function processClaudeLine(line, state, options = {}) {
           if (verbose) {
             const ver = event.claude_code_version ?? "";
             const ntools = Array.isArray(event.tools) ? event.tools.length : 0;
-            output.push(SEP2);
+            output.push(SEP);
             output.push(
               `  ${styled("model:", "dim")} ${styled(model, "bold")}  ${styled(`session: ${sid}\u2026  v${ver}  tools: ${ntools}`, "dim")}`,
             );
-            output.push(SEP2);
+            output.push(SEP);
           } else {
             output.push(
               `${styled("\u2500\u2500", "gray")} ${styled(model, "bold")} ${styled(`(${sid}\u2026)`, "gray")}`,
@@ -8955,7 +8955,7 @@ ${styled("\u2717 Error", "fail")} ${styled(errmsg, "error")}`);
         if (verbose) {
           output.push(`
 ${styled("\u2713 Done", "successBold")}  ${styled(info, "dim")}`);
-          output.push(`${SEP2}
+          output.push(`${SEP}
 `);
         } else {
           output.push(`
@@ -9129,11 +9129,11 @@ function processCodexLine(line, state, options = {}) {
     if (/hit your limit/i.test(line)) {
       state.rateLimited = true;
       output.push(`
-${source_default.red.bold("\u2717 Rate limit reached")} ${source_default.red(line)}`);
+${styled("\u2717 Rate limit reached", "fail")} ${styled(line, "error")}`);
     } else if (isImportantNonJson(line)) {
-      output.push(`${source_default.red.bold("stderr:")} ${source_default.red(line)}`);
+      output.push(`${styled("stderr:", "fail")} ${styled(line, "error")}`);
     } else if (verbose) {
-      output.push(source_default.gray(line));
+      output.push(styled(line, "gray"));
     }
     return output;
   }
@@ -9143,13 +9143,13 @@ ${source_default.red.bold("\u2717 Rate limit reached")} ${source_default.red(lin
     case "thread.started": {
       const tid = (event.thread_id ?? "").slice(0, 8);
       output.push(
-        `${source_default.gray("\u2500\u2500")} ${source_default.bold("codex")} ${source_default.gray(`(${tid}...)`)}`,
+        `${styled("\u2500\u2500", "gray")} ${styled("codex", "bold")} ${styled(`(${tid}...)`, "gray")}`,
       );
       break;
     }
     case "turn.started":
       output.push(`
-${source_default.bold("\u25B6 turn started")}`);
+${styled("\u25B6 turn started", "bold")}`);
       break;
     case "turn.completed": {
       const usage = event.usage;
@@ -9160,10 +9160,10 @@ ${source_default.bold("\u25B6 turn started")}`);
       if (usage) {
         const info = `in=${usage.input_tokens ?? 0}  out=${usage.output_tokens ?? 0}`;
         output.push(`
-${source_default.green("\u2713 done")}  ${source_default.dim(info)}`);
+${styled("\u2713 done", "success")}  ${styled(info, "dim")}`);
       } else {
         output.push(`
-${source_default.green("\u2713 done")}`);
+${styled("\u2713 done", "success")}`);
       }
       break;
     }
@@ -9174,18 +9174,16 @@ ${source_default.green("\u2713 done")}`);
         state.printingText = false;
       }
       output.push(`
-${source_default.red.bold("\u2717 Error")} ${source_default.red(err)}`);
+${styled("\u2717 Error", "fail")} ${styled(err, "error")}`);
       break;
     }
     case "error": {
       const msg = event.message ?? "unknown error";
       if (/hit your limit/i.test(msg)) {
         state.rateLimited = true;
-        output.push(
-          `${source_default.red.bold("\u2717 Rate limit reached")} ${source_default.red(msg)}`,
-        );
+        output.push(`${styled("\u2717 Rate limit reached", "fail")} ${styled(msg, "error")}`);
       } else {
-        output.push(`${source_default.red("error:")} ${msg}`);
+        output.push(`${styled("error:", "error")} ${msg}`);
       }
       break;
     }
@@ -9197,10 +9195,10 @@ ${source_default.red.bold("\u2717 Error")} ${source_default.red(err)}`);
       if (delta) {
         if (!state.printingText) {
           output.push(`
-${source_default.bold(delta)}`);
+${styled(delta, "bold")}`);
           state.printingText = true;
         } else {
-          output.push(source_default.bold(delta));
+          output.push(styled(delta, "bold"));
         }
       }
       break;
@@ -9213,9 +9211,9 @@ ${source_default.bold(delta)}`);
       if (doneText) {
         if (!state.printingText) {
           output.push(`
-${source_default.bold(doneText)}`);
+${styled(doneText, "bold")}`);
         } else {
-          output.push(source_default.bold(doneText));
+          output.push(styled(doneText, "bold"));
         }
       }
       state.printingText = false;
@@ -9233,7 +9231,7 @@ ${source_default.bold(doneText)}`);
           output.push("");
           state.printingText = false;
         }
-        output.push(`  ${source_default.gray("thinking:")} ${source_default.dim(think)}`);
+        output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
       }
       break;
     }
@@ -9247,10 +9245,10 @@ ${source_default.bold(doneText)}`);
       if (name) {
         if (inputSummary) {
           output.push(
-            `  ${source_default.cyan("\u25B6")} ${source_default.cyan(name)} ${source_default.dim(inputSummary)}`,
+            `  ${styled("\u25B6", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
           );
         } else {
-          output.push(`  ${source_default.cyan("\u25B6")} ${source_default.cyan(name)}`);
+          output.push(`  ${styled("\u25B6", "cyan")} ${styled(name, "cyan")}`);
         }
         state.pendingTools++;
       }
@@ -9262,9 +9260,9 @@ ${source_default.bold(doneText)}`);
       if (msgText) {
         if (!state.printingText) {
           output.push(`
-${source_default.bold(msgText)}`);
+${styled(msgText, "bold")}`);
         } else {
-          output.push(source_default.bold(msgText));
+          output.push(styled(msgText, "bold"));
         }
         state.printingText = false;
       }
@@ -9275,10 +9273,10 @@ ${source_default.bold(msgText)}`);
         if (!name) name = itemType || "tool_call";
         if (inputSummary) {
           output.push(
-            `  ${source_default.cyan("\u25B6")} ${source_default.cyan(name)} ${source_default.dim(inputSummary)}`,
+            `  ${styled("\u25B6", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
           );
         } else {
-          output.push(`  ${source_default.cyan("\u25B6")} ${source_default.cyan(name)}`);
+          output.push(`  ${styled("\u25B6", "cyan")} ${styled(name, "cyan")}`);
         }
         state.pendingTools++;
       }
@@ -9292,9 +9290,9 @@ ${source_default.bold(msgText)}`);
       if (msgText) {
         if (!state.printingText) {
           output.push(`
-${source_default.bold(msgText)}`);
+${styled(msgText, "bold")}`);
         } else {
-          output.push(source_default.bold(msgText));
+          output.push(styled(msgText, "bold"));
         }
         state.printingText = false;
       }
@@ -9306,7 +9304,7 @@ ${source_default.bold(msgText)}`);
             output.push("");
             state.printingText = false;
           }
-          output.push(`  ${source_default.gray("thinking:")} ${source_default.dim(think)}`);
+          output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
         }
       }
       const toolName = extractToolName(event);
@@ -9317,25 +9315,25 @@ ${source_default.bold(msgText)}`);
         if (toolName) {
           if (resultSummary) {
             output.push(
-              ` ${source_default.green("\u2713")} ${source_default.dim(displayName)} ${source_default.dim(`\u2192 ${shortenInline(resultSummary, 140)}`)}`,
+              ` ${styled("\u2713", "success")} ${styled(displayName, "dim")} ${styled(`\u2192 ${shortenInline(resultSummary, 140)}`, "dim")}`,
             );
           } else {
-            output.push(` ${source_default.green("\u2713")} ${source_default.dim(displayName)}`);
+            output.push(` ${styled("\u2713", "success")} ${styled(displayName, "dim")}`);
           }
         } else if (isToolType(itemType)) {
           if (verbose) {
             if (resultSummary) {
               output.push(
-                ` ${source_default.green("\u2713")} ${source_default.dim(displayName)} ${source_default.dim(`\u2192 ${shortenInline(resultSummary, 140)}`)}`,
+                ` ${styled("\u2713", "success")} ${styled(displayName, "dim")} ${styled(`\u2192 ${shortenInline(resultSummary, 140)}`, "dim")}`,
               );
             } else {
-              output.push(` ${source_default.green("\u2713")} ${source_default.dim(displayName)}`);
+              output.push(` ${styled("\u2713", "success")} ${styled(displayName, "dim")}`);
             }
           } else if (state.pendingTools > 0) {
-            output.push(` ${source_default.green("\u2713")}`);
+            output.push(` ${styled("\u2713", "success")}`);
           }
         } else {
-          output.push(` ${source_default.green("\u2713")}`);
+          output.push(` ${styled("\u2713", "success")}`);
         }
         if (state.pendingTools > 0) state.pendingTools--;
       }
@@ -9360,9 +9358,9 @@ ${source_default.bold(msgText)}`);
       if (finalText) {
         if (!state.printingText) {
           output.push(`
-${source_default.bold(finalText)}`);
+${styled(finalText, "bold")}`);
         } else {
-          output.push(source_default.bold(finalText));
+          output.push(styled(finalText, "bold"));
         }
         state.printingText = false;
       }
@@ -9371,7 +9369,7 @@ ${source_default.bold(finalText)}`);
     default:
       if (verbose) {
         const preview = JSON.stringify(event).slice(0, 220);
-        output.push(source_default.dim(`${type}: ${preview}`));
+        output.push(styled(`${type}: ${preview}`, "dim"));
       }
       break;
   }
@@ -9672,7 +9670,7 @@ function checkStopSignal(taskDir) {
   if (reason === null) return null;
   storage.remove(stopFile);
   log(`
-${source_default.yellow.bold("STOP signal detected.")}`);
+${styled("STOP signal detected.", "warn")}`);
   log(`Reason: ${reason.trim()}`);
   updateState(taskDir, (s) => ({
     ...s,
@@ -9828,13 +9826,13 @@ Reached max iterations: ${opts.maxIterations}`);
         taskDir,
       });
     } catch (err) {
-      error(source_default.red(`Engine spawn error: ${err}`));
+      error({ text: `Engine spawn error: ${err}`, style: "error" });
       break;
     }
     if (engineResult.exitCode !== 0) {
       const failure = handleEngineFailure(engineResult.exitCode);
       log(`
-${source_default.red.bold(failure.message)}`);
+${styled(failure.message, "fail")}`);
       updateStateIteration(
         taskDir,
         `failed:exit-${engineResult.exitCode}`,
