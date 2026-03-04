@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import chalk from "chalk";
 import type { State } from "@ralphy/types";
 import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
 import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
@@ -9,7 +8,7 @@ import { autoTransitionAfterIteration } from "@ralphy/core/phases";
 import { getPhase } from "@ralphy/phases";
 import { gitPush } from "@ralphy/core/git";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-import { log, error } from "@ralphy/output";
+import { log, error, styled } from "@ralphy/output";
 import { showBanner } from "./display";
 
 export interface LoopOptions {
@@ -147,7 +146,7 @@ function checkStopSignal(taskDir: string): string | null {
 
   storage.remove(stopFile);
 
-  log(`\n${chalk.yellow.bold("STOP signal detected.")}`);
+  log(`\n${styled("STOP signal detected.", "warn")}`);
   log(`Reason: ${reason.trim()}`);
 
   updateState(taskDir, (s) => ({
@@ -348,13 +347,13 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
         taskDir,
       });
     } catch (err) {
-      error(chalk.red(`Engine spawn error: ${err}`));
+      error({ text: `Engine spawn error: ${err}`, style: "error" });
       break;
     }
 
     if (engineResult.exitCode !== 0) {
       const failure = handleEngineFailure(engineResult.exitCode);
-      log(`\n${chalk.red.bold(failure.message)}`);
+      log(`\n${styled(failure.message, "fail")}`);
 
       updateStateIteration(
         taskDir,

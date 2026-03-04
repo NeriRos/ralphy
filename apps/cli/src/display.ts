@@ -1,11 +1,8 @@
-import chalk from "chalk";
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
 import { countProgress } from "@ralphy/core/progress";
 import { getStorage } from "@ralphy/context";
-import { log } from "@ralphy/output";
-
-const SEP = chalk.gray("━".repeat(44));
+import { log, styled, separator } from "@ralphy/output";
 
 export interface ShowBannerOpts {
   mode: string;
@@ -21,49 +18,49 @@ export interface ShowBannerOpts {
  * Display the Ralph Loop banner with task metadata.
  */
 export function showBanner(state: State, opts: ShowBannerOpts): void {
-  log(SEP);
-  log(` ${chalk.bold.cyan("Ralph Loop")}`);
-  log(SEP);
+  separator();
+  log(` ${styled("Ralph Loop", "header")}`);
+  separator();
 
-  const resumeTag = opts.isResume ? chalk.dim(" (resumed)") : "";
-  log(` ${chalk.bold("Mode:")}       ${opts.mode}${resumeTag}`);
+  const resumeTag = opts.isResume ? styled(" (resumed)", "dim") : "";
+  log(` ${styled("Mode:", "bold")}       ${opts.mode}${resumeTag}`);
 
   if (opts.mode === "task") {
-    log(` ${chalk.bold("Task:")}       ${state.name}`);
+    log(` ${styled("Task:", "bold")}       ${state.name}`);
   }
 
   const engineLabel = state.engine === "claude" ? `${state.engine} (${state.model})` : state.engine;
-  log(` ${chalk.bold("Engine:")}     ${engineLabel}`);
-  log(` ${chalk.bold("Branch:")}     ${state.metadata.branch ?? "main"}`);
+  log(` ${styled("Engine:", "bold")}     ${engineLabel}`);
+  log(` ${styled("Branch:", "bold")}     ${state.metadata.branch ?? "main"}`);
 
   if (opts.promptFile) {
-    log(` ${chalk.bold("Prompt:")}     ${opts.promptFile}`);
+    log(` ${styled("Prompt:", "bold")}     ${opts.promptFile}`);
   }
 
-  log(` ${chalk.bold("No execute:")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`);
+  log(` ${styled("No execute:", "bold")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`);
 
   const maxLabel =
     opts.maxIterations && opts.maxIterations > 0 ? String(opts.maxIterations) : "unlimited";
-  log(` ${chalk.bold("Max iters:")}  ${maxLabel}`);
+  log(` ${styled("Max iters:", "bold")}  ${maxLabel}`);
 
   if (opts.iterationDelay && opts.iterationDelay > 0) {
-    log(` ${chalk.bold("Delay:")}      ${opts.iterationDelay}s between runs`);
+    log(` ${styled("Delay:", "bold")}      ${opts.iterationDelay}s between runs`);
   }
 
   if (opts.mode === "task" && opts.taskPrompt) {
     const lines = opts.taskPrompt.split("\n");
     const maxLines = 6;
-    log(SEP);
-    log(` ${chalk.bold("Prompt:")}`);
+    separator();
+    log(` ${styled("Prompt:", "bold")}`);
     for (const line of lines.slice(0, maxLines)) {
-      log(`  ${chalk.gray(line)}`);
+      log(`  ${styled(line, "gray")}`);
     }
     if (lines.length > maxLines) {
-      log(chalk.dim(`  … (${lines.length - maxLines} more lines)`));
+      log(styled(`  … (${lines.length - maxLines} more lines)`, "dim"));
     }
   }
 
-  log(SEP);
+  separator();
 }
 
 /**

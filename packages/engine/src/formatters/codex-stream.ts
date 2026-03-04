@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { styled } from "@ralphy/output";
 
 export interface CodexStreamOptions {
   verbose?: boolean;
@@ -199,11 +199,11 @@ export function processCodexLine(
     // Non-JSON line handling
     if (/hit your limit/i.test(line)) {
       state.rateLimited = true;
-      output.push(`\n${chalk.red.bold("✗ Rate limit reached")} ${chalk.red(line)}`);
+      output.push(`\n${styled("✗ Rate limit reached", "fail")} ${styled(line, "error")}`);
     } else if (isImportantNonJson(line)) {
-      output.push(`${chalk.red.bold("stderr:")} ${chalk.red(line)}`);
+      output.push(`${styled("stderr:", "fail")} ${styled(line, "error")}`);
     } else if (verbose) {
-      output.push(chalk.gray(line));
+      output.push(styled(line, "gray"));
     }
     return output;
   }
@@ -214,12 +214,14 @@ export function processCodexLine(
   switch (type) {
     case "thread.started": {
       const tid = ((event.thread_id as string) ?? "").slice(0, 8);
-      output.push(`${chalk.gray("──")} ${chalk.bold("codex")} ${chalk.gray(`(${tid}...)`)}`);
+      output.push(
+        `${styled("──", "gray")} ${styled("codex", "bold")} ${styled(`(${tid}...)`, "gray")}`,
+      );
       break;
     }
 
     case "turn.started":
-      output.push(`\n${chalk.bold("▶ turn started")}`);
+      output.push(`\n${styled("▶ turn started", "bold")}`);
       break;
 
     case "turn.completed": {
@@ -230,9 +232,9 @@ export function processCodexLine(
       }
       if (usage) {
         const info = `in=${usage.input_tokens ?? 0}  out=${usage.output_tokens ?? 0}`;
-        output.push(`\n${chalk.green("✓ done")}  ${chalk.dim(info)}`);
+        output.push(`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`);
       } else {
-        output.push(`\n${chalk.green("✓ done")}`);
+        output.push(`\n${styled("✓ done", "success")}`);
       }
       break;
     }
@@ -246,7 +248,7 @@ export function processCodexLine(
         output.push("");
         state.printingText = false;
       }
-      output.push(`\n${chalk.red.bold("✗ Error")} ${chalk.red(err)}`);
+      output.push(`\n${styled("✗ Error", "fail")} ${styled(err, "error")}`);
       break;
     }
 
@@ -254,9 +256,9 @@ export function processCodexLine(
       const msg = (event.message as string) ?? "unknown error";
       if (/hit your limit/i.test(msg)) {
         state.rateLimited = true;
-        output.push(`${chalk.red.bold("✗ Rate limit reached")} ${chalk.red(msg)}`);
+        output.push(`${styled("✗ Rate limit reached", "fail")} ${styled(msg, "error")}`);
       } else {
-        output.push(`${chalk.red("error:")} ${msg}`);
+        output.push(`${styled("error:", "error")} ${msg}`);
       }
       break;
     }
@@ -269,10 +271,10 @@ export function processCodexLine(
         (event.delta as string) ?? (event.text as string) ?? (event.message as string) ?? "";
       if (delta) {
         if (!state.printingText) {
-          output.push(`\n${chalk.bold(delta)}`);
+          output.push(`\n${styled(delta, "bold")}`);
           state.printingText = true;
         } else {
-          output.push(chalk.bold(delta));
+          output.push(styled(delta, "bold"));
         }
       }
       break;
@@ -285,9 +287,9 @@ export function processCodexLine(
       const doneText = (event.text as string) ?? "";
       if (doneText) {
         if (!state.printingText) {
-          output.push(`\n${chalk.bold(doneText)}`);
+          output.push(`\n${styled(doneText, "bold")}`);
         } else {
-          output.push(chalk.bold(doneText));
+          output.push(styled(doneText, "bold"));
         }
       }
       state.printingText = false;
@@ -306,7 +308,7 @@ export function processCodexLine(
           output.push("");
           state.printingText = false;
         }
-        output.push(`  ${chalk.gray("thinking:")} ${chalk.dim(think)}`);
+        output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
       }
       break;
     }
@@ -324,9 +326,11 @@ export function processCodexLine(
       if (!name && itemType === "command_execution") name = "shell";
       if (name) {
         if (inputSummary) {
-          output.push(`  ${chalk.cyan("▶")} ${chalk.cyan(name)} ${chalk.dim(inputSummary)}`);
+          output.push(
+            `  ${styled("▶", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
+          );
         } else {
-          output.push(`  ${chalk.cyan("▶")} ${chalk.cyan(name)}`);
+          output.push(`  ${styled("▶", "cyan")} ${styled(name, "cyan")}`);
         }
         state.pendingTools++;
       }
@@ -338,9 +342,9 @@ export function processCodexLine(
       const msgText = extractMessageText(event);
       if (msgText) {
         if (!state.printingText) {
-          output.push(`\n${chalk.bold(msgText)}`);
+          output.push(`\n${styled(msgText, "bold")}`);
         } else {
-          output.push(chalk.bold(msgText));
+          output.push(styled(msgText, "bold"));
         }
         state.printingText = false;
       }
@@ -355,9 +359,11 @@ export function processCodexLine(
       if (name || isToolType(itemType)) {
         if (!name) name = itemType || "tool_call";
         if (inputSummary) {
-          output.push(`  ${chalk.cyan("▶")} ${chalk.cyan(name)} ${chalk.dim(inputSummary)}`);
+          output.push(
+            `  ${styled("▶", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
+          );
         } else {
-          output.push(`  ${chalk.cyan("▶")} ${chalk.cyan(name)}`);
+          output.push(`  ${styled("▶", "cyan")} ${styled(name, "cyan")}`);
         }
         state.pendingTools++;
       }
@@ -371,9 +377,9 @@ export function processCodexLine(
       const msgText = extractMessageText(event);
       if (msgText) {
         if (!state.printingText) {
-          output.push(`\n${chalk.bold(msgText)}`);
+          output.push(`\n${styled(msgText, "bold")}`);
         } else {
-          output.push(chalk.bold(msgText));
+          output.push(styled(msgText, "bold"));
         }
         state.printingText = false;
       }
@@ -391,7 +397,7 @@ export function processCodexLine(
             output.push("");
             state.printingText = false;
           }
-          output.push(`  ${chalk.gray("thinking:")} ${chalk.dim(think)}`);
+          output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
         }
       }
 
@@ -404,25 +410,25 @@ export function processCodexLine(
         if (toolName) {
           if (resultSummary) {
             output.push(
-              ` ${chalk.green("✓")} ${chalk.dim(displayName)} ${chalk.dim(`→ ${shortenInline(resultSummary, 140)}`)}`,
+              ` ${styled("✓", "success")} ${styled(displayName, "dim")} ${styled(`→ ${shortenInline(resultSummary, 140)}`, "dim")}`,
             );
           } else {
-            output.push(` ${chalk.green("✓")} ${chalk.dim(displayName)}`);
+            output.push(` ${styled("✓", "success")} ${styled(displayName, "dim")}`);
           }
         } else if (isToolType(itemType)) {
           if (verbose) {
             if (resultSummary) {
               output.push(
-                ` ${chalk.green("✓")} ${chalk.dim(displayName)} ${chalk.dim(`→ ${shortenInline(resultSummary, 140)}`)}`,
+                ` ${styled("✓", "success")} ${styled(displayName, "dim")} ${styled(`→ ${shortenInline(resultSummary, 140)}`, "dim")}`,
               );
             } else {
-              output.push(` ${chalk.green("✓")} ${chalk.dim(displayName)}`);
+              output.push(` ${styled("✓", "success")} ${styled(displayName, "dim")}`);
             }
           } else if (state.pendingTools > 0) {
-            output.push(` ${chalk.green("✓")}`);
+            output.push(` ${styled("✓", "success")}`);
           }
         } else {
-          output.push(` ${chalk.green("✓")}`);
+          output.push(` ${styled("✓", "success")}`);
         }
         if (state.pendingTools > 0) state.pendingTools--;
       }
@@ -447,9 +453,9 @@ export function processCodexLine(
       const finalText = finalTexts.join("");
       if (finalText) {
         if (!state.printingText) {
-          output.push(`\n${chalk.bold(finalText)}`);
+          output.push(`\n${styled(finalText, "bold")}`);
         } else {
-          output.push(chalk.bold(finalText));
+          output.push(styled(finalText, "bold"));
         }
         state.printingText = false;
       }
@@ -459,7 +465,7 @@ export function processCodexLine(
     default:
       if (verbose) {
         const preview = JSON.stringify(event).slice(0, 220);
-        output.push(chalk.dim(`${type}: ${preview}`));
+        output.push(styled(`${type}: ${preview}`, "dim"));
       }
       break;
   }
