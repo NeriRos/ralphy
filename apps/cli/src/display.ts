@@ -128,24 +128,23 @@ export function showStatus(state: State, taskDir: string): void {
   log("============================================");
 }
 
+interface TaskRow {
+  name: string;
+  phase: string;
+  status: string;
+  iters: string;
+  progress: string;
+  prompt: string;
+}
+
 /**
  * List all incomplete tasks in the tasks directory.
  */
 export function showList(tasksDir: string): void {
-  log("============================================");
-  log(" Incomplete Tasks");
-  log("============================================");
-
-  let found = false;
-
   const storage = getStorage();
   const entries = storage.list(tasksDir);
 
-  if (entries.length === 0) {
-    log(" No tasks directory found.");
-    log("============================================");
-    return;
-  }
+  const rows: TaskRow[] = [];
 
   for (const entry of entries) {
     const raw = storage.read(join(tasksDir, entry, "state.json"));
@@ -159,30 +158,75 @@ export function showList(tasksDir: string): void {
     }
 
     if (state.phase === "done") continue;
-    found = true;
 
-    const name = String(state.name ?? entry);
-    const phase = String(state.phase ?? "unknown");
-    const status = String(state.status ?? "unknown");
-    const total = String(state.totalIterations ?? 0);
-    const prompt = String(state.prompt ?? "").slice(0, 60);
+    const promptRaw = String(state.prompt ?? "");
+    const firstLine = promptRaw.split("\n").find((l) => l.trim() !== "") ?? "";
 
-    let progressInfo = "";
+    let progress = styled("—", "dim");
     const progressContent = storage.read(join(tasksDir, entry, "PROGRESS.md"));
     if (progressContent !== null) {
       const { checked, unchecked } = countProgress(progressContent);
-      progressInfo = ` | progress: ${checked} done / ${unchecked} remaining`;
+      const total = checked + unchecked;
+      progress = total > 0 ? `${checked}/${total}` : styled("—", "dim");
     }
 
-    const namePad = name.padEnd(20);
-    log(
-      ` ${namePad}  phase: ${phase.padEnd(8)}  status: ${status.padEnd(8)}  iters: ${total}${progressInfo}`,
-    );
-    log(`   ${prompt}`);
+    rows.push({
+      name: String(state.name ?? entry),
+      phase: String(state.phase ?? "unknown"),
+      status: String(state.status ?? "unknown"),
+      iters: String(state.totalIterations ?? 0),
+      progress,
+      prompt: firstLine
+        .replace(/^#+\s*/, "")
+        .trim()
+        .slice(0, 60),
+    });
   }
 
-  if (!found) {
-    log(" No incomplete tasks found.");
+  if (rows.length === 0) {
+    log("");
+    log(styled("  No incomplete tasks.", "dim"));
+    log("");
+    return;
   }
-  log("============================================");
+
+  const cols = {
+    name: Math.max(4, ...rows.map((r) => r.name.length)),
+    phase: Math.max(5, ...rows.map((r) => r.phase.length)),
+    status: Math.max(6, ...rows.map((r) => r.status.length)),
+    iters: 5,
+    progress: 8,
+  };
+
+  const header = [
+    styled("Name".padEnd(cols.name), "bold"),
+    styled("Phase".padEnd(cols.phase), "bold"),
+    styled("Status".padEnd(cols.status), "bold"),
+    styled("Iters".padEnd(cols.iters), "bold"),
+    styled("Progress".padEnd(cols.progress), "bold"),
+    styled("Description", "bold"),
+  ].join("  ");
+
+  const rule = styled(
+    "─".repeat(cols.name + cols.phase + cols.status + cols.iters + cols.progress + 60 + 10),
+    "dim",
+  );
+
+  log("");
+  log(header);
+  log(rule);
+
+  for (const row of rows) {
+    const line = [
+      styled(row.name.padEnd(cols.name), "cyan"),
+      row.phase.padEnd(cols.phase),
+      row.status.padEnd(cols.status),
+      row.iters.padStart(cols.iters),
+      row.progress.padStart(cols.progress),
+      styled(row.prompt, "dim"),
+    ].join("  ");
+    log(line);
+  }
+
+  log("");
 }

@@ -9,6 +9,7 @@ import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { commitState } from "@ralphy/core/git";
 import { mainLoop } from "./loop";
 import { log, error } from "@ralphy/output";
+import { runWithContext, createDefaultContext } from "@ralphy/context";
 import type { Phase } from "@ralphy/types";
 
 /**
@@ -30,7 +31,7 @@ async function main(): Promise<void> {
 
   switch (args.mode) {
     case "list": {
-      showList(tasksDir);
+      runWithContext(createDefaultContext(), () => showList(tasksDir));
       break;
     }
 
@@ -44,8 +45,10 @@ async function main(): Promise<void> {
         error(`Error: task '${args.name}' not found`);
         process.exit(1);
       }
-      const state = readState(taskDir);
-      showStatus(state, taskDir);
+      runWithContext(createDefaultContext(), () => {
+        const state = readState(taskDir);
+        showStatus(state, taskDir);
+      });
       break;
     }
 

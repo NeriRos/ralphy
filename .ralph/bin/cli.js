@@ -31,7 +31,7 @@ var __export = (target, all) => {
 };
 var __require = import.meta.require;
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/common.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/common.js
 var require_common = __commonJS((exports, module) => {
   function isNothing(subject) {
     return typeof subject === "undefined" || subject === null;
@@ -74,7 +74,7 @@ var require_common = __commonJS((exports, module) => {
   exports.extend = extend;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/exception.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/exception.js
 var require_exception = __commonJS((exports, module) => {
   function YAMLException(reason, mark) {
     Error.call(this);
@@ -102,7 +102,7 @@ var require_exception = __commonJS((exports, module) => {
   module.exports = YAMLException;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/mark.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/mark.js
 var require_mark = __commonJS((exports, module) => {
   var common = require_common();
   function Mark(name, buffer, position, line, column) {
@@ -177,7 +177,7 @@ var require_mark = __commonJS((exports, module) => {
   module.exports = Mark;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type.js
 var require_type = __commonJS((exports, module) => {
   var YAMLException = require_exception();
   var TYPE_CONSTRUCTOR_OPTIONS = [
@@ -237,7 +237,7 @@ var require_type = __commonJS((exports, module) => {
   module.exports = Type;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema.js
 var require_schema = __commonJS((exports, module) => {
   var common = require_common();
   var YAMLException = require_exception();
@@ -334,7 +334,7 @@ var require_schema = __commonJS((exports, module) => {
   module.exports = Schema;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/str.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/str.js
 var require_str = __commonJS((exports, module) => {
   var Type = require_type();
   module.exports = new Type("tag:yaml.org,2002:str", {
@@ -345,7 +345,7 @@ var require_str = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/seq.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/seq.js
 var require_seq = __commonJS((exports, module) => {
   var Type = require_type();
   module.exports = new Type("tag:yaml.org,2002:seq", {
@@ -356,7 +356,7 @@ var require_seq = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/map.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/map.js
 var require_map = __commonJS((exports, module) => {
   var Type = require_type();
   module.exports = new Type("tag:yaml.org,2002:map", {
@@ -367,7 +367,7 @@ var require_map = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema/failsafe.js
 var require_failsafe = __commonJS((exports, module) => {
   var Schema = require_schema();
   module.exports = new Schema({
@@ -375,7 +375,7 @@ var require_failsafe = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/null.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/null.js
 var require_null = __commonJS((exports, module) => {
   var Type = require_type();
   function resolveYamlNull(data) {
@@ -415,7 +415,7 @@ var require_null = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/bool.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/bool.js
 var require_bool = __commonJS((exports, module) => {
   var Type = require_type();
   function resolveYamlBoolean(data) {
@@ -452,7 +452,7 @@ var require_bool = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/int.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/int.js
 var require_int = __commonJS((exports, module) => {
   var common = require_common();
   var Type = require_type();
@@ -594,7 +594,7 @@ var require_int = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/float.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/float.js
 var require_float = __commonJS((exports, module) => {
   var common = require_common();
   var Type = require_type();
@@ -690,7 +690,7 @@ var require_float = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema/json.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema/json.js
 var require_json = __commonJS((exports, module) => {
   var Schema = require_schema();
   module.exports = new Schema({
@@ -699,7 +699,7 @@ var require_json = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema/core.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema/core.js
 var require_core = __commonJS((exports, module) => {
   var Schema = require_schema();
   module.exports = new Schema({
@@ -707,7 +707,7 @@ var require_core = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/timestamp.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/timestamp.js
 var require_timestamp = __commonJS((exports, module) => {
   var Type = require_type();
   var YAML_DATE_REGEXP = new RegExp("^([0-9][0-9][0-9][0-9])" + "-([0-9][0-9])" + "-([0-9][0-9])$");
@@ -783,7 +783,7 @@ var require_timestamp = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/merge.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/merge.js
 var require_merge = __commonJS((exports, module) => {
   var Type = require_type();
   function resolveYamlMerge(data) {
@@ -795,7 +795,7 @@ var require_merge = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/binary.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/binary.js
 var require_binary = __commonJS((exports, module) => {
   var NodeBuffer;
   try {
@@ -900,7 +900,7 @@ var require_binary = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/omap.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/omap.js
 var require_omap = __commonJS((exports, module) => {
   var Type = require_type();
   var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -940,7 +940,7 @@ var require_omap = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/pairs.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/pairs.js
 var require_pairs = __commonJS((exports, module) => {
   var Type = require_type();
   var _toString = Object.prototype.toString;
@@ -985,7 +985,7 @@ var require_pairs = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/set.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/set.js
 var require_set = __commonJS((exports, module) => {
   var Type = require_type();
   var _hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -1010,7 +1010,7 @@ var require_set = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema/default_safe.js
 var require_default_safe = __commonJS((exports, module) => {
   var Schema = require_schema();
   module.exports = new Schema({
@@ -1020,7 +1020,7 @@ var require_default_safe = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/js/undefined.js
 var require_undefined = __commonJS((exports, module) => {
   var Type = require_type();
   function resolveJavascriptUndefined() {
@@ -1044,7 +1044,7 @@ var require_undefined = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/js/regexp.js
 var require_regexp = __commonJS((exports, module) => {
   var Type = require_type();
   function resolveJavascriptRegExp(data) {
@@ -1089,7 +1089,7 @@ var require_regexp = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/type/js/function.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/type/js/function.js
 var require_function = __commonJS((exports, module) => {
   var esprima;
   try {
@@ -1157,7 +1157,7 @@ var require_function = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/schema/default_full.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/schema/default_full.js
 var require_default_full = __commonJS((exports, module) => {
   var Schema = require_schema();
   module.exports = Schema.DEFAULT = new Schema({
@@ -1166,7 +1166,7 @@ var require_default_full = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/loader.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/loader.js
 var require_loader = __commonJS((exports, module) => {
   var common = require_common();
   var YAMLException = require_exception();
@@ -2514,7 +2514,7 @@ var require_loader = __commonJS((exports, module) => {
   exports.safeLoad = safeLoad;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml/dumper.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml/dumper.js
 var require_dumper = __commonJS((exports, module) => {
   var common = require_common();
   var YAMLException = require_exception();
@@ -3222,7 +3222,7 @@ var require_dumper = __commonJS((exports, module) => {
   exports.safeDump = safeDump;
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/lib/js-yaml.js
+// node_modules/front-matter/node_modules/js-yaml/lib/js-yaml.js
 var require_js_yaml = __commonJS((exports, module) => {
   var loader = require_loader();
   var dumper = require_dumper();
@@ -3254,13 +3254,13 @@ var require_js_yaml = __commonJS((exports, module) => {
   exports.addConstructor = deprecated("addConstructor");
 });
 
-// node_modules/.bun/js-yaml@3.14.2/node_modules/js-yaml/index.js
+// node_modules/front-matter/node_modules/js-yaml/index.js
 var require_js_yaml2 = __commonJS((exports, module) => {
   var yaml = require_js_yaml();
   module.exports = yaml;
 });
 
-// node_modules/.bun/front-matter@4.0.2/node_modules/front-matter/index.js
+// node_modules/front-matter/index.js
 var require_front_matter = __commonJS((exports, module) => {
   var parser = require_js_yaml2();
   var optionalByteOrderMark = "\\ufeff?";
@@ -3355,6 +3355,9 @@ function parseArgs(argv) {
     model: "opus",
     engineSet: false,
     maxIterations: 0,
+    maxCostUsd: 0,
+    maxRuntimeMinutes: 0,
+    maxConsecutiveFailures: 5,
     phase: "",
     noExecute: false,
     delay: 0,
@@ -3367,6 +3370,9 @@ function parseArgs(argv) {
   let expectPromptFile = false;
   let expectPhase = false;
   let expectDelay = false;
+  let expectMaxCost = false;
+  let expectMaxRuntime = false;
+  let expectMaxFailures = false;
   let expectTimeout = false;
   let expectPushInterval = false;
   for (const arg of argv) {
@@ -3401,6 +3407,21 @@ function parseArgs(argv) {
     if (expectDelay) {
       result.delay = parseInt(arg, 10);
       expectDelay = false;
+      continue;
+    }
+    if (expectMaxCost) {
+      result.maxCostUsd = parseFloat(arg);
+      expectMaxCost = false;
+      continue;
+    }
+    if (expectMaxRuntime) {
+      result.maxRuntimeMinutes = parseFloat(arg);
+      expectMaxRuntime = false;
+      continue;
+    }
+    if (expectMaxFailures) {
+      result.maxConsecutiveFailures = parseInt(arg, 10);
+      expectMaxFailures = false;
       continue;
     }
     if (expectTimeout) {
@@ -3444,6 +3465,15 @@ function parseArgs(argv) {
         break;
       case "--delay":
         expectDelay = true;
+        break;
+      case "--max-cost":
+        expectMaxCost = true;
+        break;
+      case "--max-runtime":
+        expectMaxRuntime = true;
+        break;
+      case "--max-failures":
+        expectMaxFailures = true;
         break;
       case "--timeout":
         expectTimeout = true;
@@ -3576,7 +3606,7 @@ function createDefaultContext() {
   return { storage: createFileSystemProvider() };
 }
 
-// node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/vendor/ansi-styles/index.js
+// node_modules/chalk/source/vendor/ansi-styles/index.js
 var ANSI_BACKGROUND_OFFSET = 10;
 var wrapAnsi16 =
   (offset = 0) =>
@@ -3763,7 +3793,7 @@ function assembleStyles() {
 var ansiStyles = assembleStyles();
 var ansi_styles_default = ansiStyles;
 
-// node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/vendor/supports-color/index.js
+// node_modules/chalk/source/vendor/supports-color/index.js
 import process2 from "process";
 import os from "os";
 import tty from "tty";
@@ -3908,7 +3938,7 @@ var supportsColor = {
 };
 var supports_color_default = supportsColor;
 
-// node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/utilities.js
+// node_modules/chalk/source/utilities.js
 function stringReplaceAll(string, substring, replacer) {
   let index = string.indexOf(substring);
   if (index === -1) {
@@ -3950,7 +3980,7 @@ function stringEncaseCRLFWithFirstIndex(string, prefix, postfix, index) {
   return returnValue;
 }
 
-// node_modules/.bun/chalk@5.6.2/node_modules/chalk/source/index.js
+// node_modules/chalk/source/index.js
 var { stdout: stdoutColor, stderr: stderrColor } = supports_color_default;
 var GENERATOR = Symbol("GENERATOR");
 var STYLER = Symbol("STYLER");
@@ -4157,6 +4187,15 @@ function showBanner(state, opts) {
   const maxLabel =
     opts.maxIterations && opts.maxIterations > 0 ? String(opts.maxIterations) : "unlimited";
   log(` ${styled("Max iters:", "bold")}  ${maxLabel}`);
+  if (opts.maxCostUsd && opts.maxCostUsd > 0) {
+    log(` ${styled("Cost cap:", "bold")}   $${opts.maxCostUsd}`);
+  }
+  if (opts.maxRuntimeMinutes && opts.maxRuntimeMinutes > 0) {
+    log(` ${styled("Runtime:", "bold")}    ${opts.maxRuntimeMinutes} min`);
+  }
+  if (opts.maxConsecutiveFailures && opts.maxConsecutiveFailures > 0) {
+    log(` ${styled("Fail limit:", "bold")} ${opts.maxConsecutiveFailures} consecutive`);
+  }
   if (opts.iterationDelay && opts.iterationDelay > 0) {
     log(` ${styled("Delay:", "bold")}      ${opts.iterationDelay}s between runs`);
   }
@@ -4220,17 +4259,9 @@ function showStatus(state, taskDir) {
   log("============================================");
 }
 function showList(tasksDir) {
-  log("============================================");
-  log(" Incomplete Tasks");
-  log("============================================");
-  let found = false;
   const storage = getStorage();
   const entries = storage.list(tasksDir);
-  if (entries.length === 0) {
-    log(" No tasks directory found.");
-    log("============================================");
-    return;
-  }
+  const rows = [];
   for (const entry of entries) {
     const raw = storage.read(join(tasksDir, entry, "state.json"));
     if (raw === null) continue;
@@ -4241,35 +4272,78 @@ function showList(tasksDir) {
       continue;
     }
     if (state.phase === "done") continue;
-    found = true;
-    const name = String(state.name ?? entry);
-    const phase = String(state.phase ?? "unknown");
-    const status = String(state.status ?? "unknown");
-    const total = String(state.totalIterations ?? 0);
-    const prompt = String(state.prompt ?? "").slice(0, 60);
-    let progressInfo = "";
+    const promptRaw = String(state.prompt ?? "");
+    const firstLine =
+      promptRaw
+        .split(`
+`)
+        .find((l) => l.trim() !== "") ?? "";
+    let progress = styled("\u2014", "dim");
     const progressContent = storage.read(join(tasksDir, entry, "PROGRESS.md"));
     if (progressContent !== null) {
       const { checked, unchecked } = countProgress(progressContent);
-      progressInfo = ` | progress: ${checked} done / ${unchecked} remaining`;
+      const total = checked + unchecked;
+      progress = total > 0 ? `${checked}/${total}` : styled("\u2014", "dim");
     }
-    const namePad = name.padEnd(20);
-    log(
-      ` ${namePad}  phase: ${phase.padEnd(8)}  status: ${status.padEnd(8)}  iters: ${total}${progressInfo}`,
-    );
-    log(`   ${prompt}`);
+    rows.push({
+      name: String(state.name ?? entry),
+      phase: String(state.phase ?? "unknown"),
+      status: String(state.status ?? "unknown"),
+      iters: String(state.totalIterations ?? 0),
+      progress,
+      prompt: firstLine
+        .replace(/^#+\s*/, "")
+        .trim()
+        .slice(0, 60),
+    });
   }
-  if (!found) {
-    log(" No incomplete tasks found.");
+  if (rows.length === 0) {
+    log("");
+    log(styled("  No incomplete tasks.", "dim"));
+    log("");
+    return;
   }
-  log("============================================");
+  const cols = {
+    name: Math.max(4, ...rows.map((r) => r.name.length)),
+    phase: Math.max(5, ...rows.map((r) => r.phase.length)),
+    status: Math.max(6, ...rows.map((r) => r.status.length)),
+    iters: 5,
+    progress: 8,
+  };
+  const header = [
+    styled("Name".padEnd(cols.name), "bold"),
+    styled("Phase".padEnd(cols.phase), "bold"),
+    styled("Status".padEnd(cols.status), "bold"),
+    styled("Iters".padEnd(cols.iters), "bold"),
+    styled("Progress".padEnd(cols.progress), "bold"),
+    styled("Description", "bold"),
+  ].join("  ");
+  const rule = styled(
+    "\u2500".repeat(cols.name + cols.phase + cols.status + cols.iters + cols.progress + 60 + 10),
+    "dim",
+  );
+  log("");
+  log(header);
+  log(rule);
+  for (const row of rows) {
+    const line = [
+      styled(row.name.padEnd(cols.name), "cyan"),
+      row.phase.padEnd(cols.phase),
+      row.status.padEnd(cols.status),
+      row.iters.padStart(cols.iters),
+      row.progress.padStart(cols.progress),
+      styled(row.prompt, "dim"),
+    ].join("  ");
+    log(line);
+  }
+  log("");
 }
 
 // packages/core/src/state.ts
 import { join as join2 } from "path";
 import { execSync } from "child_process";
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/external.js
+// node_modules/zod/v3/external.js
 var exports_external = {};
 __export(exports_external, {
   void: () => voidType,
@@ -4381,7 +4455,7 @@ __export(exports_external, {
   BRAND: () => BRAND,
 });
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/helpers/util.js
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function (util2) {
   util2.assertEqual = (_) => {};
@@ -4522,7 +4596,7 @@ var getParsedType = (data) => {
   }
 };
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/ZodError.js
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -4643,7 +4717,7 @@ ZodError.create = (issues) => {
   return error2;
 };
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/locales/en.js
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -4744,7 +4818,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/errors.js
+// node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -4752,7 +4826,7 @@ function setErrorMap(map) {
 function getErrorMap() {
   return overrideErrorMap;
 }
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...(issueData.path || [])];
@@ -4853,14 +4927,14 @@ var isAborted = (x) => x.status === "aborted";
 var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function (errorUtil2) {
   errorUtil2.errToObj = (message) => (typeof message === "string" ? { message } : message || {});
   errorUtil2.toString = (message) => (typeof message === "string" ? message : message?.message);
 })(errorUtil || (errorUtil = {}));
 
-// node_modules/.bun/zod@3.25.76/node_modules/zod/v3/types.js
+// node_modules/zod/v3/types.js
 class ParseInputLazyPath {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -9678,12 +9752,19 @@ ${styled("STOP signal detected.", "warn")}`);
   }));
   return reason;
 }
-function shouldContinue(state, iteration, opts) {
-  if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return false;
+function checkStopCondition(state, iteration, opts, startTime, consecutiveFailures) {
+  if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return "maxIterations";
   const phaseConfig = getPhase(state.phase);
-  if (phaseConfig.terminal) return false;
-  if (opts.noExecute && state.phase === "exec") return false;
-  return true;
+  if (phaseConfig.terminal) return "terminal";
+  if (opts.noExecute && state.phase === "exec") return "noExecute";
+  if (opts.maxCostUsd > 0 && state.usage.total_cost_usd >= opts.maxCostUsd) return "costCap";
+  if (opts.maxRuntimeMinutes > 0) {
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs >= opts.maxRuntimeMinutes * 60000) return "runtimeLimit";
+  }
+  if (opts.maxConsecutiveFailures > 0 && consecutiveFailures >= opts.maxConsecutiveFailures)
+    return "consecutiveFailures";
+  return null;
 }
 function updateStateIteration(taskDir, result, startedAt, engine, model, usage) {
   return updateState(taskDir, (s) => {
@@ -9739,6 +9820,41 @@ function updateStateIteration(taskDir, result, startedAt, engine, model, usage) 
 function sleep(seconds) {
   return new Promise((resolve3) => setTimeout(resolve3, seconds * 1000));
 }
+function logStopReason(reason, state, opts, taskDir, consecutiveFailures, storage) {
+  switch (reason) {
+    case "terminal": {
+      const progressContent = storage.read(join5(taskDir, "PROGRESS.md"));
+      if (progressContent !== null) {
+        const { checked, unchecked } = countProgress(progressContent);
+        log(`
+All items checked (${checked} done / ${unchecked} remaining). Task complete!`);
+      }
+      log(`See: ${taskDir}/PROGRESS.md`);
+      break;
+    }
+    case "noExecute":
+      log(`
+Research and planning complete. Stopping before execution (--no-execute).`);
+      log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
+      break;
+    case "maxIterations":
+      log(`
+Reached max iterations: ${opts.maxIterations}`);
+      break;
+    case "costCap":
+      log(`
+${styled(`Cost cap reached: $${state.usage.total_cost_usd.toFixed(2)} >= $${opts.maxCostUsd} limit`, "warn")}`);
+      break;
+    case "runtimeLimit":
+      log(`
+${styled(`Runtime limit reached: ${opts.maxRuntimeMinutes} minute(s)`, "warn")}`);
+      break;
+    case "consecutiveFailures":
+      log(`
+${styled(`Stopped: ${consecutiveFailures} consecutive identical failures detected`, "fail")}`);
+      break;
+  }
+}
 async function mainLoop(opts) {
   return runWithContext(createDefaultContext(), () => _mainLoop(opts));
 }
@@ -9769,30 +9885,27 @@ async function _mainLoop(opts) {
     isResume,
     noExecute: opts.noExecute,
     maxIterations: opts.maxIterations,
+    maxCostUsd: opts.maxCostUsd,
+    maxRuntimeMinutes: opts.maxRuntimeMinutes,
+    maxConsecutiveFailures: opts.maxConsecutiveFailures,
     iterationDelay: opts.delay,
     taskPrompt: opts.prompt || state.prompt,
   });
   let iteration = 0;
+  const loopStartTime = Date.now();
+  let consecutiveFailures = 0;
+  let lastResult = "";
   while (true) {
     state = readState(taskDir);
-    if (!shouldContinue(state, iteration, opts)) {
-      const phaseConfig = getPhase(state.phase);
-      if (phaseConfig.terminal) {
-        const progressContent2 = storage.read(join5(taskDir, "PROGRESS.md"));
-        if (progressContent2 !== null) {
-          const { checked, unchecked } = countProgress(progressContent2);
-          log(`
-All items checked (${checked} done / ${unchecked} remaining). Task complete!`);
-        }
-        log(`See: ${taskDir}/PROGRESS.md`);
-      } else if (opts.noExecute && state.phase === "exec") {
-        log(`
-Research and planning complete. Stopping before execution (--no-execute).`);
-        log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
-      } else if (opts.maxIterations > 0 && iteration >= opts.maxIterations) {
-        log(`
-Reached max iterations: ${opts.maxIterations}`);
-      }
+    const stopReason = checkStopCondition(
+      state,
+      iteration,
+      opts,
+      loopStartTime,
+      consecutiveFailures,
+    );
+    if (stopReason !== null) {
+      logStopReason(stopReason, state, opts, taskDir, consecutiveFailures, storage);
       break;
     }
     iteration++;
@@ -9832,14 +9945,14 @@ Reached max iterations: ${opts.maxIterations}`);
       const failure = handleEngineFailure(engineResult.exitCode);
       log(`
 ${styled(failure.message, "fail")}`);
-      updateStateIteration(
-        taskDir,
-        `failed:exit-${engineResult.exitCode}`,
-        iterStart,
-        opts.engine,
-        opts.model,
-        engineResult.usage,
-      );
+      const result = `failed:exit-${engineResult.exitCode}`;
+      updateStateIteration(taskDir, result, iterStart, opts.engine, opts.model, engineResult.usage);
+      if (result === lastResult) {
+        consecutiveFailures++;
+      } else {
+        consecutiveFailures = 1;
+        lastResult = result;
+      }
       if (failure.shouldStop) break;
       break;
     }
@@ -9851,6 +9964,8 @@ ${styled(failure.message, "fail")}`);
       opts.model,
       engineResult.usage,
     );
+    consecutiveFailures = 0;
+    lastResult = "";
     state = autoTransitionAfterIteration(state, taskDir);
     try {
       gitPush();
@@ -9859,7 +9974,10 @@ ${styled(failure.message, "fail")}`);
     log(`
 ======== COMPLETED ITERATION ${iteration} ========
 `);
-    if (shouldContinue(state, iteration, opts) && opts.delay > 0) {
+    if (
+      checkStopCondition(state, iteration, opts, loopStartTime, consecutiveFailures) === null &&
+      opts.delay > 0
+    ) {
       log(`  [wait] Sleeping ${opts.delay}s before next iteration...
 `);
       await sleep(opts.delay);
@@ -9888,7 +10006,7 @@ async function main() {
   const tasksDir = resolveTasksDir();
   switch (args.mode) {
     case "list": {
-      showList(tasksDir);
+      runWithContext(createDefaultContext(), () => showList(tasksDir));
       break;
     }
     case "status": {
@@ -9901,8 +10019,10 @@ async function main() {
         error(`Error: task '${args.name}' not found`);
         process.exit(1);
       }
-      const state = readState(taskDir);
-      showStatus(state, taskDir);
+      runWithContext(createDefaultContext(), () => {
+        const state = readState(taskDir);
+        showStatus(state, taskDir);
+      });
       break;
     }
     case "advance": {
@@ -9945,6 +10065,9 @@ async function main() {
         engine: args.engine,
         model: args.model,
         maxIterations: args.maxIterations,
+        maxCostUsd: args.maxCostUsd,
+        maxRuntimeMinutes: args.maxRuntimeMinutes,
+        maxConsecutiveFailures: args.maxConsecutiveFailures,
         noExecute: args.noExecute,
         delay: args.delay,
         log: args.log,
