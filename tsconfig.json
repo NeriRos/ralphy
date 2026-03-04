@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/types"
+    },
+    {
+      "path": "./packages/output"
+    },
+    {
+      "path": "./packages/context"
+    },
+    {
+      "path": "./packages/phases"
+    },
+    {
+      "path": "./packages/engine"
+    },
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./apps/cli"
+    },
+    {
+      "path": "./apps/mcp"
+    }
+  ]
+}

@@ -22,7 +22,7 @@
     "noImplicitReturns": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "baseUrl": "."
+    "composite": true
   },
   "exclude": ["node_modules", "dist"]
 }

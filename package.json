@@ -34,6 +34,7 @@
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
     "@nx/devkit": "^22.5.3",
+    "@nx/js": "^22.5.3",
     "@secretlint/secretlint-rule-preset-recommend": "^11.3.1",
     "@swc-node/register": "^1.11.1",
     "@swc/core": "^1.15.18",

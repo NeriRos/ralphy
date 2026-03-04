@@ -3,5 +3,22 @@
   "compilerOptions": {
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../../packages/types"
+    },
+    {
+      "path": "../../packages/phases"
+    },
+    {
+      "path": "../../packages/output"
+    },
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/context"
+    }
+  ]
 }
