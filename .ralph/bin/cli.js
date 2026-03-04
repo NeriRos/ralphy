@@ -8315,6 +8315,15 @@ var PhaseFrontmatterSchema = exports_external.object({
   terminal: exports_external.boolean().default(false),
   context: exports_external.array(ContextEntrySchema).default([]),
 });
+var IterationUsageSchema = exports_external.object({
+  cost_usd: exports_external.number(),
+  duration_ms: exports_external.number(),
+  num_turns: exports_external.number(),
+  input_tokens: exports_external.number(),
+  output_tokens: exports_external.number(),
+  cache_read_input_tokens: exports_external.number(),
+  cache_creation_input_tokens: exports_external.number(),
+});
 var UsageSchema = exports_external.object({
   total_cost_usd: exports_external.number().default(0),
   total_duration_ms: exports_external.number().default(0),
@@ -8333,17 +8342,7 @@ var HistoryEntrySchema = exports_external.object({
   engine: exports_external.string(),
   model: exports_external.string(),
   result: exports_external.string(),
-  usage: exports_external
-    .object({
-      cost_usd: exports_external.number().optional(),
-      duration_ms: exports_external.number().optional(),
-      num_turns: exports_external.number().optional(),
-      input_tokens: exports_external.number().optional(),
-      output_tokens: exports_external.number().optional(),
-      cache_read_input_tokens: exports_external.number().optional(),
-      cache_creation_input_tokens: exports_external.number().optional(),
-    })
-    .optional(),
+  usage: IterationUsageSchema.partial().optional(),
 });
 var StateSchema = exports_external.object({
   version: exports_external.string().default("1"),

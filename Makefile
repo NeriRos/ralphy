@@ -33,6 +33,7 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
+	@rm -rf "$(INSTALL_PATH)/phases" "$(INSTALL_PATH)/templates/checklists"
 	@cp -r packages/phases/phases "$(INSTALL_PATH)/phases"
 	@mkdir -p "$(INSTALL_PATH)/templates"
 	@cp -r packages/phases/checklists "$(INSTALL_PATH)/templates/checklists"
