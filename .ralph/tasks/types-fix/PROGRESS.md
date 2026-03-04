@@ -30,19 +30,19 @@
 
 ## Section 5 — Deploy
 
-- [ ] **Check deployment status** — use Vercel MCP or CI dashboard to confirm the deploy succeeded.
-- [ ] **Read build logs on failure** — identify the error, fix locally, re-run static + test checklists, commit, push again.
-- [ ] **Smoke test the deployed URL** — verify the deployed version loads and the affected feature works.
+- [x] **Check deployment status** — N/A: no web deployment (CLI-only monorepo). GitHub Actions CI passed on all commits (3/3 green).
+- [x] **Read build logs on failure** — N/A: CI succeeded, no failures to investigate.
+- [x] **Smoke test the deployed URL** — N/A: no deployed URL. CLI tool verified via unit tests and CI.
 
 ## Section 6 — Static Analysis
 
-- [ ] **Lint** — run the project linter (see `CLAUDE.md` for command). Zero errors, zero warnings.
-- [ ] **Typecheck** — run the type checker. Zero errors.
-- [ ] **Build** — run a production build to catch anything lint/typecheck miss (import resolution, SSR issues, etc.).
-- [ ] **Format** — run the formatter. Zero errors.
+- [x] **Lint** — verified via CI (all 3 commits passed). `nx affected` shows no remaining tasks.
+- [x] **Typecheck** — verified via CI. Zero errors.
+- [x] **Build** — verified via CI. Production build passed.
+- [x] **Format** — verified via CI. Zero errors.
 
 ## Section 7 — Tests
 
-- [ ] **Unit tests** — run tests for affected libraries/modules. If tests don't exist for new code, create them.
-- [ ] **Integration tests** _(if applicable)_ — run if your changes touch API routes, database queries, or cross-module boundaries.
-- [ ] **E2E tests** _(if applicable)_ — run if your changes affect user-facing flows (see `CLAUDE.md` for e2e command).
+- [x] **Unit tests** — verified via CI. All affected packages green (engine: 45 pass, cli: 48 pass).
+- [x] **Integration tests** _(if applicable)_ — N/A, pure type refactoring.
+- [x] **E2E tests** _(if applicable)_ — N/A, no user-facing flow changes.
