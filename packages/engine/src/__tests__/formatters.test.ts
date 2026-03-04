@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  processClaudeLine,
-  formatClaudeStream,
-  type ClaudeUsageStats,
-} from "../formatters/claude-stream";
+import { processClaudeLine, formatClaudeStream } from "../formatters/claude-stream";
+import type { IterationUsage } from "@ralphy/types";
 import { processCodexLine, formatCodexStream } from "../formatters/codex-stream";
 
 // Strip ANSI escape codes for readable assertions
@@ -19,7 +16,7 @@ describe("processClaudeLine", () => {
       turnCount: 0,
       toolCount: 0,
       gotResult: false,
-      usage: null as ClaudeUsageStats | null,
+      usage: null as IterationUsage | null,
     };
   }
 

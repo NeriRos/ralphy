@@ -53,6 +53,20 @@ export interface PhaseConfig extends PhaseFrontmatter {
   prompt: string;
 }
 
+// --- Iteration usage (per-run stats) ---
+
+export const IterationUsageSchema = z.object({
+  cost_usd: z.number(),
+  duration_ms: z.number(),
+  num_turns: z.number(),
+  input_tokens: z.number(),
+  output_tokens: z.number(),
+  cache_read_input_tokens: z.number(),
+  cache_creation_input_tokens: z.number(),
+});
+
+export type IterationUsage = z.infer<typeof IterationUsageSchema>;
+
 // --- Zod schemas ---
 
 export const UsageSchema = z.object({
@@ -74,17 +88,7 @@ export const HistoryEntrySchema = z.object({
   engine: z.string(),
   model: z.string(),
   result: z.string(),
-  usage: z
-    .object({
-      cost_usd: z.number().optional(),
-      duration_ms: z.number().optional(),
-      num_turns: z.number().optional(),
-      input_tokens: z.number().optional(),
-      output_tokens: z.number().optional(),
-      cache_read_input_tokens: z.number().optional(),
-      cache_creation_input_tokens: z.number().optional(),
-    })
-    .optional(),
+  usage: IterationUsageSchema.partial().optional(),
 });
 
 export const StateSchema = z.object({

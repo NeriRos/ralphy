@@ -1,6 +1,6 @@
 import { spawn } from "bun";
-import { type Engine } from "@ralphy/types";
-import { processClaudeLine, type ClaudeUsageStats } from "./formatters/claude-stream";
+import { type Engine, type IterationUsage } from "@ralphy/types";
+import { processClaudeLine } from "./formatters/claude-stream";
 import { processCodexLine } from "./formatters/codex-stream";
 
 export interface RunEngineOptions {
@@ -13,7 +13,7 @@ export interface RunEngineOptions {
 
 export interface EngineResult {
   exitCode: number;
-  usage: ClaudeUsageStats | null;
+  usage: IterationUsage | null;
 }
 
 /**
@@ -101,14 +101,14 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
 
   // Stream stdout line-by-line through the formatter
   const stdout = proc.stdout as ReadableStream<Uint8Array>;
-  let usage: ClaudeUsageStats | null = null;
+  let usage: IterationUsage | null = null;
 
   if (engine === "claude") {
     const claudeState = {
       turnCount: 0,
       toolCount: 0,
       gotResult: false,
-      usage: null as ClaudeUsageStats | null,
+      usage: null as IterationUsage | null,
     };
 
     const reader = stdout.getReader();

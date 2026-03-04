@@ -1,25 +1,16 @@
 import { styled } from "@ralphy/output";
+import type { IterationUsage } from "@ralphy/types";
 
 export interface ClaudeStreamOptions {
   verbose?: boolean;
   logDir?: string;
 }
 
-export interface ClaudeUsageStats {
-  cost_usd: number;
-  duration_ms: number;
-  num_turns: number;
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_input_tokens: number;
-  cache_creation_input_tokens: number;
-}
-
 export interface ClaudeStreamResult {
   gotResult: boolean;
   turnCount: number;
   toolCount: number;
-  usage: ClaudeUsageStats | null;
+  usage: IterationUsage | null;
 }
 
 const SEP = styled("━".repeat(50), "gray");
@@ -48,7 +39,7 @@ function extractToolInputSummary(input: Record<string, unknown>): string {
   return "";
 }
 
-function extractUsage(event: Record<string, unknown>): ClaudeUsageStats {
+function extractUsage(event: Record<string, unknown>): IterationUsage {
   const usage = (event.usage ?? {}) as Record<string, number>;
   return {
     cost_usd: Math.round(((event.total_cost_usd as number) ?? 0) * 100) / 100,
@@ -71,7 +62,7 @@ export function processClaudeLine(
     turnCount: number;
     toolCount: number;
     gotResult: boolean;
-    usage: ClaudeUsageStats | null;
+    usage: IterationUsage | null;
   },
   options: ClaudeStreamOptions = {},
 ): string[] {
@@ -256,7 +247,7 @@ export function formatClaudeStream(
     turnCount: 0,
     toolCount: 0,
     gotResult: false,
-    usage: null as ClaudeUsageStats | null,
+    usage: null as IterationUsage | null,
   };
 
   const allOutput: string[] = [];
