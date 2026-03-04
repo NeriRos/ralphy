@@ -1,0 +1,42 @@
+{
+  "name": "<%= name %>",
+  "sourceRoot": "packages/<%= name %>/src",
+  "tags": ["scope:shared"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json packages/<%= name %>/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check packages/<%= name %>/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "check:circular": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "madge --circular --extensions ts packages/<%= name %>/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p packages/<%= name %>/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/<%= name %>/src",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

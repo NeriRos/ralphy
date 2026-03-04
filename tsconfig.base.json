@@ -21,7 +21,8 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "verbatimModuleSyntax": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": "."
   },
   "exclude": ["node_modules", "dist"]
 }

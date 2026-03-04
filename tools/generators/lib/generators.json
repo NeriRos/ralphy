@@ -1,0 +1,9 @@
+{
+  "generators": {
+    "lib": {
+      "factory": "./index",
+      "schema": "./schema.json",
+      "description": "Create a new library in packages/"
+    }
+  }
+}

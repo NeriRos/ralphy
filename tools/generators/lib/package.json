@@ -1,0 +1,7 @@
+{
+  "name": "@ralphy/generators",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./index.ts",
+  "generators": "./generators.json"
+}
