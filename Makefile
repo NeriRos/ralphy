@@ -50,9 +50,8 @@ init-tasks:
 	@touch "$(INSTALL_PATH)/tasks/.gitkeep"
 
 configure-mcp:
-	@MCP_PATH="$$(cd "$(INSTALL_PATH)/bin" && pwd)/mcp.js"; \
-	MCP_FILE="$(BASE_PATH)/.mcp.json"; \
-	ENTRY="{\"type\":\"stdio\",\"command\":\"bun\",\"args\":[\"$$MCP_PATH\"],\"env\":{}}"; \
+	@MCP_FILE="$(BASE_PATH)/.mcp.json"; \
+	ENTRY="{\"type\":\"stdio\",\"command\":\"bun\",\"args\":[\".ralph/bin/mcp.js\"],\"env\":{}}"; \
 	if [ -f "$$MCP_FILE" ]; then \
 		jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' "$$MCP_FILE" > "$$MCP_FILE.tmp" && \
 		mv "$$MCP_FILE.tmp" "$$MCP_FILE"; \
