@@ -33,9 +33,11 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
-	@cp -r packages/core/prompts "$(INSTALL_PATH)/"
-	@cp -r packages/core/templates "$(INSTALL_PATH)/"
-	@echo "  ✓ Copied prompts and templates"
+	@cp -r packages/phases/phases "$(INSTALL_PATH)/phases"
+	@mkdir -p "$(INSTALL_PATH)/templates"
+	@cp -r packages/phases/checklists "$(INSTALL_PATH)/templates/checklists"
+	@cp -r packages/core/templates/* "$(INSTALL_PATH)/templates/"
+	@echo "  ✓ Copied assets"
 
 init-tasks:
 	@if [ ! -d "$(INSTALL_PATH)/tasks" ]; then \

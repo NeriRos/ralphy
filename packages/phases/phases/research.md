@@ -1,3 +1,14 @@
+---
+name: research
+order: 1
+requires: []
+next: plan
+autoAdvance: null
+loopBack: null
+terminal: false
+context: []
+---
+
 # Task — Research Phase
 
 You are starting a new task. Your job is to deeply research the codebase to understand the current state, then produce a RESEARCH.md documenting your findings.

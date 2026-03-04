@@ -1,3 +1,16 @@
+---
+name: exec
+order: 3
+requires: [PLAN.md, PROGRESS.md]
+next: review
+autoAdvance: allChecked
+loopBack: null
+terminal: false
+context:
+  - type: currentSection
+    label: "Current Section"
+---
+
 # Task — Execution Phase
 
 You implement one section of a task plan. The current section and verification checklists are injected at the bottom of this prompt.
@@ -32,20 +45,20 @@ Work through the items in the Current Section in order.
 
 Follow every injected checklist below in order. Fix all issues before proceeding.
 
-**🚨 CRITICAL: ALWAYS use Nx affected, NEVER run-many 🚨**
+**CRITICAL: ALWAYS use Nx affected, NEVER run-many**
 
 ```bash
-# ✅ CORRECT - Run all relevant tasks together with affected
+# CORRECT - Run all relevant tasks together with affected
 nx affected -t test,lint,typecheck
 ```
 
-**⛔ NEVER DO THIS:**
+**NEVER DO THIS:**
 
 ```bash
-# ❌ WRONG - Runs ALL tests (100x slower, crushes CPU)
+# WRONG - Runs ALL tests (100x slower, crushes CPU)
 nx run-many -t test
 
-# ❌ WRONG - Multiple independent commands (spawns uncontrolled processes)
+# WRONG - Multiple independent commands (spawns uncontrolled processes)
 nx run lib1:test & nx run lib2:test
 ```
 
@@ -74,7 +87,7 @@ Before committing, review all changes made in this section:
 
 **If issues are found:**
 
-- Document them in PROGRESS.md with a note (e.g., `- [x] Item name — ⚠️ Issue: [description]`)
+- Document them in PROGRESS.md with a note (e.g., `- [x] Item name — Issue: [description]`)
 - Fix each issue directly in the code
 - Re-run verification commands (`nx affected -t test,lint,typecheck`)
 - Loop back to step 2 (Verify) until all issues are resolved

@@ -1,5 +1,4 @@
 import { resolve, dirname } from "node:path";
-import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -20,22 +19,5 @@ export function renderTemplate(content: string, vars: Record<string, string>): s
  * Resolve the absolute path to a template file by name (without extension).
  */
 export function resolveTemplatePath(name: string): string {
-  return resolve(packageRoot, "templates", `${name}.md`);
-}
-
-/**
- * Resolve the absolute path to the templates/checklists/ directory.
- */
-export function resolveChecklistDir(): string {
-  return resolve(packageRoot, "templates", "checklists");
-}
-
-/**
- * List available checklist names (without .md extension).
- */
-export function listChecklists(): string[] {
-  const dir = resolveChecklistDir();
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".md"))
-    .map((f) => f.replace(/\.md$/, ""));
+  return resolve(packageRoot, "templates", "scaffolds", `${name}.md`);
 }

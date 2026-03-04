@@ -6,7 +6,8 @@ import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
 import { commitState } from "@ralphy/core/git";
-import { resolveTemplatePath, resolveChecklistDir, listChecklists } from "@ralphy/core/templates";
+import { resolveTemplatePath } from "@ralphy/core/templates";
+import { resolveChecklistDir, listChecklists } from "@ralphy/phases";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import { getPhase } from "@ralphy/phases";
 

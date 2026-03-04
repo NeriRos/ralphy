@@ -1,9 +1,14 @@
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
-import { getPhase, getNextPhase, loadPhases } from "@ralphy/phases";
+import {
+  getPhase,
+  getNextPhase,
+  loadPhases,
+  resolveChecklistDir,
+  listChecklists,
+} from "@ralphy/phases";
 import { writeState } from "./state";
 import { countProgress } from "./progress";
-import { resolveChecklistDir, listChecklists } from "./templates";
 import { getStorage } from "@ralphy/context";
 
 /**
