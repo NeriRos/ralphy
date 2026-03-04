@@ -14,13 +14,5 @@ export default async function libGenerator(tree: Tree, options: LibGeneratorSche
     tmpl: "",
   });
 
-  updateJson(tree, "tsconfig.base.json", (json) => {
-    json.compilerOptions.baseUrl ??= ".";
-    const paths = json.compilerOptions.paths ?? {};
-    paths[`@ralphy/${name}`] = [`${projectRoot}/src/${name}.ts`];
-    json.compilerOptions.paths = paths;
-    return json;
-  });
-
   await formatFiles(tree);
 }
