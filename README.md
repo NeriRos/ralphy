@@ -23,7 +23,7 @@ make install ~           # Install to ~/.ralph
 make install /path/to   # Install to /path/to/.ralph
 ```
 
-This builds the CLI and MCP server, copies them to `.ralph/bin/`, sets up phase definitions and templates, configures `.mcp.json`, and adds a `ralph` script to `package.json`.
+This builds the CLI and MCP server, copies them to `.ralph/bin/`, sets up phase definitions and templates, configures `.mcp.json`, and adds a `ralph` script to `package.json`. The `.ralph/` directory is gitignored by default.
 
 ### Prerequisites
 
@@ -40,6 +40,14 @@ ralph task --name fix-auth --prompt "Fix the JWT validation bug" --claude opus 1
 ```
 
 The trailing number sets the max iterations. The engine defaults to Claude Sonnet.
+
+### Interactive Mode
+
+```bash
+ralph task --name fix-auth --prompt "Fix the JWT validation bug" --interactive
+```
+
+Runs the research and plan phases interactively (with direct terminal I/O), then switches to automated execution for the remaining phases. Useful when you want to guide early discovery and let the agent execute autonomously.
 
 ### Resume a Task
 
@@ -73,6 +81,7 @@ ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
 | `--claude [model]`     | Use Claude engine (haiku/sonnet/opus)                    |
 | `--codex`              | Use Codex engine                                         |
 | `--no-execute`         | Stop after research + plan phases                        |
+| `--interactive`        | Run research + plan interactively, then automate         |
 | `--max-cost <N>`       | Stop when cost exceeds $N                                |
 | `--max-runtime <N>`    | Stop after N minutes                                     |
 | `--max-failures <N>`   | Stop after N consecutive identical failures (default: 5) |
@@ -93,14 +102,15 @@ ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
 
 Each task lives in `.ralph/tasks/<name>/` and contains:
 
-| File          | Purpose                                       |
-| ------------- | --------------------------------------------- |
-| `state.json`  | Task state, usage stats, and history          |
-| `STEERING.md` | Your guidance to the agent (editable anytime) |
-| `RESEARCH.md` | Agent's research findings                     |
-| `PLAN.md`     | Agent's implementation plan                   |
-| `PROGRESS.md` | Checklist tracking execution progress         |
-| `STOP`        | Create this file to signal the loop to stop   |
+| File             | Purpose                                          |
+| ---------------- | ------------------------------------------------ |
+| `state.json`     | Task state, usage stats, and history             |
+| `STEERING.md`    | Your guidance to the agent (editable anytime)    |
+| `RESEARCH.md`    | Agent's research findings                        |
+| `PLAN.md`        | Agent's implementation plan                      |
+| `PROGRESS.md`    | Checklist tracking execution progress            |
+| `INTERACTIVE.md` | Context saved from interactive session (if used) |
+| `STOP`           | Create this file to signal the loop to stop      |
 
 ## MCP Server
 
@@ -112,6 +122,7 @@ Ralphy includes an MCP server that exposes task management tools to Claude agent
 - `ralph_read_document` — Read task documents
 - `ralph_advance_phase` — Advance or set phase
 - `ralph_update_steering` — Update STEERING.md
+- `ralph_finish_interactive` — Complete interactive session and hand off to automated phases
 - `ralph_list_checklists` / `ralph_apply_checklist` — Manage verification checklists
 
 ## Project Structure
