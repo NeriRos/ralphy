@@ -24272,6 +24272,16 @@ function createDefaultContext() {
   return { storage: createFileSystemProvider() };
 }
 
+// packages/core/src/format.ts
+function formatTaskName(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // packages/core/src/state.ts
 var STATE_FILE = "state.json";
 function readState(taskDir) {
@@ -24296,7 +24306,7 @@ function buildInitialState(opts) {
     branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim();
   } catch {}
   return StateSchema.parse({
-    name: opts.name,
+    name: formatTaskName(opts.name),
     prompt: opts.prompt,
     phase: opts.phase ?? getFirstPhase().name,
     engine: opts.engine ?? "claude",
@@ -24874,53 +24884,54 @@ function registerTools(server, tasksDir) {
     "ralph_finish_interactive",
     {
       description:
-        "Finish the interactive planning session. Call this after creating RESEARCH.md, PLAN.md, and PROGRESS.md. " +
-        "It advances the task to exec phase and signals the ralph loop to continue automatically. " +
+        "Finish the interactive planning session. Call this with a summary of everything learned " +
+        "from the conversation: requirements, decisions, constraints, and context. " +
+        "This writes the summary to STEERING.md so all subsequent automated phases have full context. " +
         "After calling this tool you MUST immediately use /exit to end your session.",
       inputSchema: {
         name: exports_external.string().describe("Task name"),
+        context: exports_external
+          .string()
+          .describe(
+            "Comprehensive summary of the interactive session: refined requirements, " +
+              "architectural decisions, constraints, edge cases, and any user preferences discussed",
+          ),
       },
     },
-    async ({ name }) => {
+    async ({ name, context }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
           const storage = getStorage();
           const taskDir = join4(tasksDir, name);
-          const state = readState(taskDir);
-          const missing = [];
-          for (const file of ["RESEARCH.md", "PLAN.md", "PROGRESS.md"]) {
-            if (storage.read(join4(taskDir, file)) === null) {
-              missing.push(file);
-            }
-          }
-          if (missing.length > 0) {
+          if (storage.read(join4(taskDir, "state.json")) === null) {
             return {
-              content: [
-                {
-                  type: "text",
-                  text: `Cannot finish interactive session \u2014 missing files: ${missing.join(", ")}. Create them first.`,
-                },
-              ],
+              content: [{ type: "text", text: `Task '${name}' does not exist` }],
               isError: true,
             };
           }
-          let current = state;
-          while (current.phase !== "exec") {
-            current = advancePhase(current, taskDir);
-            writeState(taskDir, current);
-            commitState(taskDir, `advance phase: ${state.phase} -> ${current.phase}`);
-          }
+          const interactiveContent = [
+            "# Interactive Session Context",
+            "",
+            "**This context was gathered during an interactive planning session with the user.**",
+            "**Treat these as authoritative requirements and decisions.**",
+            "",
+            context,
+          ].join(`
+`);
+          storage.write(join4(taskDir, "INTERACTIVE.md"), interactiveContent);
           storage.write(join4(taskDir, "_interactive_done"), new Date().toISOString());
+          commitState(taskDir, `interactive: save session context for ${name}`);
           return {
             content: [
               {
                 type: "text",
                 text: [
-                  `Interactive session complete. Task '${name}' advanced to exec phase.`,
+                  `Interactive session complete. Context saved to STEERING.md for task '${name}'.`,
                   "",
-                  "The automated ralph loop will now take over for execution.",
+                  "The automated ralph loop will now run all phases (research \u2192 plan \u2192 exec \u2192 review) with this context.",
                   "",
-                  "**You MUST now use /exit to end this session.**",
+                  "IMPORTANT: Tell the user to run /exit to end this session so the automated loop can continue.",
+                  "You cannot exit on your own \u2014 the user must type /exit in the terminal.",
                 ].join(`
 `),
               },

@@ -8520,6 +8520,16 @@ function listChecklists() {
     .map((f) => f.replace(/\.md$/, ""));
 }
 
+// packages/core/src/format.ts
+function formatTaskName(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // packages/core/src/state.ts
 var STATE_FILE = "state.json";
 function readState(taskDir) {
@@ -8550,7 +8560,7 @@ function buildInitialState(opts) {
     branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim();
   } catch {}
   return StateSchema.parse({
-    name: opts.name,
+    name: formatTaskName(opts.name),
     prompt: opts.prompt,
     phase: opts.phase ?? getFirstPhase().name,
     engine: opts.engine ?? "claude",
@@ -9521,12 +9531,14 @@ async function runInteractive(model, prompt, taskDir) {
       model,
       "--dangerously-skip-permissions",
       [
-        `Read the file ${promptFile} for your full task instructions.`,
-        `Start by using /plan mode. Ask the user clarifying questions to understand the requirements better.`,
-        `Once the user approves the plan, execute the research and planning phases from the instructions:`,
-        `create RESEARCH.md, PLAN.md, and PROGRESS.md.`,
-        `When all three files are ready, call the ralph_finish_interactive MCP tool with the task name.`,
-        `That tool will advance the phase and signal the loop. After calling it, use /exit immediately.`,
+        `Read the file ${promptFile} for background on the task.`,
+        `Start by using /plan mode. Ask the user clarifying questions to deeply understand the requirements,`,
+        `constraints, edge cases, and preferences. Do not rush \u2014 thorough understanding is the goal.`,
+        `Once the user is satisfied and approves, call the ralph_finish_interactive MCP tool with the task name`,
+        `and a comprehensive context summary of everything discussed: refined requirements, architectural decisions,`,
+        `constraints, edge cases, and user preferences.`,
+        `The automated loop will then run all phases (research, plan, exec, review) using this context.`,
+        `After calling ralph_finish_interactive, use /exit immediately.`,
       ].join(" "),
     ];
     const proc = spawn({
@@ -9538,7 +9550,6 @@ async function runInteractive(model, prompt, taskDir) {
     const exitCode = await proc.exited;
     const doneFile = taskDir ? join5(taskDir, "_interactive_done") : null;
     if (doneFile && existsSync2(doneFile)) {
-      unlinkSync2(doneFile);
       return { exitCode: 0, usage: null };
     }
     return { exitCode, usage: null };
@@ -9712,6 +9723,27 @@ function buildTaskPrompt(state, taskDir) {
 `;
     }
   }
+  const interactive = storage.read(join6(taskDir, "INTERACTIVE.md"));
+  if (interactive !== null) {
+    prompt += `---
+`;
+    prompt += `# Interactive Session Context (READ FIRST)
+
+`;
+    prompt += `The following was gathered during an interactive session with the user.
+`;
+    prompt += `Treat these as authoritative requirements and decisions.
+
+`;
+    prompt +=
+      interactive +
+      `
+
+`;
+    prompt += `---
+
+`;
+  }
   if (phaseConfig.prompt) {
     prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
   }
@@ -9768,7 +9800,7 @@ function buildTemplateVars(state, taskDir) {
           "- `ralph_get_task(name)` \u2014 Get task status, metadata, and progress",
           "- `ralph_list_checklists()` \u2014 List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` \u2014 Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
-          "- `ralph_finish_interactive(name)` \u2014 **Interactive mode only.** Call after creating RESEARCH.md, PLAN.md, and PROGRESS.md to advance to exec and end the interactive session. You MUST use /exit immediately after.",
+          "- `ralph_finish_interactive(name, context)` \u2014 **Interactive mode only.** Call with a comprehensive summary of the interactive session to save it as context for all subsequent automated phases. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,
           "",
@@ -9989,7 +10021,8 @@ async function _mainLoop(opts) {
     const iterStart = new Date().toISOString();
     let engineResult;
     try {
-      const isInteractivePhase = opts.interactive && state.phase === "research";
+      const interactiveDone = storage.read(join6(taskDir, "_interactive_done")) !== null;
+      const isInteractivePhase = opts.interactive && state.phase === "research" && !interactiveDone;
       engineResult = await runEngine({
         engine: opts.engine,
         model: opts.model,
@@ -10044,6 +10077,7 @@ ${styled(failure.message, "fail")}`);
       await sleep(opts.delay);
     }
   }
+  storage.remove(join6(taskDir, "_interactive_done"));
   log(`Ralph loop finished after ${iteration} iterations.`);
   if (iteration > 0) {
     try {

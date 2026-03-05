@@ -106,12 +106,14 @@ async function runInteractive(
       model,
       "--dangerously-skip-permissions",
       [
-        `Read the file ${promptFile} for your full task instructions.`,
-        `Start by using /plan mode. Ask the user clarifying questions to understand the requirements better.`,
-        `Once the user approves the plan, execute the research and planning phases from the instructions:`,
-        `create RESEARCH.md, PLAN.md, and PROGRESS.md.`,
-        `When all three files are ready, call the ralph_finish_interactive MCP tool with the task name.`,
-        `That tool will advance the phase and signal the loop. After calling it, use /exit immediately.`,
+        `Read the file ${promptFile} for background on the task.`,
+        `Start by using /plan mode. Ask the user clarifying questions to deeply understand the requirements,`,
+        `constraints, edge cases, and preferences. Do not rush — thorough understanding is the goal.`,
+        `Once the user is satisfied and approves, call the ralph_finish_interactive MCP tool with the task name`,
+        `and a comprehensive context summary of everything discussed: refined requirements, architectural decisions,`,
+        `constraints, edge cases, and user preferences.`,
+        `The automated loop will then run all phases (research, plan, exec, review) using this context.`,
+        `After calling ralph_finish_interactive, use /exit immediately.`,
       ].join(" "),
     ];
 
@@ -125,9 +127,9 @@ async function runInteractive(
     const exitCode = await proc.exited;
 
     // Check if the interactive session completed successfully via the MCP tool signal
+    // Keep the file — the loop uses it to avoid re-entering interactive mode
     const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
     if (doneFile && existsSync(doneFile)) {
-      unlinkSync(doneFile);
       return { exitCode: 0, usage: null };
     }
 
