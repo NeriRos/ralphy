@@ -1,67 +1,40 @@
-# Research: smoke-test
+# Research — smoke-test
 
-## Objective
+## Task Summary
 
-Add a `formatTaskName` utility function to `packages/core` that normalizes task names (trim, lowercase, replace spaces with hyphens).
+Add an exported utility function `smokeTestPassed()` returning `true` to `@ralphy/core`, with a test.
 
-## Current State of packages/core
+## Files to Create
 
-### Structure
+### `packages/core/src/smoke.ts`
 
-- `src/state.ts` — State read/write/update, `buildInitialState`
-- `src/phases.ts` — Phase transitions, auto-advance logic
-- `src/progress.ts` — PROGRESS.md parsing (checked/unchecked counts, section extraction)
-- `src/templates.ts` — Template rendering and path resolution
-- `src/git.ts` — Git operations (add, commit, push)
+- Simple function: `export function smokeTestPassed(): boolean { return true; }`
+- Pattern follows `packages/core/src/format.ts` (line 5–12): single exported function, no dependencies.
 
-### Exports (package.json)
+### `packages/core/src/__tests__/smoke.test.ts`
 
-Each module is exported via subpath exports:
+- Pattern follows `packages/core/src/__tests__/format.test.ts`:
+  - Uses `import { describe, expect, test } from "bun:test"`
+  - Imports from `"../smoke"`
+  - Single describe block with one test asserting `smokeTestPassed() === true`
 
-```json
-{
-  "./state": "./src/state.ts",
-  "./phases": "./src/phases.ts",
-  "./progress": "./src/progress.ts",
-  "./git": "./src/git.ts",
-  "./templates": "./src/templates.ts"
-}
-```
+## Files to Modify
 
-### Existing Task Name Usage
+### `packages/core/package.json` (line 6–13)
 
-In `src/state.ts:90`, `migrateState` extracts a task name from the directory path:
+- Add `"./smoke": "./src/smoke.ts"` to the `"exports"` map.
+- Current exports: `./state`, `./phases`, `./progress`, `./git`, `./templates`, `./format`.
 
-```ts
-const name = taskDir.split("/").pop() ?? "unknown";
-```
+## Build / Test Commands
 
-The same pattern appears at `src/state.ts:119` in `ensureState`.
+- Run tests: `bunx nx test core` (per CLAUDE.md: use nx for libs)
+- No build step needed — package uses direct `.ts` exports.
 
-In `src/state.ts:48`, `buildInitialState` accepts `opts.name` and passes it directly into the state without normalization.
+## Dependency Graph
 
-## Where formatTaskName Fits
+1. Create `smoke.ts` (no deps)
+2. Create `smoke.test.ts` (depends on smoke.ts)
+3. Update `package.json` exports (independent of tests)
+4. Run tests to verify
 
-### New File: `src/format.ts`
-
-A new module for string formatting utilities. Keeps it separate from state/phase logic.
-
-### Callsites to Update
-
-- `buildInitialState` (`src/state.ts:57`) — normalize `opts.name` before storing
-- `migrateState` (`src/state.ts:90`) — normalize extracted name
-- `ensureState` (`src/state.ts:119`) — normalize extracted name
-
-### Test Pattern
-
-Existing tests are in `src/__tests__/*.test.ts`. Follow the same pattern for `format.test.ts`.
-
-### Build
-
-The project uses `bun` as package manager. TypeScript compilation uses project references (`tsconfig.json`). No special build step needed for `.ts` source files since exports point directly to `.ts` files.
-
-## Dependencies
-
-- No external dependencies needed
-- No changes to `tsconfig.json` required
-- `package.json` needs a new export entry: `"./format": "./src/format.ts"`
+All steps are straightforward with no callsites to update (new code only).
