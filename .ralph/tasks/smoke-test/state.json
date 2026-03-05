@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "name": "smoke-test",
+  "prompt": "smoke test to ensure all phases work",
+  "phase": "research",
+  "phaseIteration": 0,
+  "totalIterations": 0,
+  "createdAt": "2026-03-05T11:39:15.509Z",
+  "lastModified": "2026-03-05T11:39:15.509Z",
+  "engine": "claude",
+  "model": "opus",
+  "status": "active",
+  "usage": {
+    "total_cost_usd": 0,
+    "total_duration_ms": 0,
+    "total_turns": 0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_cache_read_input_tokens": 0,
+    "total_cache_creation_input_tokens": 0
+  },
+  "history": [],
+  "metadata": {
+    "branch": "main"
+  }
+}

@@ -100,6 +100,7 @@ async function main(): Promise<void> {
         maxRuntimeMinutes: args.maxRuntimeMinutes,
         maxConsecutiveFailures: args.maxConsecutiveFailures,
         noExecute: args.noExecute,
+        interactive: args.interactive,
         delay: args.delay,
         log: args.log,
         tasksDir,

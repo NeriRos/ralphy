@@ -14,6 +14,7 @@ export interface ParsedArgs {
   maxConsecutiveFailures: number;
   phase: string;
   noExecute: boolean;
+  interactive: boolean;
   delay: number;
   log: boolean;
   verbose: boolean;
@@ -34,6 +35,7 @@ const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
  *   --codex                 Use Codex engine
  *   --phase <phase>         Target phase for set-phase mode
  *   --no-execute            Stop after research+plan
+ *   --interactive           Run research+plan interactively, then continue automated
  *   --delay N               Seconds between iterations
  *   --log                   Log raw stream JSON
  *   --max-cost N            Stop when total cost exceeds $N (0 = no limit)
@@ -59,6 +61,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     maxConsecutiveFailures: 5,
     phase: "",
     noExecute: false,
+    interactive: false,
     delay: 0,
     log: false,
     verbose: false,
@@ -169,6 +172,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--no-execute":
         result.noExecute = true;
+        break;
+      case "--interactive":
+        result.interactive = true;
         break;
       case "--delay":
         expectDelay = true;

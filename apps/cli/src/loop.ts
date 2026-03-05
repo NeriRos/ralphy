@@ -21,6 +21,7 @@ export interface LoopOptions {
   maxRuntimeMinutes: number;
   maxConsecutiveFailures: number;
   noExecute: boolean;
+  interactive: boolean;
   delay: number;
   log: boolean;
   tasksDir: string;
@@ -356,6 +357,7 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     mode: "task",
     isResume,
     noExecute: opts.noExecute,
+    interactive: opts.interactive,
     maxIterations: opts.maxIterations,
     maxCostUsd: opts.maxCostUsd,
     maxRuntimeMinutes: opts.maxRuntimeMinutes,
@@ -412,12 +414,16 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     const iterStart = new Date().toISOString();
     let engineResult: EngineResult;
     try {
+      const isInteractivePhase =
+        opts.interactive && (state.phase === "research" || state.phase === "plan");
+
       engineResult = await runEngine({
         engine: opts.engine,
         model: opts.model,
         prompt,
         logFlag: opts.log,
         taskDir,
+        interactive: isInteractivePhase,
       });
     } catch (err) {
       error({ text: `Engine spawn error: ${err}`, style: "error" });

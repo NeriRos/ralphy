@@ -1,4 +1,7 @@
 import { spawn } from "bun";
+import { writeFileSync, unlinkSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { type Engine, type IterationUsage } from "@ralphy/types";
 import { processClaudeLine } from "./formatters/claude-stream";
 import { processCodexLine } from "./formatters/codex-stream";
@@ -9,6 +12,7 @@ export interface RunEngineOptions {
   prompt: string;
   logFlag?: boolean;
   taskDir?: string;
+  interactive?: boolean;
 }
 
 export interface EngineResult {
@@ -80,8 +84,54 @@ function buildCodexArgs(): string[] {
  *
  * Returns the exit code and usage stats (for Claude).
  */
+/**
+ * Spawn Claude in interactive mode with inherited stdio.
+ * The user can chat back and forth. Returns when the session ends.
+ */
+async function runInteractive(
+  model: string,
+  prompt: string,
+  taskDir?: string,
+): Promise<EngineResult> {
+  // Write prompt to a temp file in the task dir so Claude can read it
+  const promptFile = taskDir
+    ? join(taskDir, "_interactive_prompt.md")
+    : join(mkdtempSync(join(tmpdir(), "ralph-")), "prompt.md");
+  writeFileSync(promptFile, prompt);
+
+  try {
+    const cmd = [
+      "claude",
+      "--model",
+      model,
+      "--dangerously-skip-permissions",
+      `Read the file ${promptFile} for your full task instructions. Start by using /plan mode to create a plan. Ask the user clarifying questions to understand the requirements better before proceeding. Once you have a clear understanding and the user approves the plan, execute the instructions from the file.`,
+    ];
+
+    const proc = spawn({
+      cmd,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+
+    const exitCode = await proc.exited;
+    return { exitCode, usage: null };
+  } finally {
+    try {
+      unlinkSync(promptFile);
+    } catch {
+      // cleanup is best-effort
+    }
+  }
+}
+
 export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const { engine, model, prompt } = opts;
+
+  if (opts.interactive && engine === "claude") {
+    return runInteractive(model, prompt, opts.taskDir);
+  }
 
   const isClaude = engine === "claude";
   const cmd = isClaude ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
