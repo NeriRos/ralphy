@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { StateSchema, type State } from "@ralphy/types";
 import { getFirstPhase } from "@ralphy/phases";
 import { getStorage } from "@ralphy/context";
+import { formatTaskName } from "./format";
 
 const STATE_FILE = "state.json";
 
@@ -55,7 +56,7 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
   }
 
   return StateSchema.parse({
-    name: opts.name,
+    name: formatTaskName(opts.name),
     prompt: opts.prompt,
     phase: opts.phase ?? getFirstPhase().name,
     engine: opts.engine ?? "claude",

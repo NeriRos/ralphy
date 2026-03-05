@@ -8,7 +8,9 @@
     "./phases": "./src/phases.ts",
     "./progress": "./src/progress.ts",
     "./git": "./src/git.ts",
-    "./templates": "./src/templates.ts"
+    "./templates": "./src/templates.ts",
+    "./format": "./src/format.ts",
+    "./smoke": "./src/smoke.ts"
   },
   "dependencies": {
     "@ralphy/context": "workspace:*",

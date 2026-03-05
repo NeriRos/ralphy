@@ -1,14 +1,9 @@
 {
   "mcpServers": {
-    "other-server": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["test.js"]
-    },
     "ralph": {
       "type": "stdio",
       "command": "bun",
-      "args": ["/Users/personal/Developer/ralphy/.ralph/bin/mcp.js"],
+      "args": [".ralph/bin/mcp.js"],
       "env": {}
     }
   }

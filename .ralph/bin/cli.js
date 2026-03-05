@@ -3339,8 +3339,8 @@ var require_front_matter = __commonJS((exports, module) => {
 });
 
 // apps/cli/src/index.ts
-import { resolve as resolve3, join as join6 } from "path";
-import { existsSync as existsSync2, mkdirSync as mkdirSync2 } from "fs";
+import { resolve as resolve3, join as join7 } from "path";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2 } from "fs";
 
 // apps/cli/src/cli.ts
 import { readFileSync } from "fs";
@@ -3360,6 +3360,7 @@ function parseArgs(argv) {
     maxConsecutiveFailures: 5,
     phase: "",
     noExecute: false,
+    interactive: false,
     delay: 0,
     log: false,
     verbose: false,
@@ -3462,6 +3463,9 @@ function parseArgs(argv) {
         break;
       case "--no-execute":
         result.noExecute = true;
+        break;
+      case "--interactive":
+        result.interactive = true;
         break;
       case "--delay":
         expectDelay = true;
@@ -4182,6 +4186,9 @@ function showBanner(state, opts) {
   log(` ${styled("Branch:", "bold")}     ${state.metadata.branch ?? "main"}`);
   if (opts.promptFile) {
     log(` ${styled("Prompt:", "bold")}     ${opts.promptFile}`);
+  }
+  if (opts.interactive) {
+    log(` ${styled("Interactive:", "bold")} yes (research+plan phases)`);
   }
   log(` ${styled("No execute:", "bold")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`);
   const maxLabel =
@@ -8513,6 +8520,16 @@ function listChecklists() {
     .map((f) => f.replace(/\.md$/, ""));
 }
 
+// packages/core/src/format.ts
+function formatTaskName(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // packages/core/src/state.ts
 var STATE_FILE = "state.json";
 function readState(taskDir) {
@@ -8543,7 +8560,7 @@ function buildInitialState(opts) {
     branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim();
   } catch {}
   return StateSchema.parse({
-    name: opts.name,
+    name: formatTaskName(opts.name),
     prompt: opts.prompt,
     phase: opts.phase ?? getFirstPhase().name,
     engine: opts.engine ?? "claude",
@@ -8810,7 +8827,7 @@ function commitState(taskDir, message) {
 }
 
 // apps/cli/src/loop.ts
-import { join as join5 } from "path";
+import { join as join6 } from "path";
 
 // packages/core/src/templates.ts
 import { resolve as resolve2, dirname as dirname3 } from "path";
@@ -8830,6 +8847,14 @@ function resolveTemplatePath(name) {
 
 // packages/engine/src/engine.ts
 var { spawn } = globalThis.Bun;
+import {
+  writeFileSync as writeFileSync2,
+  unlinkSync as unlinkSync2,
+  existsSync as existsSync2,
+  mkdtempSync,
+} from "fs";
+import { join as join5 } from "path";
+import { tmpdir } from "os";
 
 // packages/engine/src/formatters/claude-stream.ts
 var SEP = styled("\u2501".repeat(50), "gray");
@@ -9494,8 +9519,51 @@ function buildClaudeArgs(model) {
 function buildCodexArgs() {
   return ["exec", "--json", "--color", "never", "--dangerously-bypass-approvals-and-sandbox", "-"];
 }
+async function runInteractive(model, prompt, taskDir) {
+  const promptFile = taskDir
+    ? join5(taskDir, "_interactive_prompt.md")
+    : join5(mkdtempSync(join5(tmpdir(), "ralph-")), "prompt.md");
+  writeFileSync2(promptFile, prompt);
+  try {
+    const cmd = [
+      "claude",
+      "--model",
+      model,
+      "--dangerously-skip-permissions",
+      [
+        `Read the file ${promptFile} for background on the task.`,
+        `Start by using /plan mode. Ask the user clarifying questions to deeply understand the requirements,`,
+        `constraints, edge cases, and preferences. Do not rush \u2014 thorough understanding is the goal.`,
+        `Once the user is satisfied and approves, call the ralph_finish_interactive MCP tool with the task name`,
+        `and a comprehensive context summary of everything discussed: refined requirements, architectural decisions,`,
+        `constraints, edge cases, and user preferences.`,
+        `The automated loop will then run all phases (research, plan, exec, review) using this context.`,
+        `After calling ralph_finish_interactive, use /exit immediately.`,
+      ].join(" "),
+    ];
+    const proc = spawn({
+      cmd,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    const exitCode = await proc.exited;
+    const doneFile = taskDir ? join5(taskDir, "_interactive_done") : null;
+    if (doneFile && existsSync2(doneFile)) {
+      return { exitCode: 0, usage: null };
+    }
+    return { exitCode, usage: null };
+  } finally {
+    try {
+      unlinkSync2(promptFile);
+    } catch {}
+  }
+}
 async function runEngine(opts) {
   const { engine, model, prompt } = opts;
+  if (opts.interactive && engine === "claude") {
+    return runInteractive(model, prompt, opts.taskDir);
+  }
   const isClaude = engine === "claude";
   const cmd = isClaude ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
   const proc = spawn({
@@ -9630,7 +9698,7 @@ function buildTaskPrompt(state, taskDir) {
   const phaseConfig = getPhase(state.phase);
   let prompt = "";
   const storage = getStorage();
-  const steering = storage.read(join5(taskDir, "STEERING.md"));
+  const steering = storage.read(join6(taskDir, "STEERING.md"));
   if (steering !== null) {
     const lines = steering
       .split(`
@@ -9655,13 +9723,34 @@ function buildTaskPrompt(state, taskDir) {
 `;
     }
   }
+  const interactive = storage.read(join6(taskDir, "INTERACTIVE.md"));
+  if (interactive !== null) {
+    prompt += `---
+`;
+    prompt += `# Interactive Session Context (READ FIRST)
+
+`;
+    prompt += `The following was gathered during an interactive session with the user.
+`;
+    prompt += `Treat these as authoritative requirements and decisions.
+
+`;
+    prompt +=
+      interactive +
+      `
+
+`;
+    prompt += `---
+
+`;
+  }
   if (phaseConfig.prompt) {
     prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
   }
   for (const entry of phaseConfig.context) {
     switch (entry.type) {
       case "file": {
-        const content = storage.read(join5(taskDir, entry.file));
+        const content = storage.read(join6(taskDir, entry.file));
         if (content !== null) {
           prompt += `
 ---
@@ -9674,7 +9763,7 @@ function buildTaskPrompt(state, taskDir) {
         break;
       }
       case "currentSection": {
-        const progressContent = storage.read(join5(taskDir, "PROGRESS.md"));
+        const progressContent = storage.read(join6(taskDir, "PROGRESS.md"));
         if (progressContent !== null) {
           const section = extractCurrentSection(progressContent);
           if (section) {
@@ -9711,6 +9800,7 @@ function buildTemplateVars(state, taskDir) {
           "- `ralph_get_task(name)` \u2014 Get task status, metadata, and progress",
           "- `ralph_list_checklists()` \u2014 List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` \u2014 Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
+          "- `ralph_finish_interactive(name, context)` \u2014 **Interactive mode only.** Call with a comprehensive summary of the interactive session to save it as context for all subsequent automated phases. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,
           "",
@@ -9729,16 +9819,16 @@ function buildTemplateVars(state, taskDir) {
 }
 function scaffoldTaskFiles(taskDir) {
   const storage = getStorage();
-  if (storage.read(join5(taskDir, "STEERING.md")) === null) {
+  if (storage.read(join6(taskDir, "STEERING.md")) === null) {
     const tmpl = storage.read(resolveTemplatePath("STEERING"));
     if (tmpl !== null) {
-      storage.write(join5(taskDir, "STEERING.md"), tmpl);
+      storage.write(join6(taskDir, "STEERING.md"), tmpl);
     }
   }
 }
 function checkStopSignal(taskDir) {
   const storage = getStorage();
-  const stopFile = join5(taskDir, "STOP");
+  const stopFile = join6(taskDir, "STOP");
   const reason = storage.read(stopFile);
   if (reason === null) return null;
   storage.remove(stopFile);
@@ -9823,7 +9913,7 @@ function sleep(seconds) {
 function logStopReason(reason, state, opts, taskDir, consecutiveFailures, storage) {
   switch (reason) {
     case "terminal": {
-      const progressContent = storage.read(join5(taskDir, "PROGRESS.md"));
+      const progressContent = storage.read(join6(taskDir, "PROGRESS.md"));
       if (progressContent !== null) {
         const { checked, unchecked } = countProgress(progressContent);
         log(`
@@ -9859,10 +9949,10 @@ async function mainLoop(opts) {
   return runWithContext(createDefaultContext(), () => _mainLoop(opts));
 }
 async function _mainLoop(opts) {
-  const taskDir = join5(opts.tasksDir, opts.name);
+  const taskDir = join6(opts.tasksDir, opts.name);
   const storage = getStorage();
   let state;
-  const existingState = storage.read(join5(taskDir, "state.json"));
+  const existingState = storage.read(join6(taskDir, "state.json"));
   if (existingState !== null) {
     state = readState(taskDir);
     if (state.engine !== opts.engine || state.model !== opts.model) {
@@ -9884,6 +9974,7 @@ async function _mainLoop(opts) {
     mode: "task",
     isResume,
     noExecute: opts.noExecute,
+    interactive: opts.interactive,
     maxIterations: opts.maxIterations,
     maxCostUsd: opts.maxCostUsd,
     maxRuntimeMinutes: opts.maxRuntimeMinutes,
@@ -9914,7 +10005,7 @@ async function _mainLoop(opts) {
 ======== ITERATION ${iteration} ${time} ========
 `);
     log(` Phase: ${state.phase} (iteration ${state.phaseIteration})`);
-    const progressContent = storage.read(join5(taskDir, "PROGRESS.md"));
+    const progressContent = storage.read(join6(taskDir, "PROGRESS.md"));
     if (progressContent !== null) {
       const section = extractCurrentSection(progressContent);
       if (section) {
@@ -9930,12 +10021,15 @@ async function _mainLoop(opts) {
     const iterStart = new Date().toISOString();
     let engineResult;
     try {
+      const interactiveDone = storage.read(join6(taskDir, "_interactive_done")) !== null;
+      const isInteractivePhase = opts.interactive && state.phase === "research" && !interactiveDone;
       engineResult = await runEngine({
         engine: opts.engine,
         model: opts.model,
         prompt,
         logFlag: opts.log,
         taskDir,
+        interactive: isInteractivePhase,
       });
     } catch (err) {
       error({ text: `Engine spawn error: ${err}`, style: "error" });
@@ -9983,6 +10077,7 @@ ${styled(failure.message, "fail")}`);
       await sleep(opts.delay);
     }
   }
+  storage.remove(join6(taskDir, "_interactive_done"));
   log(`Ralph loop finished after ${iteration} iterations.`);
   if (iteration > 0) {
     try {
@@ -9995,11 +10090,11 @@ ${styled(failure.message, "fail")}`);
 function resolveTasksDir() {
   let dir = process.cwd();
   while (dir !== "/") {
-    const candidate = join6(dir, ".ralph", "tasks");
-    if (existsSync2(candidate)) return candidate;
+    const candidate = join7(dir, ".ralph", "tasks");
+    if (existsSync3(candidate)) return candidate;
     dir = resolve3(dir, "..");
   }
-  return join6(process.cwd(), ".ralph", "tasks");
+  return join7(process.cwd(), ".ralph", "tasks");
 }
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -10014,8 +10109,8 @@ async function main() {
         error("Error: --name is required for status mode");
         process.exit(1);
       }
-      const taskDir = join6(tasksDir, args.name);
-      if (!existsSync2(join6(taskDir, "state.json"))) {
+      const taskDir = join7(tasksDir, args.name);
+      if (!existsSync3(join7(taskDir, "state.json"))) {
         error(`Error: task '${args.name}' not found`);
         process.exit(1);
       }
@@ -10030,7 +10125,7 @@ async function main() {
         error("Error: --name is required for advance mode");
         process.exit(1);
       }
-      const taskDir = join6(tasksDir, args.name);
+      const taskDir = join7(tasksDir, args.name);
       const state = ensureState(taskDir);
       const updated = advancePhase(state, taskDir);
       writeState(taskDir, updated);
@@ -10047,7 +10142,7 @@ async function main() {
         error("Error: --phase is required for set-phase mode");
         process.exit(1);
       }
-      const taskDir = join6(tasksDir, args.name);
+      const taskDir = join7(tasksDir, args.name);
       const state = ensureState(taskDir);
       const updated = setPhase(state, taskDir, args.phase);
       log(`Set phase: ${state.phase} -> ${updated.phase}`);
@@ -10058,7 +10153,7 @@ async function main() {
         error("Error: --name is required for task mode");
         process.exit(1);
       }
-      mkdirSync2(join6(tasksDir, args.name), { recursive: true });
+      mkdirSync2(join7(tasksDir, args.name), { recursive: true });
       await mainLoop({
         name: args.name,
         prompt: args.prompt,
@@ -10069,6 +10164,7 @@ async function main() {
         maxRuntimeMinutes: args.maxRuntimeMinutes,
         maxConsecutiveFailures: args.maxConsecutiveFailures,
         noExecute: args.noExecute,
+        interactive: args.interactive,
         delay: args.delay,
         log: args.log,
         tasksDir,

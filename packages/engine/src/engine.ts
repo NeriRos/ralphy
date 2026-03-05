@@ -1,4 +1,7 @@
 import { spawn } from "bun";
+import { writeFileSync, unlinkSync, existsSync, mkdtempSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { type Engine, type IterationUsage } from "@ralphy/types";
 import { processClaudeLine } from "./formatters/claude-stream";
 import { processCodexLine } from "./formatters/codex-stream";
@@ -9,6 +12,7 @@ export interface RunEngineOptions {
   prompt: string;
   logFlag?: boolean;
   taskDir?: string;
+  interactive?: boolean;
 }
 
 export interface EngineResult {
@@ -80,8 +84,71 @@ function buildCodexArgs(): string[] {
  *
  * Returns the exit code and usage stats (for Claude).
  */
+/**
+ * Spawn Claude in interactive mode with inherited stdio.
+ * The user can chat back and forth. Returns when the session ends.
+ */
+async function runInteractive(
+  model: string,
+  prompt: string,
+  taskDir?: string,
+): Promise<EngineResult> {
+  // Write prompt to a temp file in the task dir so Claude can read it
+  const promptFile = taskDir
+    ? join(taskDir, "_interactive_prompt.md")
+    : join(mkdtempSync(join(tmpdir(), "ralph-")), "prompt.md");
+  writeFileSync(promptFile, prompt);
+
+  try {
+    const cmd = [
+      "claude",
+      "--model",
+      model,
+      "--dangerously-skip-permissions",
+      [
+        `Read the file ${promptFile} for background on the task.`,
+        `Start by using /plan mode. Ask the user clarifying questions to deeply understand the requirements,`,
+        `constraints, edge cases, and preferences. Do not rush — thorough understanding is the goal.`,
+        `Once the user is satisfied and approves, call the ralph_finish_interactive MCP tool with the task name`,
+        `and a comprehensive context summary of everything discussed: refined requirements, architectural decisions,`,
+        `constraints, edge cases, and user preferences.`,
+        `The automated loop will then run all phases (research, plan, exec, review) using this context.`,
+        `After calling ralph_finish_interactive, use /exit immediately.`,
+      ].join(" "),
+    ];
+
+    const proc = spawn({
+      cmd,
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+
+    const exitCode = await proc.exited;
+
+    // Check if the interactive session completed successfully via the MCP tool signal
+    // Keep the file — the loop uses it to avoid re-entering interactive mode
+    const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
+    if (doneFile && existsSync(doneFile)) {
+      return { exitCode: 0, usage: null };
+    }
+
+    return { exitCode, usage: null };
+  } finally {
+    try {
+      unlinkSync(promptFile);
+    } catch {
+      // cleanup is best-effort
+    }
+  }
+}
+
 export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const { engine, model, prompt } = opts;
+
+  if (opts.interactive && engine === "claude") {
+    return runInteractive(model, prompt, opts.taskDir);
+  }
 
   const isClaude = engine === "claude";
   const cmd = isClaude ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];

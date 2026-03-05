@@ -412,6 +412,85 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     },
   );
 
+  // --- ralph_finish_interactive ---
+  server.registerTool(
+    "ralph_finish_interactive",
+    {
+      description:
+        "Finish the interactive planning session. Call this with a summary of everything learned " +
+        "from the conversation: requirements, decisions, constraints, and context. " +
+        "This writes the summary to STEERING.md so all subsequent automated phases have full context. " +
+        "After calling this tool you MUST immediately use /exit to end your session.",
+      inputSchema: {
+        name: z.string().describe("Task name"),
+        context: z
+          .string()
+          .describe(
+            "Comprehensive summary of the interactive session: refined requirements, " +
+              "architectural decisions, constraints, edge cases, and any user preferences discussed",
+          ),
+      },
+    },
+    async ({ name, context }) => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const taskDir = join(tasksDir, name);
+
+          if (storage.read(join(taskDir, "state.json")) === null) {
+            return {
+              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
+              isError: true,
+            };
+          }
+
+          // Write the interactive context to INTERACTIVE.md
+          const interactiveContent = [
+            "# Interactive Session Context",
+            "",
+            "**This context was gathered during an interactive planning session with the user.**",
+            "**Treat these as authoritative requirements and decisions.**",
+            "",
+            context,
+          ].join("\n");
+
+          storage.write(join(taskDir, "INTERACTIVE.md"), interactiveContent);
+
+          // Write signal file so the loop knows the interactive session completed successfully
+          storage.write(join(taskDir, "_interactive_done"), new Date().toISOString());
+
+          commitState(taskDir, `interactive: save session context for ${name}`);
+
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: [
+                  `Interactive session complete. Context saved to STEERING.md for task '${name}'.`,
+                  "",
+                  "The automated ralph loop will now run all phases (research → plan → exec → review) with this context.",
+                  "",
+                  "IMPORTANT: Tell the user to run /exit to end this session so the automated loop can continue.",
+                  "You cannot exit on your own — the user must type /exit in the terminal.",
+                ].join("\n"),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error finishing interactive session: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+
   // --- ralph_list_checklists ---
   server.registerTool(
     "ralph_list_checklists",

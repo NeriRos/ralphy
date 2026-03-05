@@ -21,6 +21,7 @@ export interface LoopOptions {
   maxRuntimeMinutes: number;
   maxConsecutiveFailures: number;
   noExecute: boolean;
+  interactive: boolean;
   delay: number;
   log: boolean;
   tasksDir: string;
@@ -53,7 +54,18 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
     }
   }
 
-  // 2. Phase prompt (rendered with template vars)
+  // 2. Inject INTERACTIVE.md (context from interactive planning session)
+  const interactive = storage.read(join(taskDir, "INTERACTIVE.md"));
+  if (interactive !== null) {
+    prompt += "---\n";
+    prompt += "# Interactive Session Context (READ FIRST)\n\n";
+    prompt += "The following was gathered during an interactive session with the user.\n";
+    prompt += "Treat these as authoritative requirements and decisions.\n\n";
+    prompt += interactive + "\n\n";
+    prompt += "---\n\n";
+  }
+
+  // 3. Phase prompt (rendered with template vars)
   if (phaseConfig.prompt) {
     prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
   }
@@ -105,6 +117,7 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
           "- `ralph_get_task(name)` — Get task status, metadata, and progress",
           "- `ralph_list_checklists()` — List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
+          "- `ralph_finish_interactive(name, context)` — **Interactive mode only.** Call with a comprehensive summary of the interactive session to save it as context for all subsequent automated phases. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,
           "",
@@ -356,6 +369,7 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     mode: "task",
     isResume,
     noExecute: opts.noExecute,
+    interactive: opts.interactive,
     maxIterations: opts.maxIterations,
     maxCostUsd: opts.maxCostUsd,
     maxRuntimeMinutes: opts.maxRuntimeMinutes,
@@ -412,12 +426,16 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     const iterStart = new Date().toISOString();
     let engineResult: EngineResult;
     try {
+      const interactiveDone = storage.read(join(taskDir, "_interactive_done")) !== null;
+      const isInteractivePhase = opts.interactive && state.phase === "research" && !interactiveDone;
+
       engineResult = await runEngine({
         engine: opts.engine,
         model: opts.model,
         prompt,
         logFlag: opts.log,
         taskDir,
+        interactive: isInteractivePhase,
       });
     } catch (err) {
       error({ text: `Engine spawn error: ${err}`, style: "error" });
@@ -481,6 +499,9 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
       await sleep(opts.delay);
     }
   }
+
+  // Clean up interactive signal file
+  storage.remove(join(taskDir, "_interactive_done"));
 
   log(`Ralph loop finished after ${iteration} iterations.`);
 

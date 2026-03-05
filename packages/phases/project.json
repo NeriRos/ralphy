@@ -27,7 +27,7 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc --noEmit -p packages/phases/tsconfig.json",
+        "command": "tsc -b packages/phases/tsconfig.json",
         "cwd": "{workspaceRoot}"
       }
     },

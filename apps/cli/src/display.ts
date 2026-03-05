@@ -8,6 +8,7 @@ export interface ShowBannerOpts {
   mode: string;
   isResume?: boolean;
   noExecute?: boolean;
+  interactive?: boolean;
   maxIterations?: number;
   maxCostUsd?: number;
   maxRuntimeMinutes?: number;
@@ -40,6 +41,9 @@ export function showBanner(state: State, opts: ShowBannerOpts): void {
     log(` ${styled("Prompt:", "bold")}     ${opts.promptFile}`);
   }
 
+  if (opts.interactive) {
+    log(` ${styled("Interactive:", "bold")} yes (research+plan phases)`);
+  }
   log(` ${styled("No execute:", "bold")} ${opts.noExecute ? "yes (research+plan only)" : "no"}`);
 
   const maxLabel =
