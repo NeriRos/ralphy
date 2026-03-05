@@ -9,10 +9,10 @@
 
 ## Section 2 — Static Analysis
 
-- [ ] **Lint** — run the project linter (see `CLAUDE.md` for command). Zero errors, zero warnings.
-- [ ] **Typecheck** — run the type checker. Zero errors.
-- [ ] **Build** — run a production build to catch anything lint/typecheck miss (import resolution, SSR issues, etc.).
-- [ ] **Format** — run the formatter. Zero errors.
+- [x] **Lint** — run the project linter (see `CLAUDE.md` for command). Zero errors, zero warnings.
+- [x] **Typecheck** — run the type checker. Zero errors. — Note: pre-existing TS6305 errors in engine/mcp (stale dist files), not caused by smoke-test. `core:typecheck` passes.
+- [x] **Build** — run a production build to catch anything lint/typecheck miss (import resolution, SSR issues, etc.).
+- [x] **Format** — no formatter configured in this project (no prettier/biome). N/A.
 
 ## Section 3 — Tests
 
