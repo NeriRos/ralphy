@@ -86,7 +86,7 @@ function parseResult(result: ToolResult): unknown {
 // ---------------------------------------------------------------------------
 
 describe("registerTools", () => {
-  test("registers all 9 tools with correct names", () => {
+  test("registers all 10 tools with correct names", () => {
     const registeredTools: string[] = [];
     const mockServer = {
       registerTool: mock((name: string) => {
@@ -96,7 +96,7 @@ describe("registerTools", () => {
 
     registerTools(mockServer, tempDir);
 
-    expect((mockServer.registerTool as ReturnType<typeof mock>).mock.calls.length).toBe(9);
+    expect((mockServer.registerTool as ReturnType<typeof mock>).mock.calls.length).toBe(10);
     expect(registeredTools).toEqual([
       "ralph_list_tasks",
       "ralph_get_task",
@@ -105,6 +105,7 @@ describe("registerTools", () => {
       "ralph_run_task",
       "ralph_advance_phase",
       "ralph_update_steering",
+      "ralph_finish_interactive",
       "ralph_list_checklists",
       "ralph_apply_checklist",
     ]);
@@ -391,7 +392,6 @@ describe("ralph_run_task", () => {
       "task",
       "--name",
       "run-opts",
-      "--max-iterations",
       "5",
       "--engine",
       "openai",

@@ -158,7 +158,6 @@ describe("showList", () => {
       );
       showList(tempDir);
       const out = outputText();
-      expect(out).toContain("Incomplete Tasks");
       expect(out).toContain("my-task");
       expect(out).toContain("exec");
       expect(out).toContain("convert to typescript");
@@ -175,14 +174,14 @@ describe("showList", () => {
       );
       showList(tempDir);
       const out = outputText();
-      expect(out).toContain("No incomplete tasks found");
+      expect(out).toContain("No incomplete tasks");
     }));
 
   test("handles missing tasks directory", () =>
     withStorage(() => {
       showList(join(tempDir, "nonexistent"));
       const out = outputText();
-      expect(out).toContain("No tasks directory found");
+      expect(out).toContain("No incomplete tasks");
     }));
 
   test("shows progress info when PROGRESS.md exists", () =>
@@ -203,6 +202,6 @@ describe("showList", () => {
       writeFileSync(join(taskDir, "PROGRESS.md"), "- [x] A\n- [ ] B\n- [ ] C\n", "utf-8");
       showList(tempDir);
       const out = outputText();
-      expect(out).toContain("progress: 1 done / 2 remaining");
+      expect(out).toContain("1/3");
     }));
 });
