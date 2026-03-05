@@ -53,10 +53,12 @@ configure-mcp:
 	@MCP_FILE="$(BASE_PATH)/.mcp.json"; \
 	ENTRY="{\"type\":\"stdio\",\"command\":\"bun\",\"args\":[\".ralph/bin/mcp.js\"],\"env\":{}}"; \
 	if [ -f "$$MCP_FILE" ]; then \
-		jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' "$$MCP_FILE" > "$$MCP_FILE.tmp" && \
+		jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' "$$MCP_FILE" | \
+		perl -0777 -pe 's/\[\s*\n\s*(".*?")\s*\n\s*\]/[\1]/g' > "$$MCP_FILE.tmp" && \
 		mv "$$MCP_FILE.tmp" "$$MCP_FILE"; \
 	else \
-		echo "{}" | jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' > "$$MCP_FILE"; \
+		echo "{}" | jq --argjson ralph "$$ENTRY" '.mcpServers.ralph = $$ralph' | \
+		perl -0777 -pe 's/\[\s*\n\s*(".*?")\s*\n\s*\]/[\1]/g' > "$$MCP_FILE"; \
 	fi
 	@echo "  ✓ MCP server configured in .mcp.json"
 
