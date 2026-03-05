@@ -1,28 +1,24 @@
-# Plan: smoke-test
+# Plan — smoke-test
 
 ## Summary
 
-Add `formatTaskName` utility to `packages/core/src/format.ts` and wire it into `buildInitialState`.
+Add a trivial exported utility `smokeTestPassed()` returning `true` to `@ralphy/core`, with a test, to verify the ralph framework phases work end-to-end.
 
-## Steps
+## Approach
 
-1. Create `packages/core/src/format.ts` with `formatTaskName(name: string): string`
-   - Trim whitespace
-   - Lowercase
-   - Replace spaces/underscores with hyphens
-   - Collapse multiple hyphens
-   - Strip leading/trailing hyphens
+1. Create `packages/core/src/smoke.ts` with a single exported function
+2. Create `packages/core/src/__tests__/smoke.test.ts` following `format.test.ts` pattern
+3. Add `"./smoke"` export to `packages/core/package.json`
+4. Run tests via `bunx nx test core`
 
-2. Add export to `packages/core/package.json`: `"./format": "./src/format.ts"`
+## Files
 
-3. Create `packages/core/src/__tests__/format.test.ts` with cases:
-   - Trims whitespace: `"  My Task  "` -> `"my-task"`
-   - Lowercases: `"My-Task"` -> `"my-task"`
-   - Replaces spaces: `"my task name"` -> `"my-task-name"`
-   - Replaces underscores: `"my_task"` -> `"my-task"`
-   - Collapses hyphens: `"my--task"` -> `"my-task"`
-   - Handles empty string: `""` -> `""`
+| Action | Path                                        |
+| ------ | ------------------------------------------- |
+| Create | `packages/core/src/smoke.ts`                |
+| Create | `packages/core/src/__tests__/smoke.test.ts` |
+| Modify | `packages/core/package.json` (add export)   |
 
-4. Update `buildInitialState` in `packages/core/src/state.ts` to use `formatTaskName` on `opts.name`
+## Risks
 
-5. Verify: run `bun test` in `packages/core` to confirm tests pass
+None. New code only, no existing callsites affected.
