@@ -9,8 +9,8 @@
 
 ## Section 2 — Verification
 
-- [ ] Run `bun test` in `packages/core` and confirm all tests pass
-- [ ] Run `bunx tsc --noEmit` in `packages/core` to confirm compilation
+- [x] Run `bun test` in `packages/core` and confirm all tests pass
+- [x] Run `bunx tsc --noEmit` in `packages/core` to confirm compilation
 
 ## Section 3 — Deploy
 
