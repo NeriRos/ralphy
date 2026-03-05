@@ -2,22 +2,22 @@
   "version": "1",
   "name": "smoke-test",
   "prompt": "smoke test to ensure all phases work",
-  "phase": "plan",
+  "phase": "exec",
   "phaseIteration": 0,
-  "totalIterations": 1,
+  "totalIterations": 2,
   "createdAt": "2026-03-05T12:10:37.036Z",
-  "lastModified": "2026-03-05T12:14:17.077Z",
+  "lastModified": "2026-03-05T12:15:10.659Z",
   "engine": "claude",
   "model": "opus",
   "status": "active",
   "usage": {
-    "total_cost_usd": 0,
-    "total_duration_ms": 0,
-    "total_turns": 0,
-    "total_input_tokens": 0,
-    "total_output_tokens": 0,
-    "total_cache_read_input_tokens": 0,
-    "total_cache_creation_input_tokens": 0
+    "total_cost_usd": 0.21,
+    "total_duration_ms": 42443,
+    "total_turns": 10,
+    "total_input_tokens": 9,
+    "total_output_tokens": 1345,
+    "total_cache_read_input_tokens": 102857,
+    "total_cache_creation_input_tokens": 20566
   },
   "history": [
     {
@@ -37,6 +37,33 @@
       "engine": "claude",
       "model": "opus",
       "result": "advance -> plan"
+    },
+    {
+      "timestamp": "2026-03-05T12:14:23.754Z",
+      "startedAt": "2026-03-05T12:13:38.461Z",
+      "endedAt": "2026-03-05T12:14:23.754Z",
+      "phase": "plan",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "opus",
+      "result": "success",
+      "usage": {
+        "cost_usd": 0.21,
+        "duration_ms": 42443,
+        "num_turns": 10,
+        "input_tokens": 9,
+        "output_tokens": 1345,
+        "cache_read_input_tokens": 102857,
+        "cache_creation_input_tokens": 20566
+      }
+    },
+    {
+      "timestamp": "2026-03-05T12:15:10.659Z",
+      "phase": "plan",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "opus",
+      "result": "advance -> exec"
     }
   ],
   "metadata": {
