@@ -1,5 +1,5 @@
 import { spawn } from "bun";
-import { writeFileSync, unlinkSync, mkdtempSync } from "node:fs";
+import { writeFileSync, unlinkSync, existsSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { type Engine, type IterationUsage } from "@ralphy/types";
@@ -105,7 +105,14 @@ async function runInteractive(
       "--model",
       model,
       "--dangerously-skip-permissions",
-      `Read the file ${promptFile} for your full task instructions. Start by using /plan mode to create a plan. Ask the user clarifying questions to understand the requirements better before proceeding. Once you have a clear understanding and the user approves the plan, execute the instructions from the file.`,
+      [
+        `Read the file ${promptFile} for your full task instructions.`,
+        `Start by using /plan mode. Ask the user clarifying questions to understand the requirements better.`,
+        `Once the user approves the plan, execute the research and planning phases from the instructions:`,
+        `create RESEARCH.md, PLAN.md, and PROGRESS.md.`,
+        `When all three files are ready, call the ralph_finish_interactive MCP tool with the task name.`,
+        `That tool will advance the phase and signal the loop. After calling it, use /exit immediately.`,
+      ].join(" "),
     ];
 
     const proc = spawn({
@@ -116,6 +123,14 @@ async function runInteractive(
     });
 
     const exitCode = await proc.exited;
+
+    // Check if the interactive session completed successfully via the MCP tool signal
+    const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
+    if (doneFile && existsSync(doneFile)) {
+      unlinkSync(doneFile);
+      return { exitCode: 0, usage: null };
+    }
+
     return { exitCode, usage: null };
   } finally {
     try {

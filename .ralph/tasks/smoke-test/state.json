@@ -2,11 +2,11 @@
   "version": "1",
   "name": "smoke-test",
   "prompt": "smoke test to ensure all phases work",
-  "phase": "research",
-  "phaseIteration": 0,
-  "totalIterations": 0,
-  "createdAt": "2026-03-05T11:39:15.509Z",
-  "lastModified": "2026-03-05T11:39:15.509Z",
+  "phase": "exec",
+  "phaseIteration": 1,
+  "totalIterations": 1,
+  "createdAt": "2026-03-05T11:52:20.833Z",
+  "lastModified": "2026-03-05T11:59:18.236Z",
   "engine": "claude",
   "model": "opus",
   "status": "active",
@@ -19,8 +19,35 @@
     "total_cache_read_input_tokens": 0,
     "total_cache_creation_input_tokens": 0
   },
-  "history": [],
+  "history": [
+    {
+      "timestamp": "2026-03-05T11:59:07.363Z",
+      "phase": "research",
+      "iteration": 0,
+      "engine": "claude",
+      "model": "opus",
+      "result": "advance -> plan"
+    },
+    {
+      "timestamp": "2026-03-05T11:59:08.764Z",
+      "phase": "plan",
+      "iteration": 0,
+      "engine": "claude",
+      "model": "opus",
+      "result": "advance -> exec"
+    },
+    {
+      "timestamp": "2026-03-05T11:59:18.236Z",
+      "startedAt": "2026-03-05T11:52:20.868Z",
+      "endedAt": "2026-03-05T11:59:18.236Z",
+      "phase": "exec",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "opus",
+      "result": "success"
+    }
+  ],
   "metadata": {
-    "branch": "main"
+    "branch": "interactive"
   }
 }

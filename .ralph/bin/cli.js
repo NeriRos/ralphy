@@ -3340,7 +3340,7 @@ var require_front_matter = __commonJS((exports, module) => {
 
 // apps/cli/src/index.ts
 import { resolve as resolve3, join as join7 } from "path";
-import { existsSync as existsSync2, mkdirSync as mkdirSync2 } from "fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2 } from "fs";
 
 // apps/cli/src/cli.ts
 import { readFileSync } from "fs";
@@ -8837,7 +8837,12 @@ function resolveTemplatePath(name) {
 
 // packages/engine/src/engine.ts
 var { spawn } = globalThis.Bun;
-import { writeFileSync as writeFileSync2, unlinkSync as unlinkSync2, mkdtempSync } from "fs";
+import {
+  writeFileSync as writeFileSync2,
+  unlinkSync as unlinkSync2,
+  existsSync as existsSync2,
+  mkdtempSync,
+} from "fs";
 import { join as join5 } from "path";
 import { tmpdir } from "os";
 
@@ -9515,7 +9520,14 @@ async function runInteractive(model, prompt, taskDir) {
       "--model",
       model,
       "--dangerously-skip-permissions",
-      `Read the file ${promptFile} for your full task instructions. Start by using /plan mode to create a plan. Ask the user clarifying questions to understand the requirements better before proceeding. Once you have a clear understanding and the user approves the plan, execute the instructions from the file.`,
+      [
+        `Read the file ${promptFile} for your full task instructions.`,
+        `Start by using /plan mode. Ask the user clarifying questions to understand the requirements better.`,
+        `Once the user approves the plan, execute the research and planning phases from the instructions:`,
+        `create RESEARCH.md, PLAN.md, and PROGRESS.md.`,
+        `When all three files are ready, call the ralph_finish_interactive MCP tool with the task name.`,
+        `That tool will advance the phase and signal the loop. After calling it, use /exit immediately.`,
+      ].join(" "),
     ];
     const proc = spawn({
       cmd,
@@ -9524,6 +9536,11 @@ async function runInteractive(model, prompt, taskDir) {
       stderr: "inherit",
     });
     const exitCode = await proc.exited;
+    const doneFile = taskDir ? join5(taskDir, "_interactive_done") : null;
+    if (doneFile && existsSync2(doneFile)) {
+      unlinkSync2(doneFile);
+      return { exitCode: 0, usage: null };
+    }
     return { exitCode, usage: null };
   } finally {
     try {
@@ -9751,6 +9768,7 @@ function buildTemplateVars(state, taskDir) {
           "- `ralph_get_task(name)` \u2014 Get task status, metadata, and progress",
           "- `ralph_list_checklists()` \u2014 List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` \u2014 Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
+          "- `ralph_finish_interactive(name)` \u2014 **Interactive mode only.** Call after creating RESEARCH.md, PLAN.md, and PROGRESS.md to advance to exec and end the interactive session. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,
           "",
@@ -9971,8 +9989,7 @@ async function _mainLoop(opts) {
     const iterStart = new Date().toISOString();
     let engineResult;
     try {
-      const isInteractivePhase =
-        opts.interactive && (state.phase === "research" || state.phase === "plan");
+      const isInteractivePhase = opts.interactive && state.phase === "research";
       engineResult = await runEngine({
         engine: opts.engine,
         model: opts.model,
@@ -10040,7 +10057,7 @@ function resolveTasksDir() {
   let dir = process.cwd();
   while (dir !== "/") {
     const candidate = join7(dir, ".ralph", "tasks");
-    if (existsSync2(candidate)) return candidate;
+    if (existsSync3(candidate)) return candidate;
     dir = resolve3(dir, "..");
   }
   return join7(process.cwd(), ".ralph", "tasks");
@@ -10059,7 +10076,7 @@ async function main() {
         process.exit(1);
       }
       const taskDir = join7(tasksDir, args.name);
-      if (!existsSync2(join7(taskDir, "state.json"))) {
+      if (!existsSync3(join7(taskDir, "state.json"))) {
         error(`Error: task '${args.name}' not found`);
         process.exit(1);
       }

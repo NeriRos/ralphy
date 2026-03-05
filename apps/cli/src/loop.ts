@@ -106,6 +106,7 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
           "- `ralph_get_task(name)` — Get task status, metadata, and progress",
           "- `ralph_list_checklists()` — List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
+          "- `ralph_finish_interactive(name)` — **Interactive mode only.** Call after creating RESEARCH.md, PLAN.md, and PROGRESS.md to advance to exec and end the interactive session. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,
           "",
@@ -414,8 +415,7 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     const iterStart = new Date().toISOString();
     let engineResult: EngineResult;
     try {
-      const isInteractivePhase =
-        opts.interactive && (state.phase === "research" || state.phase === "plan");
+      const isInteractivePhase = opts.interactive && state.phase === "research";
 
       engineResult = await runEngine({
         engine: opts.engine,

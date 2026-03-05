@@ -24871,6 +24871,76 @@ function registerTools(server, tasksDir) {
     },
   );
   server.registerTool(
+    "ralph_finish_interactive",
+    {
+      description:
+        "Finish the interactive planning session. Call this after creating RESEARCH.md, PLAN.md, and PROGRESS.md. " +
+        "It advances the task to exec phase and signals the ralph loop to continue automatically. " +
+        "After calling this tool you MUST immediately use /exit to end your session.",
+      inputSchema: {
+        name: exports_external.string().describe("Task name"),
+      },
+    },
+    async ({ name }) => {
+      return runWithContext(createDefaultContext(), () => {
+        try {
+          const storage = getStorage();
+          const taskDir = join4(tasksDir, name);
+          const state = readState(taskDir);
+          const missing = [];
+          for (const file of ["RESEARCH.md", "PLAN.md", "PROGRESS.md"]) {
+            if (storage.read(join4(taskDir, file)) === null) {
+              missing.push(file);
+            }
+          }
+          if (missing.length > 0) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Cannot finish interactive session \u2014 missing files: ${missing.join(", ")}. Create them first.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          let current = state;
+          while (current.phase !== "exec") {
+            current = advancePhase(current, taskDir);
+            writeState(taskDir, current);
+            commitState(taskDir, `advance phase: ${state.phase} -> ${current.phase}`);
+          }
+          storage.write(join4(taskDir, "_interactive_done"), new Date().toISOString());
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  `Interactive session complete. Task '${name}' advanced to exec phase.`,
+                  "",
+                  "The automated ralph loop will now take over for execution.",
+                  "",
+                  "**You MUST now use /exit to end this session.**",
+                ].join(`
+`),
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error finishing interactive session: ${err instanceof Error ? err.message : err}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      });
+    },
+  );
+  server.registerTool(
     "ralph_list_checklists",
     {
       description: "List available verification checklists with their contents",
