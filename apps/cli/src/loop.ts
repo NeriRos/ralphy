@@ -115,7 +115,7 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
           `- \`ralph_read_document(name, document)\` — Read task documents (${getDocumentNames().join(", ")})`,
           "- `ralph_get_task(name)` — Get task status, metadata, and progress",
           "- `ralph_list_checklists()` — List available verification checklists with their contents",
-          '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
+          '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["static", "tests"]`)',
           "- `ralph_finish_interactive(name, context)` — **Interactive mode only.** Call with a comprehensive summary of the interactive session to save it as context for all subsequent automated phases. You MUST use /exit immediately after.",
           "",
           `Task name: \`${state.name}\``,

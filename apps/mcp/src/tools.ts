@@ -525,7 +525,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
         name: z.string().describe("Task name"),
         checklists: z
           .array(z.string())
-          .describe('Checklist names to append (e.g. ["checklist_static", "checklist_tests"])'),
+          .describe('Checklist names to append (e.g. ["static", "tests"])'),
       },
     },
     async ({ name, checklists }) => {

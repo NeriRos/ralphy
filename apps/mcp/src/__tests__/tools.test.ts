@@ -515,8 +515,8 @@ describe("ralph_list_checklists", () => {
     expect(data.checklists.length).toBeGreaterThan(0);
 
     const names = data.checklists.map((c) => c.name);
-    expect(names).toContain("checklist_static");
-    expect(names).toContain("checklist_tests");
+    expect(names).toContain("static");
+    expect(names).toContain("tests");
 
     // Each checklist should have content
     for (const cl of data.checklists) {
@@ -533,11 +533,11 @@ describe("ralph_apply_checklist", () => {
 
     const result = await handler({
       name: "cl-task",
-      checklists: ["checklist_static", "checklist_tests"],
+      checklists: ["static", "tests"],
     });
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as { applied: string[]; totalSections: number };
-    expect(data.applied).toEqual(["checklist_static", "checklist_tests"]);
+    expect(data.applied).toEqual(["static", "tests"]);
     expect(data.totalSections).toBe(3);
 
     // Verify PROGRESS.md was updated
@@ -554,7 +554,7 @@ describe("ralph_apply_checklist", () => {
 
     const result = await handler({
       name: "no-progress-task",
-      checklists: ["checklist_static"],
+      checklists: ["static"],
     });
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("PROGRESS.md");
@@ -563,7 +563,7 @@ describe("ralph_apply_checklist", () => {
   test("returns error for missing task", async () => {
     const handler = captureHandlers(tempDir)("ralph_apply_checklist");
 
-    const result = await handler({ name: "ghost", checklists: ["checklist_static"] });
+    const result = await handler({ name: "ghost", checklists: ["static"] });
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("ghost");
   });
