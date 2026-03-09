@@ -13,6 +13,8 @@ import { TaskStatus } from "../components/TaskStatus";
 import { TaskList } from "../components/TaskList";
 import { IterationHeader } from "../components/IterationHeader";
 import { StopMessage } from "../components/StopMessage";
+import { App } from "../components/App";
+import type { ParsedArgs } from "../cli";
 
 let tempDir: string;
 function withStorage<T>(fn: () => T): T {
@@ -404,5 +406,109 @@ describe("StopMessage", () => {
       />,
     );
     expect(lastFrame()!).toContain("5 consecutive identical failures");
+  });
+});
+
+function makeArgs(overrides: Partial<ParsedArgs> = {}): ParsedArgs {
+  return {
+    mode: "task",
+    name: "",
+    prompt: "",
+    engine: "claude",
+    model: "opus",
+    engineSet: false,
+    maxIterations: 0,
+    maxCostUsd: 0,
+    maxRuntimeMinutes: 0,
+    maxConsecutiveFailures: 5,
+    phase: "",
+    noExecute: false,
+    interactive: false,
+    delay: 0,
+    log: false,
+    verbose: false,
+    ...overrides,
+  };
+}
+
+describe("App", () => {
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  test("list mode renders TaskList", () =>
+    withStorage(() => {
+      mkdirSync(tempDir, { recursive: true });
+      const { lastFrame } = render(
+        <App args={makeArgs({ mode: "list" })} tasksDir={tempDir} />,
+      );
+      expect(lastFrame()!).toContain("No incomplete tasks");
+    }));
+
+  test("status mode without name shows error", async () => {
+    const { lastFrame } = withStorage(() =>
+      render(<App args={makeArgs({ mode: "status" })} tasksDir={tempDir} />),
+    );
+    expect(lastFrame()!).toContain("--name is required");
+    await tick();
+    process.exitCode = 0;
+  });
+
+  test("status mode with missing task shows error", async () => {
+    const { lastFrame } = withStorage(() =>
+      render(
+        <App args={makeArgs({ mode: "status", name: "nonexistent" })} tasksDir={tempDir} />,
+      ),
+    );
+    expect(lastFrame()!).toContain("not found");
+    await tick();
+    process.exitCode = 0;
+  });
+
+  test("status mode renders TaskStatus for existing task", () =>
+    withStorage(() => {
+      const taskDir = join(tempDir, "my-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "my-task", phase: "exec" });
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+
+      const { lastFrame } = render(
+        <App args={makeArgs({ mode: "status", name: "my-task" })} tasksDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("my-task");
+      expect(frame).toContain("exec");
+    }));
+
+  test("advance mode without name shows error", async () => {
+    const { lastFrame } = withStorage(() =>
+      render(<App args={makeArgs({ mode: "advance" })} tasksDir={tempDir} />),
+    );
+    expect(lastFrame()!).toContain("--name is required");
+    await tick();
+    process.exitCode = 0;
+  });
+
+  test("set-phase mode without name shows error", async () => {
+    const { lastFrame } = withStorage(() =>
+      render(<App args={makeArgs({ mode: "set-phase" })} tasksDir={tempDir} />),
+    );
+    expect(lastFrame()!).toContain("--name is required");
+    await tick();
+    process.exitCode = 0;
+  });
+
+  test("set-phase mode without phase shows error", async () => {
+    const { lastFrame } = withStorage(() => {
+      const taskDir = join(tempDir, "my-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "my-task" });
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+
+      return render(
+        <App args={makeArgs({ mode: "set-phase", name: "my-task" })} tasksDir={tempDir} />,
+      );
+    });
+    expect(lastFrame()!).toContain("--phase is required");
+    await tick();
+    process.exitCode = 0;
   });
 });

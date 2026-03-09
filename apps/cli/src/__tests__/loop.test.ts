@@ -3,8 +3,14 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
-import { buildTaskPrompt } from "../loop";
-import { buildInitialState, writeState } from "@ralphy/core/state";
+import {
+  buildTaskPrompt,
+  checkStopCondition,
+  checkStopSignal,
+  updateStateIteration,
+} from "../loop";
+import type { LoopOptions } from "../loop";
+import { buildInitialState, writeState, readState } from "@ralphy/core/state";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import type { State, Engine } from "@ralphy/types";
 import type { BuildInitialStateOpts } from "@ralphy/core/state";
@@ -202,5 +208,221 @@ describe("parseArgs → buildTaskPrompt integration", () => {
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(typeof prompt).toBe("string");
+    }));
+});
+
+function makeOpts(overrides: Partial<LoopOptions> = {}): LoopOptions {
+  return {
+    name: "test-task",
+    prompt: "Test prompt",
+    engine: "claude",
+    model: "opus",
+    maxIterations: 0,
+    maxCostUsd: 0,
+    maxRuntimeMinutes: 0,
+    maxConsecutiveFailures: 5,
+    noExecute: false,
+    interactive: false,
+    delay: 0,
+    log: false,
+    tasksDir: tempDir,
+    ...overrides,
+  };
+}
+
+describe("checkStopCondition", () => {
+  test("returns null when no limits are reached", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(state, 0, makeOpts(), Date.now(), 0);
+    expect(result).toBeNull();
+  });
+
+  test("returns maxIterations when limit reached", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(state, 5, makeOpts({ maxIterations: 5 }), Date.now(), 0);
+    expect(result).toBe("maxIterations");
+  });
+
+  test("returns null when iteration is below maxIterations", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(state, 4, makeOpts({ maxIterations: 5 }), Date.now(), 0);
+    expect(result).toBeNull();
+  });
+
+  test("returns terminal when phase is terminal (done)", () => {
+    const state = { ...makeState(), phase: "done" };
+    const result = checkStopCondition(state, 0, makeOpts(), Date.now(), 0);
+    expect(result).toBe("terminal");
+  });
+
+  test("returns noExecute when noExecute is true and phase is exec", () => {
+    const state = { ...makeState(), phase: "exec" };
+    const result = checkStopCondition(state, 0, makeOpts({ noExecute: true }), Date.now(), 0);
+    expect(result).toBe("noExecute");
+  });
+
+  test("returns null when noExecute is true but phase is not exec", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(state, 0, makeOpts({ noExecute: true }), Date.now(), 0);
+    expect(result).toBeNull();
+  });
+
+  test("returns costCap when cost exceeds limit", () => {
+    const state = {
+      ...makeState(),
+      usage: {
+        total_cost_usd: 10.5,
+        total_duration_ms: 0,
+        total_turns: 0,
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_cache_read_input_tokens: 0,
+        total_cache_creation_input_tokens: 0,
+      },
+    };
+    const result = checkStopCondition(state, 0, makeOpts({ maxCostUsd: 10 }), Date.now(), 0);
+    expect(result).toBe("costCap");
+  });
+
+  test("returns runtimeLimit when elapsed time exceeds limit", () => {
+    const state = makeState({ phase: "research" });
+    const pastStart = Date.now() - 31 * 60_000; // 31 minutes ago
+    const result = checkStopCondition(state, 0, makeOpts({ maxRuntimeMinutes: 30 }), pastStart, 0);
+    expect(result).toBe("runtimeLimit");
+  });
+
+  test("returns consecutiveFailures when threshold reached", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(
+      state,
+      0,
+      makeOpts({ maxConsecutiveFailures: 3 }),
+      Date.now(),
+      3,
+    );
+    expect(result).toBe("consecutiveFailures");
+  });
+
+  test("returns null when consecutiveFailures is below threshold", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(
+      state,
+      0,
+      makeOpts({ maxConsecutiveFailures: 3 }),
+      Date.now(),
+      2,
+    );
+    expect(result).toBeNull();
+  });
+
+  test("ignores maxIterations when set to 0 (unlimited)", () => {
+    const state = makeState({ phase: "research" });
+    const result = checkStopCondition(state, 100, makeOpts({ maxIterations: 0 }), Date.now(), 0);
+    expect(result).toBeNull();
+  });
+});
+
+describe("checkStopSignal", () => {
+  test("returns null when no STOP file exists", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+      const result = checkStopSignal(tempDir);
+      expect(result).toBeNull();
+    }));
+
+  test("returns reason and removes STOP file", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+      writeFileSync(join(tempDir, "STOP"), "Blocked: need API key", "utf-8");
+
+      const result = checkStopSignal(tempDir);
+      expect(result).toBe("Blocked: need API key");
+
+      // File should be removed
+      const { existsSync } = require("node:fs");
+      expect(existsSync(join(tempDir, "STOP"))).toBe(false);
+    }));
+
+  test("marks state as blocked after reading STOP", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+      writeFileSync(join(tempDir, "STOP"), "reason", "utf-8");
+
+      checkStopSignal(tempDir);
+
+      const state = readState(tempDir);
+      expect(state.status).toBe("blocked");
+    }));
+});
+
+describe("updateStateIteration", () => {
+  test("increments phaseIteration and totalIterations", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+
+      const updated = updateStateIteration(
+        tempDir,
+        "success",
+        new Date().toISOString(),
+        "claude",
+        "opus",
+        null,
+      );
+      expect(updated.phaseIteration).toBe(1);
+      expect(updated.totalIterations).toBe(1);
+    }));
+
+  test("appends history entry", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+
+      const startedAt = new Date().toISOString();
+      const updated = updateStateIteration(tempDir, "success", startedAt, "claude", "opus", null);
+      expect(updated.history).toHaveLength(1);
+      expect(updated.history[0]!.result).toBe("success");
+      expect(updated.history[0]!.engine).toBe("claude");
+      expect(updated.history[0]!.model).toBe("opus");
+    }));
+
+  test("accumulates usage when provided", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+
+      const usage = {
+        cost_usd: 0.5,
+        duration_ms: 3000,
+        num_turns: 2,
+        input_tokens: 1000,
+        output_tokens: 500,
+        cache_read_input_tokens: 100,
+        cache_creation_input_tokens: 50,
+      };
+      const updated = updateStateIteration(
+        tempDir,
+        "success",
+        new Date().toISOString(),
+        "claude",
+        "opus",
+        usage,
+      );
+      expect(updated.usage.total_cost_usd).toBe(0.5);
+      expect(updated.usage.total_input_tokens).toBe(1000);
+      expect(updated.usage.total_output_tokens).toBe(500);
+    }));
+
+  test("does not change usage when none provided", () =>
+    withStorage(() => {
+      writeState(tempDir, makeState());
+
+      const updated = updateStateIteration(
+        tempDir,
+        "success",
+        new Date().toISOString(),
+        "claude",
+        "opus",
+        null,
+      );
+      expect(updated.usage.total_cost_usd).toBe(0);
+      expect(updated.usage.total_input_tokens).toBe(0);
     }));
 });
