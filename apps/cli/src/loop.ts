@@ -147,16 +147,13 @@ function scaffoldTaskFiles(taskDir: string): void {
  * If found, reads the reason, removes the file, marks state as blocked.
  * Returns the reason string if stopped, null otherwise.
  */
-function checkStopSignal(taskDir: string): string | null {
+export function checkStopSignal(taskDir: string): string | null {
   const storage = getStorage();
   const stopFile = join(taskDir, "STOP");
   const reason = storage.read(stopFile);
   if (reason === null) return null;
 
   storage.remove(stopFile);
-
-  log(`\n${styled("STOP signal detected.", "warn")}`);
-  log(`Reason: ${reason.trim()}`);
 
   updateState(taskDir, (s) => ({
     ...s,
@@ -170,8 +167,7 @@ function checkStopSignal(taskDir: string): string | null {
 /**
  * Stop reason returned by shouldContinue when the loop must end.
  */
-type StopReason =
-  | null
+export type StopReason =
   | "maxIterations"
   | "terminal"
   | "noExecute"
@@ -183,13 +179,13 @@ type StopReason =
  * Determine whether the loop should continue.
  * Returns null if it should continue, or a reason string if it should stop.
  */
-function checkStopCondition(
+export function checkStopCondition(
   state: State,
   iteration: number,
   opts: LoopOptions,
   startTime: number,
   consecutiveFailures: number,
-): StopReason {
+): StopReason | null {
   if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return "maxIterations";
   const phaseConfig = getPhase(state.phase);
   if (phaseConfig.terminal) return "terminal";
@@ -207,7 +203,7 @@ function checkStopCondition(
 /**
  * Update state after a completed iteration.
  */
-function updateStateIteration(
+export function updateStateIteration(
   taskDir: string,
   result: string,
   startedAt: string,
@@ -279,7 +275,7 @@ function sleep(seconds: number): Promise<void> {
 /**
  * Log a human-readable message for why the loop stopped.
  */
-function logStopReason(
+export function logStopReason(
   reason: StopReason,
   state: State,
   opts: LoopOptions,
@@ -479,7 +475,12 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
     }
 
     // Check STOP signal
-    if (checkStopSignal(taskDir)) break;
+    const stopSignal = checkStopSignal(taskDir);
+    if (stopSignal) {
+      log(`\n${styled("STOP signal detected.", "warn")}`);
+      log(`Reason: ${stopSignal.trim()}`);
+      break;
+    }
 
     log(`\n======== COMPLETED ITERATION ${iteration} ========\n`);
 

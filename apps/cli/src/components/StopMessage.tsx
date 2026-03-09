@@ -3,14 +3,7 @@ import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
 import { countProgress } from "@ralphy/core/progress";
 import { getStorage } from "@ralphy/context";
-
-export type StopReason =
-  | "maxIterations"
-  | "terminal"
-  | "noExecute"
-  | "costCap"
-  | "runtimeLimit"
-  | "consecutiveFailures";
+import type { StopReason } from "../loop";
 
 export interface StopMessageProps {
   reason: StopReason;

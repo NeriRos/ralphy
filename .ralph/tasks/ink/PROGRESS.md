@@ -27,9 +27,9 @@
 
 ## Section 4 — Loop Hook and TaskLoop Component
 
-- [ ] Extract pure loop logic from `loop.ts` into exported functions: keep `buildTaskPrompt()`, `checkStopCondition()`, `updateStateIteration()`, `checkStopSignal()`, `logStopReason()` type as exports. Remove `log()`/`error()`/`styled()` imports from the remaining pure functions
-- [ ] Create `apps/cli/src/hooks/useLoop.ts` — custom hook that encapsulates the iteration loop: manages `iteration`, `consecutiveFailures`, `logLines[]`, `currentPhase`, `progress`, `stopReason`, `isRunning` state. Calls `runEngine()` with `onOutput` callback that appends lines to state. After each iteration, calls `updateStateIteration()`, `autoTransitionAfterIteration()`, `checkStopSignal()`, `gitPush()`
-- [ ] Create `apps/cli/src/components/TaskLoop.tsx` — main loop component. Uses `useLoop()` hook. Renders `<Banner>` at top, `<Static items={logLines}>` for streamed output with `<IterationHeader>` separators, live `<Spinner>` during engine run, phase/progress info, `<StopMessage>` when done. Calls `useApp().exit()` on loop completion
+- [x] Extract pure loop logic from `loop.ts` into exported functions: keep `buildTaskPrompt()`, `checkStopCondition()`, `updateStateIteration()`, `checkStopSignal()`, `logStopReason()` type as exports. Remove `log()`/`error()`/`styled()` imports from the remaining pure functions
+- [x] Create `apps/cli/src/hooks/useLoop.ts` — custom hook that encapsulates the iteration loop: manages `iteration`, `consecutiveFailures`, `logLines[]`, `currentPhase`, `progress`, `stopReason`, `isRunning` state. Calls `runEngine()` with `onOutput` callback that appends lines to state. After each iteration, calls `updateStateIteration()`, `autoTransitionAfterIteration()`, `checkStopSignal()`, `gitPush()`
+- [x] Create `apps/cli/src/components/TaskLoop.tsx` — main loop component. Uses `useLoop()` hook. Renders `<Banner>` at top, `<Static items={logLines}>` for streamed output with `<IterationHeader>` separators, live `<Spinner>` during engine run, phase/progress info, `<StopMessage>` when done. Calls `useApp().exit()` on loop completion
 
 ## Section 5 — App Root and Entry Point
 
