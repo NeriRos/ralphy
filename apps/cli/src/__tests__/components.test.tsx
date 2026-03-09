@@ -11,6 +11,8 @@ import type { BuildInitialStateOpts } from "@ralphy/core/state";
 import { Banner } from "../components/Banner";
 import { TaskStatus } from "../components/TaskStatus";
 import { TaskList } from "../components/TaskList";
+import { IterationHeader } from "../components/IterationHeader";
+import { StopMessage } from "../components/StopMessage";
 
 let tempDir: string;
 function withStorage<T>(fn: () => T): T {
@@ -278,4 +280,129 @@ describe("TaskList", () => {
       expect(frame).toContain("Status");
       expect(frame).toContain("Description");
     }));
+});
+
+describe("IterationHeader", () => {
+  test("renders iteration number", () => {
+    const { lastFrame } = render(
+      <IterationHeader iteration={3} time="12:34:56" />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("ITERATION 3");
+  });
+
+  test("renders time", () => {
+    const { lastFrame } = render(
+      <IterationHeader iteration={1} time="09:15:00" />,
+    );
+    expect(lastFrame()!).toContain("09:15:00");
+  });
+});
+
+describe("StopMessage", () => {
+  test("renders terminal stop with progress", () =>
+    withStorage(() => {
+      const state = makeState();
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "- [x] Done\n- [x] Also done\n",
+        "utf-8",
+      );
+      const { lastFrame } = render(
+        <StopMessage
+          reason="terminal"
+          state={state}
+          taskDir={tempDir}
+          consecutiveFailures={0}
+        />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("2 done");
+      expect(frame).toContain("Task complete");
+      expect(frame).toContain("PROGRESS.md");
+    }));
+
+  test("renders noExecute stop", () =>
+    withStorage(() => {
+      const state = makeState();
+      const { lastFrame } = render(
+        <StopMessage
+          reason="noExecute"
+          state={state}
+          taskDir={tempDir}
+          consecutiveFailures={0}
+        />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("--no-execute");
+      expect(frame).toContain("PLAN.md");
+    }));
+
+  test("renders maxIterations stop", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage
+        reason="maxIterations"
+        state={state}
+        taskDir={tempDir}
+        maxIterations={10}
+        consecutiveFailures={0}
+      />,
+    );
+    expect(lastFrame()!).toContain("10");
+  });
+
+  test("renders costCap stop", () => {
+    const state = {
+      ...makeState(),
+      usage: {
+        total_cost_usd: 5.99,
+        total_duration_ms: 0,
+        total_turns: 0,
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_cache_read_input_tokens: 0,
+        total_cache_creation_input_tokens: 0,
+      },
+    };
+    const { lastFrame } = render(
+      <StopMessage
+        reason="costCap"
+        state={state}
+        taskDir={tempDir}
+        maxCostUsd={6}
+        consecutiveFailures={0}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("$5.99");
+    expect(frame).toContain("$6");
+  });
+
+  test("renders runtimeLimit stop", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage
+        reason="runtimeLimit"
+        state={state}
+        taskDir={tempDir}
+        maxRuntimeMinutes={30}
+        consecutiveFailures={0}
+      />,
+    );
+    expect(lastFrame()!).toContain("30 minute");
+  });
+
+  test("renders consecutiveFailures stop", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage
+        reason="consecutiveFailures"
+        state={state}
+        taskDir={tempDir}
+        consecutiveFailures={5}
+      />,
+    );
+    expect(lastFrame()!).toContain("5 consecutive identical failures");
+  });
 });
