@@ -61,8 +61,20 @@ export function commitState(taskDir: string, message: string): void {
   const stateFile = join(taskDir, "state.json");
   try {
     gitAdd([stateFile]);
-    gitCommit(message);
+    gitCommit(`docs(ralph): ${message}`);
   } catch {
     // state file may not exist or nothing to commit
+  }
+}
+
+/**
+ * Commit all files in a task directory (state.json + *.md) with the given message.
+ */
+export function commitTaskDir(taskDir: string, message: string): void {
+  try {
+    gitAdd([taskDir]);
+    gitCommit(`docs(ralph): ${message}`);
+  } catch {
+    // nothing to commit
   }
 }

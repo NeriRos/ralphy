@@ -7,7 +7,7 @@ import { getPromptDocuments, getDocumentNames } from "@ralphy/core/documents";
 import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
 import { autoTransitionAfterIteration } from "@ralphy/core/phases";
 import { getPhase } from "@ralphy/phases";
-import { gitPush } from "@ralphy/core/git";
+import { gitPush, commitTaskDir } from "@ralphy/core/git";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import { log, error, styled } from "@ralphy/output";
 import { showBanner } from "./display";
@@ -496,10 +496,33 @@ async function _mainLoop(opts: LoopOptions): Promise<void> {
   // Clean up interactive signal file
   storage.remove(join(taskDir, "_interactive_done"));
 
+  // Record done history entry if task completed
+  state = readState(taskDir);
+  if (state.status === "completed") {
+    const now = new Date().toISOString();
+    state = {
+      ...state,
+      lastModified: now,
+      history: [
+        ...state.history,
+        {
+          timestamp: now,
+          phase: "done",
+          iteration: 0,
+          engine: state.engine,
+          model: state.model,
+          result: "task completed",
+        },
+      ],
+    };
+    writeState(taskDir, state);
+  }
+
   log(`Ralph loop finished after ${iteration} iterations.`);
 
-  // Final push
+  // Commit all task files and push
   if (iteration > 0) {
+    commitTaskDir(taskDir, `task ${opts.name} finished`);
     try {
       gitPush();
     } catch {
