@@ -27,8 +27,8 @@ describe("renderTemplate", () => {
 });
 
 describe("resolveTemplatePath", () => {
-  test("returns a path ending with templates/<name>.md", () => {
+  test("returns a path ending with scaffolds/<name>.md", () => {
     const path = resolveTemplatePath("STEERING");
-    expect(path).toMatch(/templates\/scaffolds\/STEERING\.md$/);
+    expect(path).toMatch(/scaffolds\/STEERING\.md$/);
   });
 });

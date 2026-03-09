@@ -1,41 +1,17 @@
-import { resolve, dirname } from "node:path";
+import { resolve } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import fm from "front-matter";
 import { type PhaseConfig, PhaseFrontmatterSchema } from "@ralphy/types";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const defaultPhasesDir = resolve(__dirname, "..", "phases");
-const defaultChecklistDir = resolve(__dirname, "..", "checklists");
-
-// When bundled (installed), paths resolve through ../templates/ instead
-// Detect by checking if the default dir exists, fall back to bundled layout
-function resolvePhasesDir(): string {
-  try {
-    readdirSync(defaultPhasesDir);
-    return defaultPhasesDir;
-  } catch {
-    return resolve(__dirname, "..", "phases");
-  }
-}
-
-function resolveChecklistDirPath(): string {
-  try {
-    readdirSync(defaultChecklistDir);
-    return defaultChecklistDir;
-  } catch {
-    return resolve(__dirname, "..", "templates", "checklists");
-  }
-}
+import { resolvePhasesDir as contentPhasesDir, resolveChecklistsDir } from "@ralphy/content";
 
 let cachedPhases: PhaseConfig[] | null = null;
 let cachedDir: string | null = null;
 
 /**
  * Load all phase files from a directory, parse frontmatter with Zod, return sorted PhaseConfig[].
- * Defaults to the lib/ directory (co-located .md files).
+ * Defaults to the @ralphy/content phases directory.
  */
-export function loadPhases(dir: string = resolvePhasesDir()): PhaseConfig[] {
+export function loadPhases(dir: string = contentPhasesDir()): PhaseConfig[] {
   if (cachedPhases !== null && cachedDir === dir) return cachedPhases;
 
   const files = readdirSync(dir).filter((f) => f.endsWith(".md"));
@@ -112,14 +88,14 @@ export function clearPhaseCache(): void {
  * Resolve the absolute path to the checklists directory.
  */
 export function resolveChecklistDir(): string {
-  return resolveChecklistDirPath();
+  return resolveChecklistsDir();
 }
 
 /**
  * List available checklist names (without .md extension).
  */
 export function listChecklists(): string[] {
-  const dir = resolveChecklistDirPath();
+  const dir = resolveChecklistsDir();
   return readdirSync(dir)
     .filter((f) => f.endsWith(".md"))
     .map((f) => f.replace(/\.md$/, ""));

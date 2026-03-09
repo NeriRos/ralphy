@@ -1,0 +1,28 @@
+{
+  "name": "content",
+  "sourceRoot": "packages/content/src",
+  "tags": ["scope:shared"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json packages/content/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check packages/content/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -b packages/content/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

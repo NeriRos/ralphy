@@ -1,11 +1,8 @@
-import { resolve, dirname, join } from "node:path";
+import { join } from "node:path";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { getStorage } from "@ralphy/context";
+import { resolveScaffoldsDir, resolveTasksDir } from "@ralphy/content";
 import { getScaffoldDocuments } from "./documents";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageRoot = resolve(__dirname, "..");
 
 /**
  * Replace all `{{KEY}}` placeholders in content with values from vars.
@@ -22,7 +19,7 @@ export function renderTemplate(content: string, vars: Record<string, string>): s
  * Resolve the absolute path to a template file by name (without extension).
  */
 export function resolveTemplatePath(name: string): string {
-  return resolve(packageRoot, "templates", "scaffolds", `${name}.md`);
+  return join(resolveScaffoldsDir(), `${name}.md`);
 }
 
 /**
@@ -46,11 +43,11 @@ export function scaffoldTaskDocuments(taskDir: string): void {
 }
 
 /**
- * Copy files from templates/tasks/ into the target tasks directory.
+ * Copy files from content/tasks/ into the target tasks directory.
  * Only copies files that do not already exist in the target.
  */
 export function scaffoldTasksDir(tasksDir: string): void {
-  const templateDir = resolve(packageRoot, "templates", "tasks");
+  const templateDir = resolveTasksDir();
   if (!existsSync(templateDir)) return;
 
   const storage = getStorage();

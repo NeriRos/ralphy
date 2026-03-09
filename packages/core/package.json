@@ -14,6 +14,7 @@
     "./smoke": "./src/smoke.ts"
   },
   "dependencies": {
+    "@ralphy/content": "workspace:*",
     "@ralphy/context": "workspace:*",
     "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
