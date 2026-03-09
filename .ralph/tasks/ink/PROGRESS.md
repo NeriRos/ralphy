@@ -19,11 +19,11 @@
 
 ## Section 3 — Static Ink Components (Banner, TaskStatus, TaskList, StopMessage, IterationHeader)
 
-- [ ] Create `apps/cli/src/components/Banner.tsx` — render task metadata header using `<Box>` and `<Text>`. Accept same props as `ShowBannerOpts` + `state: State`. Port all logic from `showBanner()` in `display.ts`
-- [ ] Create `apps/cli/src/components/TaskStatus.tsx` — render detailed task view using `<Box>` and `<Text>`. Accept `state: State` and `taskDir: string`. Port logic from `showStatus()` in `display.ts`
-- [ ] Create `apps/cli/src/components/TaskList.tsx` — render task list table. Accept `tasksDir: string`. Port logic from `showList()` in `display.ts`. Use `useApp().exit()` after render
-- [ ] Create `apps/cli/src/components/StopMessage.tsx` — render stop reason. Accept `reason: StopReason`, `state`, `opts`, `taskDir`, `consecutiveFailures`. Port logic from `logStopReason()` in `loop.ts`
-- [ ] Create `apps/cli/src/components/IterationHeader.tsx` — render iteration separator. Accept `iteration: number`, `time: string`
+- [x] Create `apps/cli/src/components/Banner.tsx` — render task metadata header using `<Box>` and `<Text>`. Accept same props as `ShowBannerOpts` + `state: State`. Port all logic from `showBanner()` in `display.ts`
+- [x] Create `apps/cli/src/components/TaskStatus.tsx` — render detailed task view using `<Box>` and `<Text>`. Accept `state: State` and `taskDir: string`. Port logic from `showStatus()` in `display.ts`
+- [x] Create `apps/cli/src/components/TaskList.tsx` — render task list table. Accept `tasksDir: string`. Port logic from `showList()` in `display.ts`. Use `useApp().exit()` after render
+- [x] Create `apps/cli/src/components/StopMessage.tsx` — render stop reason. Accept `reason: StopReason`, `state`, `opts`, `taskDir`, `consecutiveFailures`. Port logic from `logStopReason()` in `loop.ts`
+- [x] Create `apps/cli/src/components/IterationHeader.tsx` — render iteration separator. Accept `iteration: number`, `time: string`
 
 ## Section 4 — Loop Hook and TaskLoop Component
 
