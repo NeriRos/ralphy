@@ -2,12 +2,12 @@
 
 ## Section 1 — Dependencies and Config
 
-- [ ] Add `ink`, `react`, `@inkjs/ui` to `apps/cli/package.json` dependencies
-- [ ] Add `@types/react` to `apps/cli/package.json` devDependencies
-- [ ] Add `ink-testing-library` to `apps/cli/package.json` devDependencies
-- [ ] Update `apps/cli/tsconfig.json`: add `"jsx": "react-jsx"` and `"jsxImportSource": "react"` to `compilerOptions`
-- [ ] Run `bun install` to install new dependencies
-- [ ] Verify `bun build apps/cli/src/index.ts --outdir dist/cli --target bun` still works (smoke test before any code changes)
+- [x] Add `ink`, `react`, `@inkjs/ui` to `apps/cli/package.json` dependencies
+- [x] Add `@types/react` to `apps/cli/package.json` devDependencies
+- [x] Add `ink-testing-library` to `apps/cli/package.json` devDependencies
+- [x] Update `apps/cli/tsconfig.json`: add `"jsx": "react-jsx"` and `"jsxImportSource": "react"` to `compilerOptions`
+- [x] Run `bun install` to install new dependencies
+- [x] Verify `bun build apps/cli/src/index.ts --outdir dist/cli --target bun` still works (smoke test before any code changes)
 
 ## Section 2 — Engine Output Callback
 
@@ -70,3 +70,22 @@
 - [ ] **Unit tests** — run tests for affected libraries/modules. If tests don't exist for new code, create them.
 - [ ] **Integration tests** _(if applicable)_ — run if your changes touch API routes, database queries, or cross-module boundaries.
 - [ ] **E2E tests** _(if applicable)_ — run if your changes affect user-facing flows (see `CLAUDE.md` for e2e command).
+
+## Section 10 — Static Analysis
+
+- [ ] **Lint** — run the project linter (see `CLAUDE.md` for command). Zero errors, zero warnings.
+- [ ] **Typecheck** — run the type checker. Zero errors.
+- [ ] **Build** — run a production build to catch anything lint/typecheck miss (import resolution, SSR issues, etc.).
+- [ ] **Format** — run the formatter. Zero errors.
+
+## Section 11 — Tests
+
+- [ ] **Unit tests** — run tests for affected libraries/modules. If tests don't exist for new code, create them.
+- [ ] **Integration tests** _(if applicable)_ — run if your changes touch API routes, database queries, or cross-module boundaries.
+- [ ] **E2E tests** _(if applicable)_ — run if your changes affect user-facing flows (see `CLAUDE.md` for e2e command).
+
+## Section 12 — Deploy
+
+- [ ] **Check deployment status** — use Vercel MCP or CI dashboard to confirm the deploy succeeded.
+- [ ] **Read build logs on failure** — identify the error, fix locally, re-run static + test checklists, commit, push again.
+- [ ] **Smoke test the deployed URL** — verify the deployed version loads and the affected feature works.

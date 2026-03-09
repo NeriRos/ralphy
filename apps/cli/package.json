@@ -4,11 +4,18 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@inkjs/ui": "^2.0.0",
     "@ralphy/context": "workspace:*",
     "@ralphy/core": "workspace:*",
     "@ralphy/engine": "workspace:*",
     "@ralphy/output": "workspace:*",
     "@ralphy/phases": "workspace:*",
-    "@ralphy/types": "workspace:*"
+    "@ralphy/types": "workspace:*",
+    "ink": "^5.1.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "ink-testing-library": "^4.0.0"
   }
 }
