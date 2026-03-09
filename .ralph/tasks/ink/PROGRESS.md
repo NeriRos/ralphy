@@ -41,11 +41,11 @@
 
 ## Section 6 — Tests
 
-- [ ] Rewrite `apps/cli/src/__tests__/display.test.ts` → rename to `components.test.tsx`. Use `render` from `ink-testing-library` to test `<Banner>`, `<TaskStatus>`, `<TaskList>` components. Assert on `lastFrame()` output containing expected text
-- [ ] Verify `apps/cli/src/__tests__/cli.test.ts` still passes (no changes expected)
-- [ ] Verify `apps/cli/src/__tests__/loop.test.ts` still passes (tests pure functions, not UI)
-- [ ] Run full CLI test suite: `nx test cli`
-- [ ] Run engine tests: `nx test engine`
+- [x] Rewrite `apps/cli/src/__tests__/display.test.ts` → rename to `components.test.tsx`. Use `render` from `ink-testing-library` to test `<Banner>`, `<TaskStatus>`, `<TaskList>` components. Assert on `lastFrame()` output containing expected text
+- [x] Verify `apps/cli/src/__tests__/cli.test.ts` still passes (no changes expected)
+- [x] Verify `apps/cli/src/__tests__/loop.test.ts` still passes (tests pure functions, not UI)
+- [x] Run full CLI test suite: `nx test cli`
+- [x] Run engine tests: `nx test engine`
 
 ## Section 7 — Integration Verification and Cleanup
 

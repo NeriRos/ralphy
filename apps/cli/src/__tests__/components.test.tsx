@@ -1,0 +1,281 @@
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { render } from "ink-testing-library";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { rmSync } from "node:fs";
+import { runWithContext, createDefaultContext } from "@ralphy/context";
+import { buildInitialState } from "@ralphy/core/state";
+import type { State } from "@ralphy/types";
+import type { BuildInitialStateOpts } from "@ralphy/core/state";
+import { Banner } from "../components/Banner";
+import { TaskStatus } from "../components/TaskStatus";
+import { TaskList } from "../components/TaskList";
+
+let tempDir: string;
+function withStorage<T>(fn: () => T): T {
+  return runWithContext(createDefaultContext(), fn);
+}
+
+beforeEach(() => {
+  tempDir = mkdtempSync(join(tmpdir(), "components-test-"));
+});
+
+afterEach(() => {
+  rmSync(tempDir, { recursive: true, force: true });
+});
+
+function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
+  return buildInitialState({
+    name: "test-task",
+    prompt: "Test prompt text",
+    ...overrides,
+  });
+}
+
+describe("Banner", () => {
+  test("renders task name and mode", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" taskPrompt="Do something" />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("Ralph Loop");
+    expect(frame).toContain("test-task");
+    expect(frame).toContain("task");
+  });
+
+  test("renders engine label with model", () => {
+    const state = makeState({ engine: "claude", model: "sonnet" });
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("claude (sonnet)");
+  });
+
+  test("shows resumed indicator when isResume is true", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" isResume />,
+    );
+    expect(lastFrame()!).toContain("(resumed)");
+  });
+
+  test("shows max iterations label", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" maxIterations={10} />,
+    );
+    expect(lastFrame()!).toContain("10");
+  });
+
+  test("shows unlimited when maxIterations is 0", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" maxIterations={0} />,
+    );
+    expect(lastFrame()!).toContain("unlimited");
+  });
+
+  test("shows cost cap when set", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" maxCostUsd={5.5} />,
+    );
+    expect(lastFrame()!).toContain("$5.5");
+  });
+
+  test("shows no-execute flag", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" noExecute />,
+    );
+    expect(lastFrame()!).toContain("yes (research+plan only)");
+  });
+
+  test("shows prompt preview in task mode", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" taskPrompt="Build a new feature" />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("Prompt");
+    expect(frame).toContain("Build a new feature");
+  });
+
+  test("truncates long prompts", () => {
+    const state = makeState();
+    const lines = Array.from({ length: 10 }, (_, i) => `Line ${i + 1}`);
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" taskPrompt={lines.join("\n")} />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("Line 1");
+    expect(frame).toContain("Line 6");
+    expect(frame).toContain("4 more lines");
+    expect(frame).not.toContain("Line 7");
+  });
+
+  test("shows branch name", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <Banner state={state} mode="task" />,
+    );
+    expect(lastFrame()!).toContain("Branch");
+  });
+});
+
+describe("TaskStatus", () => {
+  test("renders task name and phase", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "exec" });
+      const { lastFrame } = render(
+        <TaskStatus state={state} taskDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("test-task");
+      expect(frame).toContain("exec");
+    }));
+
+  test("renders usage stats", () =>
+    withStorage(() => {
+      const state = {
+        ...makeState(),
+        usage: {
+          total_cost_usd: 1.234,
+          total_duration_ms: 5500,
+          total_turns: 3,
+          total_input_tokens: 1000,
+          total_output_tokens: 500,
+          total_cache_read_input_tokens: 200,
+          total_cache_creation_input_tokens: 0,
+        },
+      };
+      const { lastFrame } = render(
+        <TaskStatus state={state} taskDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("$1.23");
+      expect(frame).toContain("5.5s");
+      expect(frame).toContain("1000");
+      expect(frame).toContain("500");
+    }));
+
+  test("shows document existence checkmarks", () =>
+    withStorage(() => {
+      const state = makeState();
+      writeFileSync(join(tempDir, "RESEARCH.md"), "research content", "utf-8");
+      writeFileSync(join(tempDir, "PLAN.md"), "plan content", "utf-8");
+      const { lastFrame } = render(
+        <TaskStatus state={state} taskDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("[x] RESEARCH.md");
+      expect(frame).toContain("[x] PLAN.md");
+      expect(frame).toContain("[ ] PROGRESS.md");
+    }));
+
+  test("shows progress counts when PROGRESS.md exists", () =>
+    withStorage(() => {
+      const state = makeState();
+      writeFileSync(
+        join(tempDir, "PROGRESS.md"),
+        "- [x] Done item\n- [ ] Pending item\n- [ ] Another pending\n",
+        "utf-8",
+      );
+      const { lastFrame } = render(
+        <TaskStatus state={state} taskDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("1 done");
+      expect(frame).toContain("2 remaining");
+    }));
+
+  test("shows history entries", () =>
+    withStorage(() => {
+      const state = {
+        ...makeState(),
+        history: [
+          {
+            timestamp: "2026-03-09T10:00:00Z",
+            phase: "research",
+            iteration: 1,
+            engine: "claude",
+            model: "opus",
+            result: "success",
+          },
+        ],
+      };
+      const { lastFrame } = render(
+        <TaskStatus state={state} taskDir={tempDir} />,
+      );
+      const frame = lastFrame()!;
+      expect(frame).toContain("research");
+      expect(frame).toContain("success");
+    }));
+});
+
+describe("TaskList", () => {
+  test("shows 'No incomplete tasks' when empty", () =>
+    withStorage(() => {
+      mkdirSync(tempDir, { recursive: true });
+      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
+      expect(lastFrame()!).toContain("No incomplete tasks");
+    }));
+
+  test("renders task rows for incomplete tasks", () =>
+    withStorage(() => {
+      const taskDir = join(tempDir, "my-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "my-task", prompt: "Build something" });
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+
+      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
+      const frame = lastFrame()!;
+      expect(frame).toContain("my-task");
+      expect(frame).toContain("Build something");
+    }));
+
+  test("skips tasks with phase=done", () =>
+    withStorage(() => {
+      const taskDir = join(tempDir, "done-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = { ...makeState({ name: "done-task" }), phase: "done" };
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+
+      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
+      expect(lastFrame()!).toContain("No incomplete tasks");
+    }));
+
+  test("shows progress counts when PROGRESS.md exists", () =>
+    withStorage(() => {
+      const taskDir = join(tempDir, "prog-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "prog-task", prompt: "Test" });
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(
+        join(taskDir, "PROGRESS.md"),
+        "- [x] One\n- [x] Two\n- [ ] Three\n",
+        "utf-8",
+      );
+
+      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
+      expect(lastFrame()!).toContain("2/3");
+    }));
+
+  test("renders table headers", () =>
+    withStorage(() => {
+      const taskDir = join(tempDir, "header-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "header-task", prompt: "Test" });
+      writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
+
+      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
+      const frame = lastFrame()!;
+      expect(frame).toContain("Name");
+      expect(frame).toContain("Phase");
+      expect(frame).toContain("Status");
+      expect(frame).toContain("Description");
+    }));
+});
