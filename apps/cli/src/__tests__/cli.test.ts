@@ -76,8 +76,12 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--codex", "--claude"])).toThrow("Choose only one engine flag");
   });
 
-  test("parses bare number as max iterations", () => {
-    const result = parseArgs(["20"]);
+  test("throws on bare number (use --max-iterations instead)", () => {
+    expect(() => parseArgs(["20"])).toThrow("Unknown argument or mode");
+  });
+
+  test("parses --max-iterations flag", () => {
+    const result = parseArgs(["--max-iterations", "20"]);
     expect(result.maxIterations).toBe(20);
   });
 
@@ -103,7 +107,7 @@ describe("parseArgs", () => {
   });
 
   test("parses --unlimited as maxIterations 0", () => {
-    const result = parseArgs(["10", "--unlimited"]);
+    const result = parseArgs(["--max-iterations", "10", "--unlimited"]);
     expect(result.maxIterations).toBe(0);
   });
 
@@ -124,6 +128,7 @@ describe("parseArgs", () => {
   test("parses complex real-world command", () => {
     const result = parseArgs([
       "task",
+      "--max-iterations",
       "20",
       "--name",
       "dark-mode",
@@ -155,5 +160,50 @@ describe("parseArgs", () => {
     const result = parseArgs(["--claude", "--claude", "haiku"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("haiku");
+  });
+
+  test("parses --model flag", () => {
+    const result = parseArgs(["--model", "sonnet"]);
+    expect(result.model).toBe("sonnet");
+  });
+
+  test("parses --model haiku", () => {
+    const result = parseArgs(["--model", "haiku"]);
+    expect(result.model).toBe("haiku");
+  });
+
+  test("throws on invalid --model value", () => {
+    expect(() => parseArgs(["--model", "gpt4"])).toThrow("Invalid model");
+  });
+
+  test("--model overrides --claude default", () => {
+    const result = parseArgs(["--claude", "--model", "haiku"]);
+    expect(result.engine).toBe("claude");
+    expect(result.model).toBe("haiku");
+  });
+
+  test("parses --max-cost flag", () => {
+    const result = parseArgs(["--max-cost", "5.50"]);
+    expect(result.maxCostUsd).toBe(5.5);
+  });
+
+  test("parses --max-runtime flag", () => {
+    const result = parseArgs(["--max-runtime", "30"]);
+    expect(result.maxRuntimeMinutes).toBe(30);
+  });
+
+  test("parses --max-failures flag", () => {
+    const result = parseArgs(["--max-failures", "3"]);
+    expect(result.maxConsecutiveFailures).toBe(3);
+  });
+
+  test("parses --interactive flag", () => {
+    const result = parseArgs(["--interactive"]);
+    expect(result.interactive).toBe(true);
+  });
+
+  test("parses --verbose flag", () => {
+    const result = parseArgs(["--verbose"]);
+    expect(result.verbose).toBe(true);
   });
 });

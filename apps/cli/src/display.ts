@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
 import { countProgress } from "@ralphy/core/progress";
+import { getStatusDocuments } from "@ralphy/core/documents";
 import { getStorage } from "@ralphy/context";
 import { log, styled, separator } from "@ralphy/output";
 
@@ -110,9 +111,9 @@ export function showStatus(state: State, taskDir: string): void {
 
   const storage = getStorage();
   log(" Files:");
-  for (const f of ["RESEARCH.md", "PLAN.md", "PROGRESS.md"]) {
-    const content = storage.read(join(taskDir, f));
-    log(`   ${content !== null ? "[x]" : "[ ]"} ${f}`);
+  for (const doc of getStatusDocuments()) {
+    const content = storage.read(join(taskDir, doc.name));
+    log(`   ${content !== null ? "[x]" : "[ ]"} ${doc.name}`);
   }
 
   const progressContent = storage.read(join(taskDir, "PROGRESS.md"));

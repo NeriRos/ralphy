@@ -36,10 +36,10 @@ This builds the CLI and MCP server, copies them to `.ralph/bin/`, sets up phase 
 ### Create and Run a Task
 
 ```bash
-ralph task --name fix-auth --prompt "Fix the JWT validation bug" --claude opus 10
+ralph task --name fix-auth --prompt "Fix the JWT validation bug" --claude opus --max-iterations 10
 ```
 
-The trailing number sets the max iterations. The engine defaults to Claude Sonnet.
+The engine defaults to Claude Opus.
 
 ### Interactive Mode
 
@@ -80,13 +80,17 @@ ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
 | `--prompt-file <path>` | Read prompt from a file                                  |
 | `--claude [model]`     | Use Claude engine (haiku/sonnet/opus)                    |
 | `--codex`              | Use Codex engine                                         |
+| `--model <model>`      | Set model (haiku/sonnet/opus)                            |
 | `--no-execute`         | Stop after research + plan phases                        |
 | `--interactive`        | Run research + plan interactively, then automate         |
+| `--max-iterations <N>` | Stop after N iterations (0 = unlimited)                  |
 | `--max-cost <N>`       | Stop when cost exceeds $N                                |
 | `--max-runtime <N>`    | Stop after N minutes                                     |
 | `--max-failures <N>`   | Stop after N consecutive identical failures (default: 5) |
+| `--unlimited`          | Set max iterations to 0 (unlimited, default)             |
 | `--delay <N>`          | Seconds to wait between iterations                       |
 | `--log`                | Log raw JSON stream output                               |
+| `--verbose`            | Verbose output                                           |
 
 ## Phases
 

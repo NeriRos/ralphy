@@ -31,6 +31,7 @@ const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
  *   --name <name>           Task name
  *   --prompt <text>         Task description
  *   --prompt-file <path>    Read prompt from file
+ *   --model <model>         Set model (haiku|sonnet|opus)
  *   --claude [model]        Use Claude engine (haiku|sonnet|opus)
  *   --codex                 Use Codex engine
  *   --phase <phase>         Target phase for set-phase mode
@@ -40,11 +41,11 @@ const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
  *   --log                   Log raw stream JSON
  *   --max-cost N            Stop when total cost exceeds $N (0 = no limit)
  *   --max-runtime N         Stop after N minutes of wall-clock time (0 = no limit)
+ *   --max-iterations N      Stop after N iterations (0 = unlimited)
  *   --max-failures N        Stop after N consecutive failures (default: 5, 0 = disable)
  *   --unlimited             Set max to 0 (unlimited, default)
  *   --timeout N             Deprecated (consumed and ignored)
  *   --push-interval N       Deprecated (consumed and ignored)
- *   [number]                Max iterations
  *   [mode]                  task|list|status|advance|set-phase
  */
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -68,6 +69,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   };
 
   let expectModel = false;
+  let expectModelFlag = false;
   let expectName = false;
   let expectPrompt = false;
   let expectPromptFile = false;
@@ -76,6 +78,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
   let expectMaxCost = false;
   let expectMaxRuntime = false;
   let expectMaxFailures = false;
+  let expectMaxIterations = false;
   let expectTimeout = false;
   let expectPushInterval = false;
 
@@ -91,6 +94,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
       expectModel = false;
     }
 
+    if (expectModelFlag) {
+      if (!VALID_MODELS.has(arg)) {
+        throw new Error(`Invalid model '${arg}'. Valid models: ${[...VALID_MODELS].join(", ")}`);
+      }
+      result.model = arg;
+      expectModelFlag = false;
+      continue;
+    }
     if (expectName) {
       result.name = arg;
       expectName = false;
@@ -131,6 +142,11 @@ export function parseArgs(argv: string[]): ParsedArgs {
       expectMaxFailures = false;
       continue;
     }
+    if (expectMaxIterations) {
+      result.maxIterations = parseInt(arg, 10);
+      expectMaxIterations = false;
+      continue;
+    }
     if (expectTimeout) {
       // Deprecated — consume and ignore
       expectTimeout = false;
@@ -157,6 +173,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
         }
         result.engine = "codex";
         result.engineSet = true;
+        break;
+      case "--model":
+        expectModelFlag = true;
         break;
       case "--name":
         expectName = true;
@@ -188,6 +207,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--max-failures":
         expectMaxFailures = true;
         break;
+      case "--max-iterations":
+        expectMaxIterations = true;
+        break;
       case "--timeout":
         expectTimeout = true;
         break;
@@ -204,10 +226,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         result.verbose = true;
         break;
       default:
-        // Check if it's a bare number (max iterations)
-        if (/^\d+$/.test(arg)) {
-          result.maxIterations = parseInt(arg, 10);
-        } else if (VALID_MODES.has(arg)) {
+        if (VALID_MODES.has(arg)) {
           result.mode = arg as Mode;
         } else {
           throw new Error(`Unknown argument or mode '${arg}'`);

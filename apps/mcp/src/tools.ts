@@ -6,12 +6,13 @@ import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
 import { commitState } from "@ralphy/core/git";
-import { resolveTemplatePath } from "@ralphy/core/templates";
+import { scaffoldTaskDocuments } from "@ralphy/core/templates";
+import { getDocumentNames } from "@ralphy/core/documents";
 import { resolveChecklistDir, listChecklists } from "@ralphy/phases";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import { getPhase } from "@ralphy/phases";
 
-const DOCUMENTS = ["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"] as const;
+const DOCUMENTS = getDocumentNames();
 
 export function registerTools(server: McpServer, tasksDir: string): void {
   // --- ralph_list_tasks ---
@@ -152,9 +153,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
       description: "Read a document file from a task directory",
       inputSchema: {
         name: z.string().describe("Task name"),
-        document: z
-          .enum(["RESEARCH.md", "PLAN.md", "PROGRESS.md", "STEERING.md"])
-          .describe("Document to read"),
+        document: z.enum(DOCUMENTS as [string, ...string[]]).describe("Document to read"),
       },
     },
     async ({ name, document }) => {
@@ -220,17 +219,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
           });
           writeState(taskDir, state);
 
-          // Scaffold STEERING.md from template
-          const steeringPath = join(taskDir, "STEERING.md");
-          const tmpl = storage.read(resolveTemplatePath("STEERING"));
-          if (tmpl !== null) {
-            storage.write(steeringPath, tmpl);
-          } else {
-            storage.write(
-              steeringPath,
-              "# Steering — User Guidance\n\n**Edit this file anytime to steer the task.**\n",
-            );
-          }
+          scaffoldTaskDocuments(taskDir);
 
           return {
             content: [

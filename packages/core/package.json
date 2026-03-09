@@ -8,6 +8,7 @@
     "./phases": "./src/phases.ts",
     "./progress": "./src/progress.ts",
     "./git": "./src/git.ts",
+    "./documents": "./src/documents.ts",
     "./templates": "./src/templates.ts",
     "./format": "./src/format.ts",
     "./smoke": "./src/smoke.ts"

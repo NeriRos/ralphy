@@ -2,10 +2,12 @@
 
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
+import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools";
 import { registerPrompts } from "./prompts";
+import { scaffoldTasksDir } from "@ralphy/core/templates";
 import { error } from "@ralphy/output";
 
 /**
@@ -31,6 +33,7 @@ async function main(): Promise<void> {
   }
 
   const tasksDir = resolveTasksDir(projectDir);
+  runWithContext(createDefaultContext(), () => scaffoldTasksDir(tasksDir));
 
   const server = new McpServer({
     name: "ralph",

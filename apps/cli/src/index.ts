@@ -10,6 +10,7 @@ import { commitState } from "@ralphy/core/git";
 import { mainLoop } from "./loop";
 import { log, error } from "@ralphy/output";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
+import { scaffoldTasksDir } from "@ralphy/core/templates";
 import type { Phase } from "@ralphy/types";
 
 /**
@@ -28,6 +29,7 @@ function resolveTasksDir(): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const tasksDir = resolveTasksDir();
+  runWithContext(createDefaultContext(), () => scaffoldTasksDir(tasksDir));
 
   switch (args.mode) {
     case "list": {

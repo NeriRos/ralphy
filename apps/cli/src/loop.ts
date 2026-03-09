@@ -2,7 +2,8 @@ import { join } from "node:path";
 import type { State, Engine } from "@ralphy/types";
 import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
 import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
-import { renderTemplate, resolveTemplatePath } from "@ralphy/core/templates";
+import { renderTemplate, scaffoldTaskDocuments } from "@ralphy/core/templates";
+import { getPromptDocuments, getDocumentNames } from "@ralphy/core/documents";
 import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
 import { autoTransitionAfterIteration } from "@ralphy/core/phases";
 import { getPhase } from "@ralphy/phases";
@@ -37,32 +38,30 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
   const phaseConfig = getPhase(state.phase);
   let prompt = "";
 
-  // 1. Inject STEERING.md at the top
+  // 1. Inject documents registered for this phase
   const storage = getStorage();
-  const steering = storage.read(join(taskDir, "STEERING.md"));
-  if (steering !== null) {
-    const lines = steering
-      .split("\n")
-      .filter((line) => !line.startsWith("#"))
-      .filter((line) => line.trim())
-      .slice(0, 20);
-    if (lines.length > 0) {
+  for (const doc of getPromptDocuments(state.phase)) {
+    const injection = doc.promptInjection!;
+    const content = storage.read(join(taskDir, doc.name));
+    if (content === null) continue;
+
+    if (injection.filterHeaders) {
+      const lines = content
+        .split("\n")
+        .filter((line) => !line.startsWith("#"))
+        .filter((line) => line.trim())
+        .slice(0, injection.maxLines);
+      if (lines.length === 0) continue;
       prompt += "---\n";
-      prompt += "# User Steering (READ FIRST)\n\n";
+      prompt += `# ${injection.header}\n\n`;
       prompt += lines.join("\n") + "\n\n";
       prompt += "---\n\n";
+    } else {
+      prompt += "---\n";
+      prompt += `# ${injection.header}\n\n`;
+      prompt += content + "\n\n";
+      prompt += "---\n\n";
     }
-  }
-
-  // 2. Inject INTERACTIVE.md (context from interactive planning session)
-  const interactive = storage.read(join(taskDir, "INTERACTIVE.md"));
-  if (interactive !== null) {
-    prompt += "---\n";
-    prompt += "# Interactive Session Context (READ FIRST)\n\n";
-    prompt += "The following was gathered during an interactive session with the user.\n";
-    prompt += "Treat these as authoritative requirements and decisions.\n\n";
-    prompt += interactive + "\n\n";
-    prompt += "---\n\n";
   }
 
   // 3. Phase prompt (rendered with template vars)
@@ -113,7 +112,7 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
           "You have access to ralph MCP tools. **Use these instead of shell commands where applicable:**",
           "",
           "- `ralph_advance_phase(name)` — Advance this task to the next phase. **Use this instead of `./loop.sh advance`.**",
-          "- `ralph_read_document(name, document)` — Read task documents (RESEARCH.md, PLAN.md, PROGRESS.md, STEERING.md)",
+          `- \`ralph_read_document(name, document)\` — Read task documents (${getDocumentNames().join(", ")})`,
           "- `ralph_get_task(name)` — Get task status, metadata, and progress",
           "- `ralph_list_checklists()` — List available verification checklists with their contents",
           '- `ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["checklist_static", "checklist_tests"]`)',
@@ -137,16 +136,10 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
 
 /**
  * Scaffold task files that should exist for a new task.
- * Currently copies STEERING.md template if missing.
+ * Uses the document registry from @ralphy/core/documents.
  */
 function scaffoldTaskFiles(taskDir: string): void {
-  const storage = getStorage();
-  if (storage.read(join(taskDir, "STEERING.md")) === null) {
-    const tmpl = storage.read(resolveTemplatePath("STEERING"));
-    if (tmpl !== null) {
-      storage.write(join(taskDir, "STEERING.md"), tmpl);
-    }
-  }
+  scaffoldTaskDocuments(taskDir);
 }
 
 /**
