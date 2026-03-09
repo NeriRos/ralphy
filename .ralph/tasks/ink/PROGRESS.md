@@ -11,11 +11,11 @@
 
 ## Section 2 — Engine Output Callback
 
-- [ ] In `packages/engine/src/engine.ts`: add `onOutput?: (line: string) => void` to `RunEngineOptions` interface
-- [ ] In `runEngine()`: create `const write = opts.onOutput ?? ((l: string) => process.stdout.write(l + "\n"))` at the top
-- [ ] Replace all 6 `process.stdout.write(l + "\n")` calls in `runEngine()` with `write(l)`
-- [ ] Verify existing engine tests still pass (`bun test packages/engine/src`)
-- [ ] Verify the CLI still works end-to-end with the default fallback (no Ink yet)
+- [x] In `packages/engine/src/engine.ts`: add `onOutput?: (line: string) => void` to `RunEngineOptions` interface
+- [x] In `runEngine()`: create `const write = opts.onOutput ?? ((l: string) => process.stdout.write(l + "\n"))` at the top
+- [x] Replace all 6 `process.stdout.write(l + "\n")` calls in `runEngine()` with `write(l)`
+- [x] Verify existing engine tests still pass (`bun test packages/engine/src`)
+- [x] Verify the CLI still works end-to-end with the default fallback (no Ink yet)
 
 ## Section 3 — Static Ink Components (Banner, TaskStatus, TaskList, StopMessage, IterationHeader)
 

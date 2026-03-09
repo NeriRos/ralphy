@@ -13,6 +13,7 @@ export interface RunEngineOptions {
   logFlag?: boolean;
   taskDir?: string;
   interactive?: boolean;
+  onOutput?: (line: string) => void;
 }
 
 export interface EngineResult {
@@ -145,6 +146,7 @@ async function runInteractive(
 
 export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const { engine, model, prompt } = opts;
+  const write = opts.onOutput ?? ((l: string) => process.stdout.write(l + "\n"));
 
   if (opts.interactive && engine === "claude") {
     return runInteractive(model, prompt, opts.taskDir);
@@ -193,7 +195,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       for (const line of lines) {
         const output = processClaudeLine(line, claudeState);
         for (const l of output) {
-          process.stdout.write(l + "\n");
+          write(l);
         }
       }
     }
@@ -202,7 +204,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
     if (buffer.trim()) {
       const output = processClaudeLine(buffer, claudeState);
       for (const l of output) {
-        process.stdout.write(l + "\n");
+        write(l);
       }
     }
 
@@ -230,7 +232,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       for (const line of lines) {
         const output = processCodexLine(line, codexState);
         for (const l of output) {
-          process.stdout.write(l + "\n");
+          write(l);
         }
       }
     }
@@ -239,7 +241,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
     if (buffer.trim()) {
       const output = processCodexLine(buffer, codexState);
       for (const l of output) {
-        process.stdout.write(l + "\n");
+        write(l);
       }
     }
 
@@ -261,7 +263,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
         for (const line of lines) {
           const output = processCodexLine(line, codexState);
           for (const l of output) {
-            process.stdout.write(l + "\n");
+            write(l);
           }
         }
       }
@@ -269,7 +271,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       if (stderrBuffer.trim()) {
         const output = processCodexLine(stderrBuffer, codexState);
         for (const l of output) {
-          process.stdout.write(l + "\n");
+          write(l);
         }
       }
     }
