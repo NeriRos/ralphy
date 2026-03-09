@@ -33,11 +33,11 @@
 
 ## Section 5 — App Root and Entry Point
 
-- [ ] Create `apps/cli/src/components/App.tsx` — root component that receives parsed args, routes by `mode`: renders `<TaskList>` for `list`, `<TaskStatus>` for `status`, `<TaskLoop>` for `task`, and handles `advance`/`set-phase` with simple text output + `useApp().exit()`
-- [ ] Rewrite `apps/cli/src/index.ts` to use Ink: import `render` from `ink`, call `parseArgs()`, then `render(<App args={args} tasksDir={tasksDir} />)`. Keep `resolveTasksDir()` and `runWithContext()` setup. Handle non-TTY fallback
-- [ ] Delete `apps/cli/src/display.ts` (all functionality now in components)
-- [ ] Update `apps/cli/project.json` build command if entry point extension changed to `.tsx`
-- [ ] Verify build: `bun build apps/cli/src/index.ts --outdir dist/cli --target bun` (bun handles .tsx natively, entry may stay .ts if it imports .tsx)
+- [x] Create `apps/cli/src/components/App.tsx` — root component that receives parsed args, routes by `mode`: renders `<TaskList>` for `list`, `<TaskStatus>` for `status`, `<TaskLoop>` for `task`, and handles `advance`/`set-phase` with simple text output + `useApp().exit()`
+- [x] Rewrite `apps/cli/src/index.ts` to use Ink: import `render` from `ink`, call `parseArgs()`, then `render(<App args={args} tasksDir={tasksDir} />)`. Keep `resolveTasksDir()` and `runWithContext()` setup. Handle non-TTY fallback
+- [x] Delete `apps/cli/src/display.ts` (all functionality now in components) — also deleted display.test.ts (reimplemented in Section 6)
+- [x] Update `apps/cli/project.json` build command if entry point extension changed to `.tsx` — added `--external react-devtools-core` for Ink's optional dep, updated madge to include .tsx
+- [x] Verify build: `bun build apps/cli/src/index.ts --outdir dist/cli --target bun` (bun handles .tsx natively, entry may stay .ts if it imports .tsx)
 
 ## Section 6 — Tests
 
