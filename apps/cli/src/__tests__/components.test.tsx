@@ -21,6 +21,15 @@ function withStorage<T>(fn: () => T): T {
   return runWithContext(createDefaultContext(), fn);
 }
 
+async function waitForFrame(lastFrame: () => string | undefined): Promise<string> {
+  for (let i = 0; i < 50; i++) {
+    const frame = lastFrame();
+    if (frame && frame.trim() !== "") return frame;
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  return lastFrame() ?? "";
+}
+
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "components-test-"));
 });
@@ -202,18 +211,19 @@ describe("TaskList", () => {
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
-  test("renders task rows for incomplete tasks", () =>
-    withStorage(() => {
+  test("renders task rows for incomplete tasks", async () => {
+    const { lastFrame } = withStorage(() => {
       const taskDir = join(tempDir, "my-task");
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "my-task", prompt: "Build something" });
       writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
 
-      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
-      const frame = lastFrame()!;
-      expect(frame).toContain("my-task");
-      expect(frame).toContain("Build something");
-    }));
+      return render(<TaskList tasksDir={tempDir} />);
+    });
+    const frame = await waitForFrame(lastFrame);
+    expect(frame).toContain("my-task");
+    expect(frame).toContain("Build something");
+  });
 
   test("skips tasks with phase=done", () =>
     withStorage(() => {
@@ -226,17 +236,19 @@ describe("TaskList", () => {
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
-  test("shows progress counts when PROGRESS.md exists", () =>
-    withStorage(() => {
+  test("shows progress counts when PROGRESS.md exists", async () => {
+    const { lastFrame } = withStorage(() => {
       const taskDir = join(tempDir, "prog-task");
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "prog-task", prompt: "Test" });
       writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
       writeFileSync(join(taskDir, "PROGRESS.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
 
-      const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
-      expect(lastFrame()!).toContain("2/3");
-    }));
+      return render(<TaskList tasksDir={tempDir} />);
+    });
+    const frame = await waitForFrame(lastFrame);
+    expect(frame).toContain("2/3");
+  });
 
   test("renders table headers", () =>
     withStorage(() => {
@@ -397,7 +409,8 @@ describe("App", () => {
     const { lastFrame } = withStorage(() =>
       render(<App args={makeArgs({ mode: "status" })} tasksDir={tempDir} />),
     );
-    expect(lastFrame()!).toContain("--name is required");
+    const frame = await waitForFrame(lastFrame);
+    expect(frame).toContain("--name is required");
     await tick();
     process.exitCode = 0;
   });
@@ -430,7 +443,8 @@ describe("App", () => {
     const { lastFrame } = withStorage(() =>
       render(<App args={makeArgs({ mode: "advance" })} tasksDir={tempDir} />),
     );
-    expect(lastFrame()!).toContain("--name is required");
+    const frame = await waitForFrame(lastFrame);
+    expect(frame).toContain("--name is required");
     await tick();
     process.exitCode = 0;
   });

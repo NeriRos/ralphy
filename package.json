@@ -19,7 +19,7 @@
     "check:unused": "knip",
     "lint:ci": "nx affected -t lint",
     "fmt:ci": "nx affected -t fmt:check",
-    "typecheck:ci": "nx affected -t typecheck",
+    "typecheck:ci": "nx affected -t typecheck --parallel=3",
     "test:ci": "nx affected -t test",
     "check:circular:ci": "nx affected -t check:circular",
     "prepare": "husky"
