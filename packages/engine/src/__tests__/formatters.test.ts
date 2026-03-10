@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { parseClaudeLine } from "../formatters/claude-stream";
 import type { IterationUsage } from "@ralphy/types";
+import type { FeedEvent } from "../feed-events";
 import { processCodexLine, formatCodexStream } from "../formatters/codex-stream";
 
 // Strip ANSI escape codes for readable assertions

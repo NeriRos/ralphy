@@ -10,15 +10,17 @@ export interface ClaudeStreamState {
 
 function extractToolInputSummary(input: Record<string, unknown>): ToolInputSummary | undefined {
   if (typeof input.file_path === "string") {
-    const parts = input.file_path.split("/");
-    return { kind: "file", name: parts[parts.length - 1] };
+    return { kind: "file", name: input.file_path.split("/").pop() ?? input.file_path };
   }
   if (typeof input.command === "string") {
-    return { kind: "command", text: input.command.split("\n")[0] };
+    return { kind: "command", text: input.command.split("\n")[0] ?? input.command };
   }
   if (typeof input.pattern === "string") {
-    const path = typeof input.path === "string" ? input.path.split("/").pop() : undefined;
-    return { kind: "search", pattern: input.pattern, path };
+    const path =
+      typeof input.path === "string" ? (input.path.split("/").pop() ?? input.path) : undefined;
+    const summary: ToolInputSummary = { kind: "search", pattern: input.pattern };
+    if (path) summary.path = path;
+    return summary;
   }
   if (typeof input.query === "string") {
     return { kind: "search", pattern: input.query };
@@ -27,7 +29,7 @@ function extractToolInputSummary(input: Record<string, unknown>): ToolInputSumma
     return { kind: "url", url: input.url };
   }
   if (typeof input.prompt === "string") {
-    return { kind: "prompt", text: input.prompt.split("\n")[0] };
+    return { kind: "prompt", text: input.prompt.split("\n")[0] ?? input.prompt };
   }
   if (input.old_string !== undefined) return { kind: "edit" };
   if (input.content !== undefined) return { kind: "write" };
@@ -118,7 +120,9 @@ export function parseClaudeLine(line: string, state: ClaudeStreamState): FeedEve
           state.toolCount++;
           const name = (block.name as string) ?? "?";
           const summary = extractToolInputSummary((block.input ?? {}) as Record<string, unknown>);
-          events.push({ type: "tool-start", name, summary });
+          const ev: Extract<FeedEvent, { type: "tool-start" }> = { type: "tool-start", name };
+          if (summary) ev.summary = summary;
+          events.push(ev);
         } else if (btype === "thinking") {
           const thinking = (block.thinking as string) ?? "";
           if (thinking) {

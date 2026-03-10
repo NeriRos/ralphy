@@ -302,7 +302,9 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
       if (!name && itemType === "command_execution") name = "shell";
       if (name) {
         const summary = extractToolInputSummary(event);
-        events.push({ type: "tool-start", name, summary });
+        const te: Extract<FeedEvent, { type: "tool-start" }> = { type: "tool-start", name };
+        if (summary) te.summary = summary;
+        events.push(te);
         state.pendingTools++;
       }
       break;
@@ -321,7 +323,9 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
       if (name || isToolType(itemType)) {
         if (!name) name = itemType || "tool_call";
         const summary = extractToolInputSummary(event);
-        events.push({ type: "tool-start", name, summary });
+        const te: Extract<FeedEvent, { type: "tool-start" }> = { type: "tool-start", name };
+        if (summary) te.summary = summary;
+        events.push(te);
         state.pendingTools++;
       }
       break;
