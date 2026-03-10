@@ -35,7 +35,7 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc -b apps/cli/tsconfig.json",
+        "command": "tsc --noEmit -p apps/cli/tsconfig.json",
         "cwd": "{workspaceRoot}"
       }
     },
