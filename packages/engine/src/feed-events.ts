@@ -46,130 +46,128 @@ function resultInfo(e: Extract<FeedEvent, { type: "result" }>): string {
   ].join("  ");
 }
 
+type EventOf<T extends FeedEvent["type"]> = Extract<FeedEvent, { type: T }>;
+type FeedRenderer<T extends FeedEvent["type"]> = (e: EventOf<T>, verbose: boolean) => string[];
+
+const feedRenderers: { [K in FeedEvent["type"]]: FeedRenderer<K> } = {
+  session: (e, verbose) => {
+    if (verbose) {
+      const sep = styled("━".repeat(50), "gray");
+      return [
+        sep,
+        `  ${styled("model:", "dim")} ${styled(e.model, "bold")}  ${styled(`session: ${e.sessionId}…  v${e.version ?? ""}  tools: ${e.toolCount ?? 0}`, "dim")}`,
+        sep,
+      ];
+    }
+    return [
+      `${styled("──", "gray")} ${styled(e.model, "bold")} ${styled(`(${e.sessionId}…)`, "gray")}`,
+    ];
+  },
+
+  "session-unknown": (e) => [
+    `${styled("✗", "error")} ${styled("UNKNOWN", "bold")} ${styled(`(${e.sessionId}…) - see --log`, "dim")}`,
+  ],
+
+  agent: (e) => [`  ${styled(`⊳ agent: ${e.description}`, "dim")}`],
+
+  thinking: (e, verbose) => {
+    if (verbose && e.preview) {
+      const lines = e.preview.split("\n");
+      const out = [`\n  ${styled("💭 thinking", "gray")}`];
+      for (const tl of lines.slice(0, 3)) {
+        out.push(`  ${styled(tl, "gray")}`);
+      }
+      if ((e.totalLines ?? lines.length) > 3) {
+        out.push(`  ${styled(`  … (${(e.totalLines ?? lines.length) - 3} more lines)`, "gray")}`);
+      }
+      return out;
+    }
+    if (e.preview) {
+      const firstLine = e.preview.split("\n")[0] ?? "";
+      return [`  ${styled("💭", "gray")} ${styled(firstLine, "dim")}`];
+    }
+    return [`  ${styled("💭", "gray")}`];
+  },
+
+  text: (e) => [`\n${styled(e.text, "bold")}`],
+
+  "tool-start": (e) => {
+    let line = `  ${styled("▶", "cyan")} ${styled(e.name, "cyan")}`;
+    if (e.summary) line += ` ${styled(e.summary, "dim")}`;
+    return [line];
+  },
+
+  "tool-end": (e) => {
+    if (e.name && e.summary) {
+      return [
+        ` ${styled("✓", "success")} ${styled(e.name, "dim")} ${styled(`→ ${e.summary}`, "dim")}`,
+      ];
+    }
+    if (e.name) {
+      return [` ${styled("✓", "success")} ${styled(e.name, "dim")}`];
+    }
+    return [` ${styled("✓", "success")}`];
+  },
+
+  "tool-result-preview": (e) => {
+    const out: string[] = [];
+    for (const pl of e.lines) {
+      out.push(`    ${styled(pl, "dim")}`);
+    }
+    if (e.truncated) {
+      out.push(`    ${styled(`… (${e.truncated} more lines)`, "dim")}`);
+    }
+    return out;
+  },
+
+  "turn-start": () => [`\n${styled("▶ turn started", "bold")}`],
+
+  "turn-done": (e) => {
+    if (e.inputTokens !== undefined) {
+      const info = `in=${e.inputTokens}  out=${e.outputTokens ?? 0}`;
+      return [`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`];
+    }
+    return [`\n${styled("✓ done", "success")}`];
+  },
+
+  result: (e, verbose) => {
+    if (verbose) {
+      const sep = styled("━".repeat(50), "gray");
+      return [`\n${styled("✓ Done", "successBold")}  ${styled(resultInfo(e), "dim")}`, `${sep}\n`];
+    }
+    return [`\n${styled("✓ done", "success")}  ${styled(resultInfo(e), "dim")}`];
+  },
+
+  "result-error": (e) => [`\n${styled("✗ Error", "fail")} ${styled(e.message, "error")}`],
+
+  error: (e) => [`${styled("error:", "error")} ${e.message}`],
+
+  "rate-limit": (e) => [`${styled("✗ Rate limit reached", "fail")} ${styled(e.message, "error")}`],
+
+  interrupted: (e, verbose) => {
+    if (verbose) {
+      const sep = styled("━".repeat(50), "gray");
+      return [
+        "",
+        `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
+        styled(`  turns=${e.turns}  tools=${e.tools}`, "dim"),
+        sep,
+      ];
+    }
+    return [
+      "",
+      `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
+    ];
+  },
+
+  raw: (e) => [e.text],
+};
+
 /**
  * Render a FeedEvent to chalk-styled string lines.
  * Used for backward-compatible string output and tests.
  */
 export function renderFeedEvent(event: FeedEvent, verbose = false): string[] {
-  switch (event.type) {
-    case "session":
-      if (verbose) {
-        const sep = styled("━".repeat(50), "gray");
-        return [
-          sep,
-          `  ${styled("model:", "dim")} ${styled(event.model, "bold")}  ${styled(`session: ${event.sessionId}…  v${event.version ?? ""}  tools: ${event.toolCount ?? 0}`, "dim")}`,
-          sep,
-        ];
-      }
-      return [
-        `${styled("──", "gray")} ${styled(event.model, "bold")} ${styled(`(${event.sessionId}…)`, "gray")}`,
-      ];
-
-    case "session-unknown":
-      return [
-        `${styled("✗", "error")} ${styled("UNKNOWN", "bold")} ${styled(`(${event.sessionId}…) - see --log`, "dim")}`,
-      ];
-
-    case "agent":
-      return [`  ${styled(`⊳ agent: ${event.description}`, "dim")}`];
-
-    case "thinking":
-      if (verbose && event.preview) {
-        const lines = event.preview.split("\n");
-        const out = [`\n  ${styled("💭 thinking", "gray")}`];
-        for (const tl of lines.slice(0, 3)) {
-          out.push(`  ${styled(tl, "gray")}`);
-        }
-        if ((event.totalLines ?? lines.length) > 3) {
-          out.push(
-            `  ${styled(`  … (${(event.totalLines ?? lines.length) - 3} more lines)`, "gray")}`,
-          );
-        }
-        return out;
-      }
-      if (event.preview) {
-        const firstLine = event.preview.split("\n")[0] ?? "";
-        return [`  ${styled("💭", "gray")} ${styled(firstLine, "dim")}`];
-      }
-      return [`  ${styled("💭", "gray")}`];
-
-    case "text":
-      return [`\n${styled(event.text, "bold")}`];
-
-    case "tool-start": {
-      let line = `  ${styled("▶", "cyan")} ${styled(event.name, "cyan")}`;
-      if (event.summary) line += ` ${styled(event.summary, "dim")}`;
-      return [line];
-    }
-
-    case "tool-end":
-      if (event.name && event.summary) {
-        return [
-          ` ${styled("✓", "success")} ${styled(event.name, "dim")} ${styled(`→ ${event.summary}`, "dim")}`,
-        ];
-      }
-      if (event.name) {
-        return [` ${styled("✓", "success")} ${styled(event.name, "dim")}`];
-      }
-      return [` ${styled("✓", "success")}`];
-
-    case "tool-result-preview": {
-      const out: string[] = [];
-      for (const pl of event.lines) {
-        out.push(`    ${styled(pl, "dim")}`);
-      }
-      if (event.truncated) {
-        out.push(`    ${styled(`… (${event.truncated} more lines)`, "dim")}`);
-      }
-      return out;
-    }
-
-    case "turn-start":
-      return [`\n${styled("▶ turn started", "bold")}`];
-
-    case "turn-done": {
-      if (event.inputTokens !== undefined) {
-        const info = `in=${event.inputTokens}  out=${event.outputTokens ?? 0}`;
-        return [`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`];
-      }
-      return [`\n${styled("✓ done", "success")}`];
-    }
-
-    case "result":
-      if (verbose) {
-        const sep = styled("━".repeat(50), "gray");
-        return [
-          `\n${styled("✓ Done", "successBold")}  ${styled(resultInfo(event), "dim")}`,
-          `${sep}\n`,
-        ];
-      }
-      return [`\n${styled("✓ done", "success")}  ${styled(resultInfo(event), "dim")}`];
-
-    case "result-error":
-      return [`\n${styled("✗ Error", "fail")} ${styled(event.message, "error")}`];
-
-    case "error":
-      return [`${styled("error:", "error")} ${event.message}`];
-
-    case "rate-limit":
-      return [`${styled("✗ Rate limit reached", "fail")} ${styled(event.message, "error")}`];
-
-    case "interrupted":
-      if (verbose) {
-        const sep = styled("━".repeat(50), "gray");
-        return [
-          "",
-          `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
-          styled(`  turns=${event.turns}  tools=${event.tools}`, "dim"),
-          sep,
-        ];
-      }
-      return [
-        "",
-        `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
-      ];
-
-    case "raw":
-      return [event.text];
-  }
+  const render = feedRenderers[event.type] as FeedRenderer<typeof event.type>;
+  return render(event, verbose);
 }
