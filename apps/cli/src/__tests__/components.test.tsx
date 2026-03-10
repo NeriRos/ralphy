@@ -467,7 +467,6 @@ describe("App", () => {
     process.exitCode = 0;
   });
 
-
   test("advance mode with valid task advances phase", () =>
     withStorage(() => {
       const taskDir = join(tempDir, "adv-task");
