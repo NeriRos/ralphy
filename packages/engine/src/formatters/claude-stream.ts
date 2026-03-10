@@ -1,17 +1,5 @@
 import type { IterationUsage } from "@ralphy/types";
-import { type FeedEvent, renderFeedEvent } from "../feed-events";
-
-export interface ClaudeStreamOptions {
-  verbose?: boolean;
-  logDir?: string;
-}
-
-export interface ClaudeStreamResult {
-  gotResult: boolean;
-  turnCount: number;
-  toolCount: number;
-  usage: IterationUsage | null;
-}
+import type { FeedEvent, ToolInputSummary } from "../feed-events";
 
 export interface ClaudeStreamState {
   turnCount: number;
@@ -20,24 +8,30 @@ export interface ClaudeStreamState {
   usage: IterationUsage | null;
 }
 
-function extractToolInputSummary(input: Record<string, unknown>): string {
+function extractToolInputSummary(input: Record<string, unknown>): ToolInputSummary | undefined {
   if (typeof input.file_path === "string") {
     const parts = input.file_path.split("/");
-    return `📄 ${parts[parts.length - 1]}`;
+    return { kind: "file", name: parts[parts.length - 1] };
   }
   if (typeof input.command === "string") {
-    return `$ ${input.command.split("\n")[0]}`;
+    return { kind: "command", text: input.command.split("\n")[0] };
   }
   if (typeof input.pattern === "string") {
-    const inPath = typeof input.path === "string" ? ` in ${input.path.split("/").pop()}` : "";
-    return `🔍 ${input.pattern}${inPath}`;
+    const path = typeof input.path === "string" ? input.path.split("/").pop() : undefined;
+    return { kind: "search", pattern: input.pattern, path };
   }
-  if (typeof input.query === "string") return `🔍 ${input.query}`;
-  if (typeof input.url === "string") return `🌐 ${input.url}`;
-  if (typeof input.prompt === "string") return `💬 ${input.prompt.split("\n")[0]}`;
-  if (input.old_string !== undefined) return "✏️  edit";
-  if (input.content !== undefined) return "📝 write";
-  return "";
+  if (typeof input.query === "string") {
+    return { kind: "search", pattern: input.query };
+  }
+  if (typeof input.url === "string") {
+    return { kind: "url", url: input.url };
+  }
+  if (typeof input.prompt === "string") {
+    return { kind: "prompt", text: input.prompt.split("\n")[0] };
+  }
+  if (input.old_string !== undefined) return { kind: "edit" };
+  if (input.content !== undefined) return { kind: "write" };
+  return undefined;
 }
 
 function extractUsage(event: Record<string, unknown>): IterationUsage {
@@ -185,71 +179,4 @@ export function parseClaudeLine(line: string, state: ClaudeStreamState): FeedEve
   }
 
   return events;
-}
-
-/**
- * Process a single line of Claude stream-json output.
- * Returns chalk-styled output lines (backward compatible).
- */
-export function processClaudeLine(
-  line: string,
-  state: ClaudeStreamState,
-  options: ClaudeStreamOptions = {},
-): string[] {
-  const verbose = options.verbose ?? false;
-  const events = parseClaudeLine(line, state);
-
-  const output: string[] = [];
-  for (const event of events) {
-    if (!verbose && event.type === "tool-result-preview") continue;
-    if (!verbose && event.type === "agent") continue;
-    // Claude compact mode: thinking shows only 💭 (no preview text)
-    if (!verbose && event.type === "thinking") {
-      output.push(...renderFeedEvent({ type: "thinking" }, false));
-      continue;
-    }
-    output.push(...renderFeedEvent(event, verbose));
-  }
-
-  return output;
-}
-
-/**
- * Format a complete Claude stream-json output.
- */
-export function formatClaudeStream(
-  input: string,
-  options: ClaudeStreamOptions = {},
-): { output: string; result: ClaudeStreamResult } {
-  const state: ClaudeStreamState = {
-    turnCount: 0,
-    toolCount: 0,
-    gotResult: false,
-    usage: null,
-  };
-
-  const allOutput: string[] = [];
-  for (const line of input.split("\n")) {
-    const lines = processClaudeLine(line, state, options);
-    allOutput.push(...lines);
-  }
-
-  if (!state.gotResult) {
-    const interrupted: FeedEvent = {
-      type: "interrupted",
-      turns: state.turnCount,
-      tools: state.toolCount,
-    };
-    allOutput.push(...renderFeedEvent(interrupted, options.verbose ?? false));
-  }
-
-  return {
-    output: allOutput.join("\n"),
-    result: {
-      gotResult: state.gotResult,
-      turnCount: state.turnCount,
-      toolCount: state.toolCount,
-      usage: state.usage,
-    },
-  };
 }

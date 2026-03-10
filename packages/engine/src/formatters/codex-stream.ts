@@ -1,4 +1,4 @@
-import { type FeedEvent, renderFeedEvent } from "../feed-events";
+import { type FeedEvent, type ToolInputSummary, renderFeedEvent } from "../feed-events";
 
 export interface CodexStreamOptions {
   verbose?: boolean;
@@ -72,7 +72,7 @@ function extractToolName(event: Record<string, unknown>): string {
   return name ?? "";
 }
 
-function extractToolInputSummary(event: Record<string, unknown>): string {
+function extractToolInputSummary(event: Record<string, unknown>): ToolInputSummary | undefined {
   const item = (event.item ?? {}) as Record<string, unknown>;
   const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
   const itemCall = (item.call ?? {}) as Record<string, unknown>;
@@ -96,9 +96,9 @@ function extractToolInputSummary(event: Record<string, unknown>): string {
   ];
 
   const val = candidates.find((c) => c !== undefined && c !== null);
-  if (val === undefined || val === null) return "";
+  if (val === undefined || val === null) return undefined;
   const raw = typeof val === "string" ? val : JSON.stringify(val);
-  return shortenInline(raw, 160);
+  return { kind: "raw", text: shortenInline(raw, 160) };
 }
 
 function extractToolResultSummary(event: Record<string, unknown>): string {

@@ -1,5 +1,15 @@
 import { styled } from "@ralphy/output";
 
+export type ToolInputSummary =
+  | { kind: "file"; name: string }
+  | { kind: "command"; text: string }
+  | { kind: "search"; pattern: string; path?: string }
+  | { kind: "url"; url: string }
+  | { kind: "prompt"; text: string }
+  | { kind: "edit" }
+  | { kind: "write" }
+  | { kind: "raw"; text: string };
+
 /**
  * Structured output events emitted by engine stream formatters.
  * Both Claude and Codex formatters produce these same event types,
@@ -11,7 +21,7 @@ export type FeedEvent =
   | { type: "agent"; description: string }
   | { type: "thinking"; preview?: string; totalLines?: number }
   | { type: "text"; text: string }
-  | { type: "tool-start"; name: string; summary: string }
+  | { type: "tool-start"; name: string; summary?: ToolInputSummary }
   | { type: "tool-end"; name?: string; summary?: string }
   | { type: "tool-result-preview"; lines: string[]; truncated?: number }
   | { type: "turn-start" }
@@ -44,6 +54,27 @@ function resultInfo(e: Extract<FeedEvent, { type: "result" }>): string {
     `out=${e.outputTokens}`,
     `cached=${e.cached}`,
   ].join("  ");
+}
+
+function formatToolSummary(s: ToolInputSummary): string {
+  switch (s.kind) {
+    case "file":
+      return `📄 ${s.name}`;
+    case "command":
+      return `$ ${s.text}`;
+    case "search":
+      return s.path ? `🔍 ${s.pattern} in ${s.path}` : `🔍 ${s.pattern}`;
+    case "url":
+      return `🌐 ${s.url}`;
+    case "prompt":
+      return `💬 ${s.text}`;
+    case "edit":
+      return "✏️  edit";
+    case "write":
+      return "📝 write";
+    case "raw":
+      return s.text;
+  }
 }
 
 type EventOf<T extends FeedEvent["type"]> = Extract<FeedEvent, { type: T }>;
@@ -93,7 +124,7 @@ const feedRenderers: { [K in FeedEvent["type"]]: FeedRenderer<K> } = {
 
   "tool-start": (e) => {
     let line = `  ${styled("▶", "cyan")} ${styled(e.name, "cyan")}`;
-    if (e.summary) line += ` ${styled(e.summary, "dim")}`;
+    if (e.summary) line += ` ${styled(formatToolSummary(e.summary), "dim")}`;
     return [line];
   },
 

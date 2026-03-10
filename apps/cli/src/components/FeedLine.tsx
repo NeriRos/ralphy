@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
-import type { FeedEvent } from "@ralphy/engine/feed-events";
+import type { FeedEvent, ToolInputSummary } from "@ralphy/engine/feed-events";
+import type { ReactNode } from "react";
 
 const INDENT = 2;
 
@@ -59,6 +60,70 @@ function TextLine({ event }: { event: Extract<FeedEvent, { type: "text" }> }) {
   );
 }
 
+const summaryEmoji: Record<ToolInputSummary["kind"], string> = {
+  file: "📄",
+  command: "$",
+  search: "🔍",
+  url: "🌐",
+  prompt: "💬",
+  edit: "✏️ ",
+  write: "📝",
+  raw: "",
+};
+
+const summaryRenderers: Record<ToolInputSummary["kind"], (s: ToolInputSummary) => ReactNode> = {
+  file: (s) => (
+    <>
+      <Text color="white"> {summaryEmoji.file}</Text>
+      <Text dimColor> {(s as Extract<ToolInputSummary, { kind: "file" }>).name}</Text>
+    </>
+  ),
+  command: (s) => (
+    <>
+      <Text color="white"> {summaryEmoji.command}</Text>
+      <Text dimColor> {(s as Extract<ToolInputSummary, { kind: "command" }>).text}</Text>
+    </>
+  ),
+  search: (s) => {
+    const { pattern, path } = s as Extract<ToolInputSummary, { kind: "search" }>;
+    return (
+      <>
+        <Text color="white"> {summaryEmoji.search}</Text>
+        <Text dimColor> {pattern}{path ? ` in ${path}` : ""}</Text>
+      </>
+    );
+  },
+  url: (s) => (
+    <>
+      <Text color="white"> {summaryEmoji.url}</Text>
+      <Text dimColor> {(s as Extract<ToolInputSummary, { kind: "url" }>).url}</Text>
+    </>
+  ),
+  prompt: (s) => (
+    <>
+      <Text color="white"> {summaryEmoji.prompt}</Text>
+      <Text dimColor> {(s as Extract<ToolInputSummary, { kind: "prompt" }>).text}</Text>
+    </>
+  ),
+  edit: () => (
+    <>
+      <Text color="white"> {summaryEmoji.edit}</Text>
+      <Text dimColor> edit</Text>
+    </>
+  ),
+  write: () => (
+    <>
+      <Text color="white"> {summaryEmoji.write}</Text>
+      <Text dimColor> write</Text>
+    </>
+  ),
+  raw: (s) => (
+    <Text dimColor>
+      {" "}{(s as Extract<ToolInputSummary, { kind: "raw" }>).text}
+    </Text>
+  ),
+};
+
 function ToolStartLine({
   event,
 }: {
@@ -67,7 +132,7 @@ function ToolStartLine({
   return (
     <Box paddingLeft={INDENT}>
       <Text color="cyan">▶ {event.name}</Text>
-      {event.summary ? <Text dimColor> {event.summary}</Text> : null}
+      {event.summary ? summaryRenderers[event.summary.kind](event.summary) : null}
     </Box>
   );
 }
