@@ -20,14 +20,14 @@
     "check:circular": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "madge --circular --extensions ts apps/cli/src",
+        "command": "madge --circular --extensions ts,tsx apps/cli/src",
         "cwd": "{workspaceRoot}"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bun build apps/cli/src/index.ts --outdir dist/cli --target bun",
+        "command": "bun build apps/cli/src/index.ts --outdir dist/cli --target bun --external react-devtools-core",
         "cwd": "{workspaceRoot}"
       },
       "outputs": ["{workspaceRoot}/dist/cli"]

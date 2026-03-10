@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { processClaudeLine, formatClaudeStream } from "../formatters/claude-stream";
+import { parseClaudeLine } from "../formatters/claude-stream";
 import type { IterationUsage } from "@ralphy/types";
+import type { FeedEvent } from "../feed-events";
 import { processCodexLine, formatCodexStream } from "../formatters/codex-stream";
 
 // Strip ANSI escape codes for readable assertions
@@ -10,7 +11,7 @@ function strip(s: string): string {
 
 // ─── Claude stream formatter ─────────────────────────────────────
 
-describe("processClaudeLine", () => {
+describe("parseClaudeLine", () => {
   function makeState() {
     return {
       turnCount: 0,
@@ -20,215 +21,173 @@ describe("processClaudeLine", () => {
     };
   }
 
+  function parse(
+    json: string | object,
+    state = makeState(),
+  ): { events: FeedEvent[]; state: ReturnType<typeof makeState> } {
+    const line = typeof json === "string" ? json : JSON.stringify(json);
+    return { events: parseClaudeLine(line, state), state };
+  }
+
   test("skips empty lines", () => {
-    const state = makeState();
-    expect(processClaudeLine("", state)).toEqual([]);
-    expect(processClaudeLine("  ", state)).toEqual([]);
+    expect(parse("").events).toEqual([]);
+    expect(parse("  ").events).toEqual([]);
   });
 
   test("skips invalid JSON", () => {
-    const state = makeState();
-    expect(processClaudeLine("not json", state)).toEqual([]);
+    expect(parse("not json").events).toEqual([]);
   });
 
   test("skips events without type", () => {
-    const state = makeState();
-    expect(processClaudeLine('{"foo":"bar"}', state)).toEqual([]);
+    expect(parse({ foo: "bar" }).events).toEqual([]);
   });
 
-  test("handles system init event (compact)", () => {
-    const state = makeState();
-    const event = {
+  test("handles system init event", () => {
+    const { events } = parse({
       type: "system",
       subtype: "init",
       model: "claude-sonnet-4-20250514",
       session_id: "abcdefghijklmnop",
       tools: [1, 2, 3],
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("claude-sonnet-4-20250514");
-    expect(text).toContain("abcdefgh");
+    });
+    expect(events).toEqual([
+      {
+        type: "session",
+        model: "claude-sonnet-4-20250514",
+        sessionId: "abcdefgh",
+        toolCount: 3,
+      },
+    ]);
   });
 
-  test("handles system init event (verbose)", () => {
-    const state = makeState();
-    const event = {
+  test("handles system init event with version", () => {
+    const { events } = parse({
       type: "system",
       subtype: "init",
       model: "claude-sonnet-4-20250514",
       session_id: "abcdefghijklmnop",
       claude_code_version: "1.2.3",
       tools: [1, 2, 3],
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state, {
-      verbose: true,
     });
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("claude-sonnet-4-20250514");
-    expect(text).toContain("v1.2.3");
-    expect(text).toContain("tools: 3");
+    expect(events).toEqual([
+      {
+        type: "session",
+        model: "claude-sonnet-4-20250514",
+        sessionId: "abcdefgh",
+        version: "1.2.3",
+        toolCount: 3,
+      },
+    ]);
   });
 
   test("handles unknown model", () => {
-    const state = makeState();
-    const event = { type: "system", subtype: "init", session_id: "abc" };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("UNKNOWN");
+    const { events } = parse({ type: "system", subtype: "init", session_id: "abc" });
+    expect(events).toEqual([{ type: "session-unknown", sessionId: "abc" }]);
   });
 
-  test("handles task_started in verbose mode", () => {
-    const state = makeState();
-    const event = {
+  test("handles task_started", () => {
+    const { events } = parse({
       type: "system",
       subtype: "task_started",
       description: "Build something",
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state, {
-      verbose: true,
     });
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("agent: Build something");
+    expect(events).toEqual([{ type: "agent", description: "Build something" }]);
   });
 
   test("handles assistant text block", () => {
     const state = makeState();
-    const event = {
-      type: "assistant",
-      message: { content: [{ type: "text", text: "Hello world" }] },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("Hello world");
+    const { events } = parse(
+      { type: "assistant", message: { content: [{ type: "text", text: "Hello world" }] } },
+      state,
+    );
+    expect(events).toEqual([{ type: "text", text: "Hello world" }]);
     expect(state.turnCount).toBe(1);
   });
 
   test("handles assistant tool_use block", () => {
     const state = makeState();
-    const event = {
-      type: "assistant",
-      message: {
-        content: [
-          {
-            type: "tool_use",
-            name: "Read",
-            input: { file_path: "/foo/bar/baz.ts" },
-          },
-        ],
+    const { events } = parse(
+      {
+        type: "assistant",
+        message: {
+          content: [{ type: "tool_use", name: "Read", input: { file_path: "/foo/bar/baz.ts" } }],
+        },
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("Read");
-    expect(text).toContain("baz.ts");
+      state,
+    );
+    expect(events).toEqual([
+      { type: "tool-start", name: "Read", summary: { kind: "file", name: "baz.ts" } },
+    ]);
     expect(state.toolCount).toBe(1);
   });
 
   test("handles tool_use with command input", () => {
-    const state = makeState();
-    const event = {
+    const { events } = parse({
       type: "assistant",
       message: {
-        content: [
-          {
-            type: "tool_use",
-            name: "Bash",
-            input: { command: "ls -la\necho foo" },
-          },
-        ],
+        content: [{ type: "tool_use", name: "Bash", input: { command: "ls -la\necho foo" } }],
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("$ ls -la");
+    });
+    expect(events[0]).toEqual({
+      type: "tool-start",
+      name: "Bash",
+      summary: { kind: "command", text: "ls -la" },
+    });
   });
 
   test("handles tool_use with pattern input", () => {
-    const state = makeState();
-    const event = {
+    const { events } = parse({
       type: "assistant",
       message: {
-        content: [
-          {
-            type: "tool_use",
-            name: "Grep",
-            input: { pattern: "TODO", path: "/src/app" },
-          },
-        ],
+        content: [{ type: "tool_use", name: "Grep", input: { pattern: "TODO", path: "/src/app" } }],
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("TODO");
-    expect(text).toContain("app");
+    });
+    expect(events[0]).toEqual({
+      type: "tool-start",
+      name: "Grep",
+      summary: { kind: "search", pattern: "TODO", path: "app" },
+    });
   });
 
-  test("handles thinking block (compact)", () => {
-    const state = makeState();
-    const event = {
+  test("handles thinking block with text", () => {
+    const { events } = parse({
       type: "assistant",
       message: { content: [{ type: "thinking", thinking: "Let me think" }] },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("💭");
-    expect(text).not.toContain("Let me think");
+    });
+    expect(events).toEqual([{ type: "thinking", preview: "Let me think", totalLines: 1 }]);
   });
 
-  test("handles thinking block (verbose)", () => {
-    const state = makeState();
-    const event = {
+  test("handles thinking block with multiple lines", () => {
+    const { events } = parse({
       type: "assistant",
       message: {
-        content: [
-          {
-            type: "thinking",
-            thinking: "Line 1\nLine 2\nLine 3\nLine 4\nLine 5",
-          },
-        ],
+        content: [{ type: "thinking", thinking: "Line 1\nLine 2\nLine 3\nLine 4\nLine 5" }],
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state, {
-      verbose: true,
     });
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("thinking");
-    expect(text).toContain("Line 1");
-    expect(text).toContain("2 more lines");
+    expect(events).toEqual([
+      { type: "thinking", preview: "Line 1\nLine 2\nLine 3", totalLines: 5 },
+    ]);
   });
 
-  test("handles user event (compact — checkmark)", () => {
-    const state = makeState();
-    const event = {
-      type: "user",
-      message: {
-        content: [{ type: "tool_result", content: "result text" }],
-      },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("✓");
-  });
-
-  test("handles user event (verbose — shows result)", () => {
-    const state = makeState();
-    const event = {
-      type: "user",
-      message: {
-        content: [{ type: "tool_result", content: "the result text" }],
-      },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state, {
-      verbose: true,
+  test("handles empty thinking block", () => {
+    const { events } = parse({
+      type: "assistant",
+      message: { content: [{ type: "thinking", thinking: "" }] },
     });
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("the result text");
+    expect(events).toEqual([{ type: "thinking" }]);
   });
 
-  test("handles user event with array content", () => {
-    const state = makeState();
-    const event = {
+  test("handles user tool_result event", () => {
+    const { events } = parse({
+      type: "user",
+      message: { content: [{ type: "tool_result", content: "result text" }] },
+    });
+    expect(events[0]).toEqual({ type: "tool-end" });
+    expect(events[1]).toMatchObject({ type: "tool-result-preview", lines: ["result text"] });
+  });
+
+  test("handles user tool_result with array content", () => {
+    const { events } = parse({
       type: "user",
       message: {
         content: [
@@ -242,36 +201,41 @@ describe("processClaudeLine", () => {
           },
         ],
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state, {
-      verbose: true,
     });
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("line one");
-    expect(text).toContain("line two");
+    expect(events[0]).toEqual({ type: "tool-end" });
+    const preview = events[1] as Extract<FeedEvent, { type: "tool-result-preview" }>;
+    expect(preview.lines).toEqual(["line one", "line two"]);
   });
 
   test("handles result event (success)", () => {
     const state = makeState();
-    const event = {
-      type: "result",
-      subtype: "success",
-      total_cost_usd: 0.1234,
-      duration_ms: 5000,
-      num_turns: 3,
-      usage: {
-        input_tokens: 100,
-        output_tokens: 200,
-        cache_read_input_tokens: 50,
-        cache_creation_input_tokens: 25,
+    const { events } = parse(
+      {
+        type: "result",
+        subtype: "success",
+        total_cost_usd: 0.1234,
+        duration_ms: 5000,
+        num_turns: 3,
+        usage: {
+          input_tokens: 100,
+          output_tokens: 200,
+          cache_read_input_tokens: 50,
+          cache_creation_input_tokens: 25,
+        },
       },
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("✓ done");
-    expect(text).toContain("cost=$0.12");
-    expect(text).toContain("time=5s");
-    expect(text).toContain("turns=3");
+      state,
+    );
+    expect(events).toEqual([
+      {
+        type: "result",
+        cost: 0.12,
+        timeMs: 5000,
+        turns: 3,
+        inputTokens: 100,
+        outputTokens: 200,
+        cached: 50,
+      },
+    ]);
     expect(state.gotResult).toBe(true);
     expect(state.usage).not.toBeNull();
     expect(state.usage!.input_tokens).toBe(100);
@@ -279,33 +243,25 @@ describe("processClaudeLine", () => {
 
   test("handles result event (error)", () => {
     const state = makeState();
-    const event = {
-      type: "result",
-      subtype: "error",
-      result: "something went wrong",
-    };
-    const lines = processClaudeLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("✗ Error");
-    expect(text).toContain("something went wrong");
+    const { events } = parse(
+      { type: "result", subtype: "error", result: "something went wrong" },
+      state,
+    );
+    expect(events).toEqual([{ type: "result-error", message: "something went wrong" }]);
     expect(state.gotResult).toBe(true);
   });
-});
 
-describe("formatClaudeStream", () => {
-  test("processes multi-line stream", () => {
-    const stream = [
-      JSON.stringify({
+  test("multi-line stream produces correct events and state", () => {
+    const state = makeState();
+    const lines = [
+      {
         type: "system",
         subtype: "init",
         model: "claude-sonnet-4-20250514",
         session_id: "abc12345678",
-      }),
-      JSON.stringify({
-        type: "assistant",
-        message: { content: [{ type: "text", text: "Working on it" }] },
-      }),
-      JSON.stringify({
+      },
+      { type: "assistant", message: { content: [{ type: "text", text: "Working on it" }] } },
+      {
         type: "result",
         subtype: "success",
         total_cost_usd: 0.05,
@@ -317,56 +273,46 @@ describe("formatClaudeStream", () => {
           cache_read_input_tokens: 0,
           cache_creation_input_tokens: 0,
         },
-      }),
-    ].join("\n");
+      },
+    ];
 
-    const { output, result } = formatClaudeStream(stream);
-    const text = strip(output);
-    expect(text).toContain("claude-sonnet-4-20250514");
-    expect(text).toContain("Working on it");
-    expect(text).toContain("✓ done");
-    expect(result.gotResult).toBe(true);
-    expect(result.turnCount).toBe(1);
+    const allEvents: FeedEvent[] = [];
+    for (const line of lines) {
+      allEvents.push(...parseClaudeLine(JSON.stringify(line), state));
+    }
+
+    expect(allEvents.some((e) => e.type === "session")).toBe(true);
+    expect(allEvents.some((e) => e.type === "text" && e.text === "Working on it")).toBe(true);
+    expect(allEvents.some((e) => e.type === "result")).toBe(true);
+    expect(state.gotResult).toBe(true);
+    expect(state.turnCount).toBe(1);
   });
 
-  test("reports interrupted stream when no result event", () => {
-    const stream = JSON.stringify({
-      type: "system",
-      subtype: "init",
-      model: "claude-sonnet-4-20250514",
-      session_id: "abc12345678",
-    });
-
-    const { output, result } = formatClaudeStream(stream);
-    const text = strip(output);
-    expect(text).toContain("Stream interrupted");
-    expect(result.gotResult).toBe(false);
-  });
-
-  test("reports interrupted stream with turn/tool counts in verbose", () => {
-    const stream = [
+  test("tracks interrupted state when no result event", () => {
+    const state = makeState();
+    parseClaudeLine(
       JSON.stringify({
         type: "system",
         subtype: "init",
         model: "claude-sonnet-4-20250514",
         session_id: "abc",
       }),
+      state,
+    );
+    expect(state.gotResult).toBe(false);
+  });
+
+  test("tracks turn and tool counts", () => {
+    const state = makeState();
+    parseClaudeLine(
       JSON.stringify({
         type: "assistant",
-        message: {
-          content: [{ type: "tool_use", name: "Read", input: { file_path: "/a.ts" } }],
-        },
+        message: { content: [{ type: "tool_use", name: "Read", input: { file_path: "/a.ts" } }] },
       }),
-    ].join("\n");
-
-    const { output, result } = formatClaudeStream(stream, { verbose: true });
-    const text = strip(output);
-    expect(text).toContain("Stream interrupted");
-    expect(text).toContain("turns=1");
-    expect(text).toContain("tools=1");
-    expect(result.gotResult).toBe(false);
-    expect(result.turnCount).toBe(1);
-    expect(result.toolCount).toBe(1);
+      state,
+    );
+    expect(state.turnCount).toBe(1);
+    expect(state.toolCount).toBe(1);
   });
 });
 
@@ -394,7 +340,7 @@ describe("processCodexLine", () => {
     const state = makeState();
     const lines = processCodexLine("thread main panicked at foo", state);
     const text = strip(lines.join("\n"));
-    expect(text).toContain("stderr:");
+    expect(text).toContain("error:");
   });
 
   test("shows non-JSON line in verbose mode only", () => {
@@ -511,7 +457,7 @@ describe("processCodexLine", () => {
     };
     const lines = processCodexLine(JSON.stringify(event), state);
     const text = strip(lines.join("\n"));
-    expect(text).toContain("thinking:");
+    expect(text).toContain("💭");
     expect(text).toContain("considering options");
   });
 

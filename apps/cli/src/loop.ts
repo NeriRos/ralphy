@@ -1,16 +1,12 @@
 import { join } from "node:path";
 import type { State, Engine } from "@ralphy/types";
-import { readState, writeState, updateState, buildInitialState } from "@ralphy/core/state";
-import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
-import { renderTemplate, scaffoldTaskDocuments } from "@ralphy/core/templates";
+import { updateState } from "@ralphy/core/state";
+import { extractCurrentSection } from "@ralphy/core/progress";
+import { renderTemplate } from "@ralphy/core/templates";
 import { getPromptDocuments, getDocumentNames } from "@ralphy/core/documents";
-import { runEngine, handleEngineFailure, type EngineResult } from "@ralphy/engine/engine";
-import { autoTransitionAfterIteration } from "@ralphy/core/phases";
+import type { EngineResult } from "@ralphy/engine/engine";
 import { getPhase } from "@ralphy/phases";
-import { gitPush, commitTaskDir } from "@ralphy/core/git";
-import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-import { log, error, styled } from "@ralphy/output";
-import { showBanner } from "./display";
+import { getStorage } from "@ralphy/context";
 
 export interface LoopOptions {
   name: string;
@@ -25,6 +21,7 @@ export interface LoopOptions {
   interactive: boolean;
   delay: number;
   log: boolean;
+  verbose: boolean;
   tasksDir: string;
 }
 
@@ -64,7 +61,7 @@ export function buildTaskPrompt(state: State, taskDir: string): string {
     }
   }
 
-  // 3. Phase prompt (rendered with template vars)
+  // 2. Phase prompt (rendered with template vars)
   if (phaseConfig.prompt) {
     prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
   }
@@ -135,28 +132,17 @@ function buildTemplateVars(state: State, taskDir: string): Record<string, string
 }
 
 /**
- * Scaffold task files that should exist for a new task.
- * Uses the document registry from @ralphy/core/documents.
- */
-function scaffoldTaskFiles(taskDir: string): void {
-  scaffoldTaskDocuments(taskDir);
-}
-
-/**
  * Check for a STOP signal file in the task directory.
  * If found, reads the reason, removes the file, marks state as blocked.
  * Returns the reason string if stopped, null otherwise.
  */
-function checkStopSignal(taskDir: string): string | null {
+export function checkStopSignal(taskDir: string): string | null {
   const storage = getStorage();
   const stopFile = join(taskDir, "STOP");
   const reason = storage.read(stopFile);
   if (reason === null) return null;
 
   storage.remove(stopFile);
-
-  log(`\n${styled("STOP signal detected.", "warn")}`);
-  log(`Reason: ${reason.trim()}`);
 
   updateState(taskDir, (s) => ({
     ...s,
@@ -170,8 +156,7 @@ function checkStopSignal(taskDir: string): string | null {
 /**
  * Stop reason returned by shouldContinue when the loop must end.
  */
-type StopReason =
-  | null
+export type StopReason =
   | "maxIterations"
   | "terminal"
   | "noExecute"
@@ -183,13 +168,13 @@ type StopReason =
  * Determine whether the loop should continue.
  * Returns null if it should continue, or a reason string if it should stop.
  */
-function checkStopCondition(
+export function checkStopCondition(
   state: State,
   iteration: number,
   opts: LoopOptions,
   startTime: number,
   consecutiveFailures: number,
-): StopReason {
+): StopReason | null {
   if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return "maxIterations";
   const phaseConfig = getPhase(state.phase);
   if (phaseConfig.terminal) return "terminal";
@@ -207,7 +192,7 @@ function checkStopCondition(
 /**
  * Update state after a completed iteration.
  */
-function updateStateIteration(
+export function updateStateIteration(
   taskDir: string,
   result: string,
   startedAt: string,
@@ -267,266 +252,4 @@ function updateStateIteration(
 
     return newState;
   });
-}
-
-/**
- * Sleep for the given number of seconds.
- */
-function sleep(seconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
-}
-
-/**
- * Log a human-readable message for why the loop stopped.
- */
-function logStopReason(
-  reason: StopReason,
-  state: State,
-  opts: LoopOptions,
-  taskDir: string,
-  consecutiveFailures: number,
-  storage: ReturnType<typeof getStorage>,
-): void {
-  switch (reason) {
-    case "terminal": {
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (progressContent !== null) {
-        const { checked, unchecked } = countProgress(progressContent);
-        log(`\nAll items checked (${checked} done / ${unchecked} remaining). Task complete!`);
-      }
-      log(`See: ${taskDir}/PROGRESS.md`);
-      break;
-    }
-    case "noExecute":
-      log("\nResearch and planning complete. Stopping before execution (--no-execute).");
-      log(`See: ${taskDir}/PLAN.md, ${taskDir}/PROGRESS.md`);
-      break;
-    case "maxIterations":
-      log(`\nReached max iterations: ${opts.maxIterations}`);
-      break;
-    case "costCap":
-      log(
-        `\n${styled(`Cost cap reached: $${state.usage.total_cost_usd.toFixed(2)} >= $${opts.maxCostUsd} limit`, "warn")}`,
-      );
-      break;
-    case "runtimeLimit":
-      log(`\n${styled(`Runtime limit reached: ${opts.maxRuntimeMinutes} minute(s)`, "warn")}`);
-      break;
-    case "consecutiveFailures":
-      log(
-        `\n${styled(`Stopped: ${consecutiveFailures} consecutive identical failures detected`, "fail")}`,
-      );
-      break;
-  }
-}
-
-/**
- * Main iteration loop. Initialises or resumes a task, builds prompts,
- * runs the engine, handles transitions, and checks stop signals.
- */
-export async function mainLoop(opts: LoopOptions): Promise<void> {
-  return runWithContext(createDefaultContext(), () => _mainLoop(opts));
-}
-
-async function _mainLoop(opts: LoopOptions): Promise<void> {
-  const taskDir = join(opts.tasksDir, opts.name);
-  const storage = getStorage();
-
-  // Init or resume state
-  let state: State;
-  const existingState = storage.read(join(taskDir, "state.json"));
-  if (existingState !== null) {
-    state = readState(taskDir);
-    // Update engine/model if caller specified different ones
-    if (state.engine !== opts.engine || state.model !== opts.model) {
-      state = { ...state, engine: opts.engine, model: opts.model };
-      writeState(taskDir, state);
-    }
-  } else {
-    state = buildInitialState({
-      name: opts.name,
-      prompt: opts.prompt,
-      engine: opts.engine,
-      model: opts.model,
-    });
-    writeState(taskDir, state);
-  }
-
-  const isResume = state.totalIterations > 0;
-
-  // Scaffold task files (e.g. STEERING.md)
-  scaffoldTaskFiles(taskDir);
-
-  // Show banner
-  showBanner(state, {
-    mode: "task",
-    isResume,
-    noExecute: opts.noExecute,
-    interactive: opts.interactive,
-    maxIterations: opts.maxIterations,
-    maxCostUsd: opts.maxCostUsd,
-    maxRuntimeMinutes: opts.maxRuntimeMinutes,
-    maxConsecutiveFailures: opts.maxConsecutiveFailures,
-    iterationDelay: opts.delay,
-    taskPrompt: opts.prompt || state.prompt,
-  });
-
-  let iteration = 0;
-  const loopStartTime = Date.now();
-  let consecutiveFailures = 0;
-  let lastResult = "";
-
-  while (true) {
-    // Re-read state at top of each iteration (may have been updated by transitions)
-    state = readState(taskDir);
-
-    const stopReason = checkStopCondition(
-      state,
-      iteration,
-      opts,
-      loopStartTime,
-      consecutiveFailures,
-    );
-    if (stopReason !== null) {
-      logStopReason(stopReason, state, opts, taskDir, consecutiveFailures, storage);
-      break;
-    }
-
-    iteration++;
-
-    const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-    log(`\n======== ITERATION ${iteration} ${time} ========\n`);
-
-    // Show phase info
-    log(` Phase: ${state.phase} (iteration ${state.phaseIteration})`);
-
-    const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-    if (progressContent !== null) {
-      const section = extractCurrentSection(progressContent);
-      if (section) {
-        const firstLine = section.split("\n")[0];
-        log(` Section: ${firstLine}`);
-      }
-      const { checked, unchecked } = countProgress(progressContent);
-      log(` Progress: ${checked} done / ${unchecked} remaining`);
-    }
-    log("");
-
-    // Build prompt
-    const prompt = buildTaskPrompt(state, taskDir);
-
-    // Run engine
-    const iterStart = new Date().toISOString();
-    let engineResult: EngineResult;
-    try {
-      const interactiveDone = storage.read(join(taskDir, "_interactive_done")) !== null;
-      const isInteractivePhase = opts.interactive && state.phase === "research" && !interactiveDone;
-
-      engineResult = await runEngine({
-        engine: opts.engine,
-        model: opts.model,
-        prompt,
-        logFlag: opts.log,
-        taskDir,
-        interactive: isInteractivePhase,
-      });
-    } catch (err) {
-      error({ text: `Engine spawn error: ${err}`, style: "error" });
-      break;
-    }
-
-    if (engineResult.exitCode !== 0) {
-      const failure = handleEngineFailure(engineResult.exitCode);
-      log(`\n${styled(failure.message, "fail")}`);
-
-      const result = `failed:exit-${engineResult.exitCode}`;
-      updateStateIteration(taskDir, result, iterStart, opts.engine, opts.model, engineResult.usage);
-
-      // Track consecutive failures
-      if (result === lastResult) {
-        consecutiveFailures++;
-      } else {
-        consecutiveFailures = 1;
-        lastResult = result;
-      }
-
-      if (failure.shouldStop) break;
-      break;
-    }
-
-    // Update state with successful iteration
-    state = updateStateIteration(
-      taskDir,
-      "success",
-      iterStart,
-      opts.engine,
-      opts.model,
-      engineResult.usage,
-    );
-
-    // Reset consecutive failure tracking on success
-    consecutiveFailures = 0;
-    lastResult = "";
-
-    // Auto-transition using dynamic phase config
-    state = autoTransitionAfterIteration(state, taskDir);
-
-    // Push to remote
-    try {
-      gitPush();
-    } catch {
-      // Push failures are non-fatal
-    }
-
-    // Check STOP signal
-    if (checkStopSignal(taskDir)) break;
-
-    log(`\n======== COMPLETED ITERATION ${iteration} ========\n`);
-
-    // Delay between iterations if configured
-    if (
-      checkStopCondition(state, iteration, opts, loopStartTime, consecutiveFailures) === null &&
-      opts.delay > 0
-    ) {
-      log(`  [wait] Sleeping ${opts.delay}s before next iteration...\n`);
-      await sleep(opts.delay);
-    }
-  }
-
-  // Clean up interactive signal file
-  storage.remove(join(taskDir, "_interactive_done"));
-
-  // Record done history entry if task completed
-  state = readState(taskDir);
-  if (state.status === "completed") {
-    const now = new Date().toISOString();
-    state = {
-      ...state,
-      lastModified: now,
-      history: [
-        ...state.history,
-        {
-          timestamp: now,
-          phase: "done",
-          iteration: 0,
-          engine: state.engine,
-          model: state.model,
-          result: "task completed",
-        },
-      ],
-    };
-    writeState(taskDir, state);
-  }
-
-  log(`Ralph loop finished after ${iteration} iterations.`);
-
-  // Commit all task files and push
-  if (iteration > 0) {
-    commitTaskDir(taskDir, `task ${opts.name} finished`);
-    try {
-      gitPush();
-    } catch {
-      // Push failures are non-fatal
-    }
-  }
 }

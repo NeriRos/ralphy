@@ -1,4 +1,4 @@
-import { styled } from "@ralphy/output";
+import { type FeedEvent, type ToolInputSummary, renderFeedEvent } from "../feed-events";
 
 export interface CodexStreamOptions {
   verbose?: boolean;
@@ -7,6 +7,12 @@ export interface CodexStreamOptions {
 export interface CodexStreamResult {
   rateLimited: boolean;
   printingText: boolean;
+  pendingTools: number;
+}
+
+export interface CodexStreamState {
+  printingText: boolean;
+  rateLimited: boolean;
   pendingTools: number;
 }
 
@@ -66,7 +72,7 @@ function extractToolName(event: Record<string, unknown>): string {
   return name ?? "";
 }
 
-function extractToolInputSummary(event: Record<string, unknown>): string {
+function extractToolInputSummary(event: Record<string, unknown>): ToolInputSummary | undefined {
   const item = (event.item ?? {}) as Record<string, unknown>;
   const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
   const itemCall = (item.call ?? {}) as Record<string, unknown>;
@@ -90,9 +96,9 @@ function extractToolInputSummary(event: Record<string, unknown>): string {
   ];
 
   const val = candidates.find((c) => c !== undefined && c !== null);
-  if (val === undefined || val === null) return "";
+  if (val === undefined || val === null) return undefined;
   const raw = typeof val === "string" ? val : JSON.stringify(val);
-  return shortenInline(raw, 160);
+  return { kind: "raw", text: shortenInline(raw, 160) };
 }
 
 function extractToolResultSummary(event: Record<string, unknown>): string {
@@ -178,64 +184,55 @@ function isImportantNonJson(line: string): boolean {
   );
 }
 
-/**
- * Process a single line of Codex JSONL output.
- * Returns output lines to print and updated state.
- */
-export function processCodexLine(
-  line: string,
-  state: { printingText: boolean; rateLimited: boolean; pendingTools: number },
-  options: CodexStreamOptions = {},
-): string[] {
-  const verbose = options.verbose ?? false;
-  const output: string[] = [];
+function getItemType(event: Record<string, unknown>): string {
+  const item = (event.item ?? {}) as Record<string, unknown>;
+  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
+  return (item.type as string) ?? (rawItem.type as string) ?? "";
+}
 
-  if (!line.trim()) return output;
+/**
+ * Parse a single line of Codex JSONL output into structured FeedEvents.
+ */
+export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent[] {
+  if (!line.trim()) return [];
 
   let event: Record<string, unknown>;
   try {
     event = JSON.parse(line);
   } catch {
-    // Non-JSON line handling
     if (/hit your limit/i.test(line)) {
       state.rateLimited = true;
-      output.push(`\n${styled("✗ Rate limit reached", "fail")} ${styled(line, "error")}`);
-    } else if (isImportantNonJson(line)) {
-      output.push(`${styled("stderr:", "fail")} ${styled(line, "error")}`);
-    } else if (verbose) {
-      output.push(styled(line, "gray"));
+      return [{ type: "rate-limit", message: line }];
     }
-    return output;
+    if (isImportantNonJson(line)) {
+      return [{ type: "error", message: line }];
+    }
+    return [{ type: "raw", text: line }];
   }
 
   const type = event.type as string | undefined;
-  if (!type) return output;
+  if (!type) return [];
+
+  const events: FeedEvent[] = [];
 
   switch (type) {
     case "thread.started": {
       const tid = ((event.thread_id as string) ?? "").slice(0, 8);
-      output.push(
-        `${styled("──", "gray")} ${styled("codex", "bold")} ${styled(`(${tid}...)`, "gray")}`,
-      );
+      events.push({ type: "session", model: "codex", sessionId: tid });
       break;
     }
 
     case "turn.started":
-      output.push(`\n${styled("▶ turn started", "bold")}`);
+      events.push({ type: "turn-start" });
       break;
 
     case "turn.completed": {
       const usage = event.usage as Record<string, number> | undefined;
-      if (state.printingText) {
-        output.push(""); // newline
-        state.printingText = false;
-      }
-      if (usage) {
-        const info = `in=${usage.input_tokens ?? 0}  out=${usage.output_tokens ?? 0}`;
-        output.push(`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`);
-      } else {
-        output.push(`\n${styled("✓ done", "success")}`);
-      }
+      if (state.printingText) state.printingText = false;
+      const td: Extract<FeedEvent, { type: "turn-done" }> = { type: "turn-done" };
+      if (usage?.input_tokens !== undefined) td.inputTokens = usage.input_tokens;
+      if (usage?.output_tokens !== undefined) td.outputTokens = usage.output_tokens;
+      events.push(td);
       break;
     }
 
@@ -244,11 +241,8 @@ export function processCodexLine(
         ((event.error as Record<string, unknown>)?.message as string) ??
         (event.message as string) ??
         "unknown error";
-      if (state.printingText) {
-        output.push("");
-        state.printingText = false;
-      }
-      output.push(`\n${styled("✗ Error", "fail")} ${styled(err, "error")}`);
+      if (state.printingText) state.printingText = false;
+      events.push({ type: "result-error", message: err });
       break;
     }
 
@@ -256,9 +250,9 @@ export function processCodexLine(
       const msg = (event.message as string) ?? "unknown error";
       if (/hit your limit/i.test(msg)) {
         state.rateLimited = true;
-        output.push(`${styled("✗ Rate limit reached", "fail")} ${styled(msg, "error")}`);
+        events.push({ type: "rate-limit", message: msg });
       } else {
-        output.push(`${styled("error:", "error")} ${msg}`);
+        events.push({ type: "error", message: msg });
       }
       break;
     }
@@ -270,12 +264,8 @@ export function processCodexLine(
       const delta =
         (event.delta as string) ?? (event.text as string) ?? (event.message as string) ?? "";
       if (delta) {
-        if (!state.printingText) {
-          output.push(`\n${styled(delta, "bold")}`);
-          state.printingText = true;
-        } else {
-          output.push(styled(delta, "bold"));
-        }
+        state.printingText = true;
+        events.push({ type: "text", text: delta });
       }
       break;
     }
@@ -285,13 +275,7 @@ export function processCodexLine(
     case "message.completed":
     case "output_text.done": {
       const doneText = (event.text as string) ?? "";
-      if (doneText) {
-        if (!state.printingText) {
-          output.push(`\n${styled(doneText, "bold")}`);
-        } else {
-          output.push(styled(doneText, "bold"));
-        }
-      }
+      if (doneText) events.push({ type: "text", text: doneText });
       state.printingText = false;
       break;
     }
@@ -304,11 +288,8 @@ export function processCodexLine(
     case "response.reasoning_summary_text.delta": {
       const think = extractThinkingText(event);
       if (think) {
-        if (state.printingText) {
-          output.push("");
-          state.printingText = false;
-        }
-        output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
+        if (state.printingText) state.printingText = false;
+        events.push({ type: "thinking", preview: think });
       }
       break;
     }
@@ -317,21 +298,13 @@ export function processCodexLine(
     case "tool.call.started":
     case "item.started": {
       let name = extractToolName(event);
-      const inputSummary = extractToolInputSummary(event);
-      const itemType =
-        ((event.item as Record<string, unknown>)?.type as string) ??
-        (((event.item as Record<string, unknown>)?.raw_item as Record<string, unknown>)
-          ?.type as string) ??
-        "";
+      const itemType = getItemType(event);
       if (!name && itemType === "command_execution") name = "shell";
       if (name) {
-        if (inputSummary) {
-          output.push(
-            `  ${styled("▶", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
-          );
-        } else {
-          output.push(`  ${styled("▶", "cyan")} ${styled(name, "cyan")}`);
-        }
+        const summary = extractToolInputSummary(event);
+        const te: Extract<FeedEvent, { type: "tool-start" }> = { type: "tool-start", name };
+        if (summary) te.summary = summary;
+        events.push(te);
         state.pendingTools++;
       }
       break;
@@ -341,30 +314,18 @@ export function processCodexLine(
     case "item.added": {
       const msgText = extractMessageText(event);
       if (msgText) {
-        if (!state.printingText) {
-          output.push(`\n${styled(msgText, "bold")}`);
-        } else {
-          output.push(styled(msgText, "bold"));
-        }
+        events.push({ type: "text", text: msgText });
         state.printingText = false;
       }
 
-      const itemType =
-        ((event.item as Record<string, unknown>)?.type as string) ??
-        (((event.item as Record<string, unknown>)?.raw_item as Record<string, unknown> | undefined)
-          ?.type as string) ??
-        "";
+      const itemType = getItemType(event);
       let name = extractToolName(event);
-      const inputSummary = extractToolInputSummary(event);
       if (name || isToolType(itemType)) {
         if (!name) name = itemType || "tool_call";
-        if (inputSummary) {
-          output.push(
-            `  ${styled("▶", "cyan")} ${styled(name, "cyan")} ${styled(inputSummary, "dim")}`,
-          );
-        } else {
-          output.push(`  ${styled("▶", "cyan")} ${styled(name, "cyan")}`);
-        }
+        const summary = extractToolInputSummary(event);
+        const te: Extract<FeedEvent, { type: "tool-start" }> = { type: "tool-start", name };
+        if (summary) te.summary = summary;
+        events.push(te);
         state.pendingTools++;
       }
       break;
@@ -376,28 +337,17 @@ export function processCodexLine(
     case "response.output_item.done": {
       const msgText = extractMessageText(event);
       if (msgText) {
-        if (!state.printingText) {
-          output.push(`\n${styled(msgText, "bold")}`);
-        } else {
-          output.push(styled(msgText, "bold"));
-        }
+        events.push({ type: "text", text: msgText });
         state.printingText = false;
       }
 
-      const itemType =
-        ((event.item as Record<string, unknown>)?.type as string) ??
-        (((event.item as Record<string, unknown>)?.raw_item as Record<string, unknown> | undefined)
-          ?.type as string) ??
-        "";
+      const itemType = getItemType(event);
 
       if (itemType === "reasoning") {
         const think = extractThinkingText(event);
         if (think) {
-          if (state.printingText) {
-            output.push("");
-            state.printingText = false;
-          }
-          output.push(`  ${styled("thinking:", "gray")} ${styled(think, "dim")}`);
+          if (state.printingText) state.printingText = false;
+          events.push({ type: "thinking", preview: think });
         }
       }
 
@@ -407,29 +357,12 @@ export function processCodexLine(
 
       if (hasToolIdentity) {
         const displayName = toolName || itemType || "tool_call";
-        if (toolName) {
-          if (resultSummary) {
-            output.push(
-              ` ${styled("✓", "success")} ${styled(displayName, "dim")} ${styled(`→ ${shortenInline(resultSummary, 140)}`, "dim")}`,
-            );
-          } else {
-            output.push(` ${styled("✓", "success")} ${styled(displayName, "dim")}`);
-          }
-        } else if (isToolType(itemType)) {
-          if (verbose) {
-            if (resultSummary) {
-              output.push(
-                ` ${styled("✓", "success")} ${styled(displayName, "dim")} ${styled(`→ ${shortenInline(resultSummary, 140)}`, "dim")}`,
-              );
-            } else {
-              output.push(` ${styled("✓", "success")} ${styled(displayName, "dim")}`);
-            }
-          } else if (state.pendingTools > 0) {
-            output.push(` ${styled("✓", "success")}`);
-          }
-        } else {
-          output.push(` ${styled("✓", "success")}`);
-        }
+        const te: Extract<FeedEvent, { type: "tool-end" }> = {
+          type: "tool-end",
+          name: displayName,
+        };
+        if (resultSummary) te.summary = shortenInline(resultSummary, 140);
+        events.push(te);
         if (state.pendingTools > 0) state.pendingTools--;
       }
       break;
@@ -452,22 +385,37 @@ export function processCodexLine(
       }
       const finalText = finalTexts.join("");
       if (finalText) {
-        if (!state.printingText) {
-          output.push(`\n${styled(finalText, "bold")}`);
-        } else {
-          output.push(styled(finalText, "bold"));
-        }
+        events.push({ type: "text", text: finalText });
         state.printingText = false;
       }
       break;
     }
 
     default:
-      if (verbose) {
-        const preview = JSON.stringify(event).slice(0, 220);
-        output.push(styled(`${type}: ${preview}`, "dim"));
-      }
+      events.push({ type: "raw", text: `${type}: ${JSON.stringify(event).slice(0, 220)}` });
       break;
+  }
+
+  return events;
+}
+
+/**
+ * Process a single line of Codex JSONL output.
+ * Returns chalk-styled output lines (backward compatible).
+ */
+export function processCodexLine(
+  line: string,
+  state: CodexStreamState,
+  options: CodexStreamOptions = {},
+): string[] {
+  const verbose = options.verbose ?? false;
+  const events = parseCodexLine(line, state);
+
+  const output: string[] = [];
+  for (const event of events) {
+    if (!verbose && event.type === "raw") continue;
+    if (!verbose && event.type === "agent") continue;
+    output.push(...renderFeedEvent(event, verbose));
   }
 
   return output;
@@ -475,13 +423,12 @@ export function processCodexLine(
 
 /**
  * Format a complete Codex JSONL output.
- * Processes each line and returns the formatted output and result state.
  */
 export function formatCodexStream(
   input: string,
   options: CodexStreamOptions = {},
 ): { output: string; result: CodexStreamResult } {
-  const state = {
+  const state: CodexStreamState = {
     printingText: false,
     rateLimited: false,
     pendingTools: 0,
@@ -494,7 +441,7 @@ export function formatCodexStream(
   }
 
   if (state.printingText) {
-    allOutput.push(""); // final newline
+    allOutput.push("");
   }
 
   return {

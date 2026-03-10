@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { getStorage } from "@ralphy/context";
 import { resolveScaffoldsDir, resolveTasksDir } from "@ralphy/content";
 import { getScaffoldDocuments } from "./documents";
@@ -52,9 +52,11 @@ export function scaffoldTasksDir(tasksDir: string): void {
 
   const storage = getStorage();
   for (const file of readdirSync(templateDir)) {
+    const src = join(templateDir, file);
+    if (statSync(src).isDirectory()) continue;
     const dest = join(tasksDir, file);
     if (storage.read(dest) === null) {
-      const content = readFileSync(join(templateDir, file), "utf-8");
+      const content = readFileSync(src, "utf-8");
       storage.write(dest, content);
     }
   }

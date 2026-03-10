@@ -129,7 +129,7 @@ describe("commitState", () => {
     expect(mockExecSync).toHaveBeenCalledWith('git add "/tasks/test/state.json"', {
       stdio: "pipe",
     });
-    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "phase transition"', {
+    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "docs(ralph): phase transition"', {
       stdio: "pipe",
     });
   });

@@ -19,7 +19,7 @@
     "check:unused": "knip",
     "lint:ci": "nx affected -t lint",
     "fmt:ci": "nx affected -t fmt:check",
-    "typecheck:ci": "nx affected -t typecheck",
+    "typecheck:ci": "nx affected -t typecheck --parallel=3",
     "test:ci": "nx affected -t test",
     "check:circular:ci": "nx affected -t check:circular",
     "prepare": "husky"
@@ -50,5 +50,6 @@
     "oxlint": "^1.51.0",
     "secretlint": "^11.3.1",
     "typescript": "^5.8.0"
-  }
+  },
+  "packageManager": "pnpm@10.11.0+sha1.4048eeefd564ff1ab248fac3e2854d38245fe2f1"
 }
