@@ -29,6 +29,8 @@ jobs:
 
       - name: Typecheck
         run: bun run typecheck:ci
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
 
       - name: Test
         run: bun run test:ci

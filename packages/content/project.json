@@ -20,7 +20,7 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc --noEmit -p packages/content/tsconfig.json",
+        "command": "tsc -b packages/content/tsconfig.json",
         "cwd": "{workspaceRoot}"
       }
     }
