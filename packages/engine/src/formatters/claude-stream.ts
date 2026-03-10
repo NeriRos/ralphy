@@ -31,7 +31,22 @@ function extractToolInputSummary(input: Record<string, unknown>): ToolInputSumma
   }
   if (input.old_string !== undefined) return { kind: "edit" };
   if (input.content !== undefined) return { kind: "write" };
-  return undefined;
+
+  // Fallback: compact key=value pairs for MCP and other unknown tools
+  const keys = Object.keys(input);
+  if (keys.length === 0) return undefined;
+  const parts: string[] = [];
+  let len = 0;
+  for (const k of keys) {
+    const v = input[k];
+    const val = typeof v === "string" ? v : JSON.stringify(v);
+    const short = val.length > 40 ? val.slice(0, 40) + "…" : val;
+    const part = `${k}=${short}`;
+    if (len + part.length > 120) break;
+    parts.push(part);
+    len += part.length + 2;
+  }
+  return { kind: "raw", text: parts.join("  ") };
 }
 
 function extractUsage(event: Record<string, unknown>): IterationUsage {
