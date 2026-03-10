@@ -19,8 +19,7 @@ export interface BannerProps {
 const SEPARATOR = "━".repeat(44);
 
 export function Banner({ state, ...opts }: BannerProps) {
-  const engineLabel =
-    state.engine === "claude" ? `${state.engine} (${state.model})` : state.engine;
+  const engineLabel = state.engine === "claude" ? `${state.engine} (${state.model})` : state.engine;
   const maxLabel =
     opts.maxIterations && opts.maxIterations > 0 ? String(opts.maxIterations) : "unlimited";
 
@@ -140,7 +139,9 @@ export function Banner({ state, ...opts }: BannerProps) {
             </Text>
           ))}
           {promptLines.length > maxPromptLines && (
-            <Text dimColor>{"  "}… ({promptLines.length - maxPromptLines} more lines)</Text>
+            <Text dimColor>
+              {"  "}… ({promptLines.length - maxPromptLines} more lines)
+            </Text>
           )}
         </>
       )}

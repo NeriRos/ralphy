@@ -28,8 +28,7 @@ export function StopMessage({
     case "terminal": {
       const storage = getStorage();
       const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      const progress =
-        progressContent !== null ? countProgress(progressContent) : null;
+      const progress = progressContent !== null ? countProgress(progressContent) : null;
       return (
         <Box flexDirection="column">
           {progress !== null && (
@@ -45,14 +44,20 @@ export function StopMessage({
     case "noExecute":
       return (
         <Box flexDirection="column">
-          <Text>{"\n"}Research and planning complete. Stopping before execution (--no-execute).</Text>
+          <Text>
+            {"\n"}Research and planning complete. Stopping before execution (--no-execute).
+          </Text>
           <Text>
             See: {taskDir}/PLAN.md, {taskDir}/PROGRESS.md
           </Text>
         </Box>
       );
     case "maxIterations":
-      return <Text>{"\n"}Reached max iterations: {maxIterations}</Text>;
+      return (
+        <Text>
+          {"\n"}Reached max iterations: {maxIterations}
+        </Text>
+      );
     case "costCap":
       return (
         <Text color="yellow" bold>

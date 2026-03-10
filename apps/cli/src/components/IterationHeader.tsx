@@ -9,7 +9,9 @@ export function IterationHeader({ iteration, time }: IterationHeaderProps) {
   return (
     <Box>
       <Text color="gray">{"─── "}</Text>
-      <Text bold color="cyan">#{iteration}</Text>
+      <Text bold color="cyan">
+        #{iteration}
+      </Text>
       <Text color="gray"> {time} </Text>
       <Text color="gray">{"───"}</Text>
     </Box>

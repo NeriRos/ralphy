@@ -81,7 +81,7 @@ export function TaskList({ tasksDir }: TaskListProps) {
     return (
       <Box flexDirection="column">
         <Text> </Text>
-        <Text dimColor>  No incomplete tasks.</Text>
+        <Text dimColor> No incomplete tasks.</Text>
         <Text> </Text>
       </Box>
     );

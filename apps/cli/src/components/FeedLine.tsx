@@ -4,11 +4,7 @@ import type { ReactNode } from "react";
 
 const INDENT = 2;
 
-function SessionLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "session" }>;
-}) {
+function SessionLine({ event }: { event: Extract<FeedEvent, { type: "session" }> }) {
   return (
     <Box>
       <Text color="gray">── </Text>
@@ -18,11 +14,7 @@ function SessionLine({
   );
 }
 
-function SessionUnknown({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "session-unknown" }>;
-}) {
+function SessionUnknown({ event }: { event: Extract<FeedEvent, { type: "session-unknown" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="red">✗ </Text>
@@ -32,11 +24,7 @@ function SessionUnknown({
   );
 }
 
-function ThinkingLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "thinking" }>;
-}) {
+function ThinkingLine({ event }: { event: Extract<FeedEvent, { type: "thinking" }> }) {
   if (event.preview) {
     return (
       <Box paddingLeft={INDENT}>
@@ -89,7 +77,11 @@ const summaryRenderers: Record<ToolInputSummary["kind"], (s: ToolInputSummary) =
     return (
       <>
         <Text color="white"> {summaryEmoji.search}</Text>
-        <Text dimColor> {pattern}{path ? ` in ${path}` : ""}</Text>
+        <Text dimColor>
+          {" "}
+          {pattern}
+          {path ? ` in ${path}` : ""}
+        </Text>
       </>
     );
   },
@@ -117,18 +109,10 @@ const summaryRenderers: Record<ToolInputSummary["kind"], (s: ToolInputSummary) =
       <Text dimColor> write</Text>
     </>
   ),
-  raw: (s) => (
-    <Text dimColor>
-      {" "}{(s as Extract<ToolInputSummary, { kind: "raw" }>).text}
-    </Text>
-  ),
+  raw: (s) => <Text dimColor> {(s as Extract<ToolInputSummary, { kind: "raw" }>).text}</Text>,
 };
 
-function ToolStartLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "tool-start" }>;
-}) {
+function ToolStartLine({ event }: { event: Extract<FeedEvent, { type: "tool-start" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="cyan">▶ {event.name}</Text>
@@ -137,11 +121,7 @@ function ToolStartLine({
   );
 }
 
-function ToolEndLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "tool-end" }>;
-}) {
+function ToolEndLine({ event }: { event: Extract<FeedEvent, { type: "tool-end" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="green">✓</Text>
@@ -163,9 +143,7 @@ function ToolResultPreview({
           {line}
         </Text>
       ))}
-      {event.truncated ? (
-        <Text dimColor>… ({event.truncated} more lines)</Text>
-      ) : null}
+      {event.truncated ? <Text dimColor>… ({event.truncated} more lines)</Text> : null}
     </Box>
   );
 }
@@ -178,11 +156,7 @@ function TurnStartLine() {
   );
 }
 
-function TurnDoneLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "turn-done" }>;
-}) {
+function TurnDoneLine({ event }: { event: Extract<FeedEvent, { type: "turn-done" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="green">✓ done</Text>
@@ -200,11 +174,7 @@ function formatCost(usd: number): string {
   return (Math.round(usd * 100) / 100).toFixed(2);
 }
 
-function ResultLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "result" }>;
-}) {
+function ResultLine({ event }: { event: Extract<FeedEvent, { type: "result" }> }) {
   const info = [
     `cost=$${formatCost(event.cost)}`,
     `time=${Math.round((event.timeMs / 1000) * 10) / 10}s`,
@@ -222,11 +192,7 @@ function ResultLine({
   );
 }
 
-function ResultErrorLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "result-error" }>;
-}) {
+function ResultErrorLine({ event }: { event: Extract<FeedEvent, { type: "result-error" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="red" bold>
@@ -237,11 +203,7 @@ function ResultErrorLine({
   );
 }
 
-function ErrorLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "error" }>;
-}) {
+function ErrorLine({ event }: { event: Extract<FeedEvent, { type: "error" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="red">error: </Text>
@@ -250,11 +212,7 @@ function ErrorLine({
   );
 }
 
-function RateLimitLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "rate-limit" }>;
-}) {
+function RateLimitLine({ event }: { event: Extract<FeedEvent, { type: "rate-limit" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text color="red" bold>
@@ -265,11 +223,7 @@ function RateLimitLine({
   );
 }
 
-function InterruptedLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "interrupted" }>;
-}) {
+function InterruptedLine({ event }: { event: Extract<FeedEvent, { type: "interrupted" }> }) {
   return (
     <Box flexDirection="column" paddingLeft={INDENT}>
       <Box>
@@ -285,11 +239,7 @@ function InterruptedLine({
   );
 }
 
-function AgentLine({
-  event,
-}: {
-  event: Extract<FeedEvent, { type: "agent" }>;
-}) {
+function AgentLine({ event }: { event: Extract<FeedEvent, { type: "agent" }> }) {
   return (
     <Box paddingLeft={INDENT}>
       <Text dimColor>⊳ agent: {event.description}</Text>
@@ -297,13 +247,7 @@ function AgentLine({
   );
 }
 
-export function FeedLine({
-  event,
-  verbose,
-}: {
-  event: FeedEvent;
-  verbose?: boolean | undefined;
-}) {
+export function FeedLine({ event, verbose }: { event: FeedEvent; verbose?: boolean | undefined }) {
   switch (event.type) {
     case "session":
       return <SessionLine event={event} />;

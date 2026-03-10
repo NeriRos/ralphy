@@ -25,8 +25,7 @@ export function TaskStatus({ state, taskDir }: TaskStatusProps) {
   }));
 
   const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-  const progress =
-    progressContent !== null ? countProgress(progressContent) : null;
+  const progress = progressContent !== null ? countProgress(progressContent) : null;
 
   const recent = state.history.slice(-10);
 
@@ -35,32 +34,41 @@ export function TaskStatus({ state, taskDir }: TaskStatusProps) {
       <Text>{HEAVY_RULE}</Text>
       <Text> Task Status: {state.name}</Text>
       <Text>{HEAVY_RULE}</Text>
-      <Text> Phase:            {state.phase}</Text>
-      <Text> Phase iteration:  {state.phaseIteration}</Text>
+      <Text> Phase: {state.phase}</Text>
+      <Text> Phase iteration: {state.phaseIteration}</Text>
       <Text> Total iterations: {state.totalIterations}</Text>
-      <Text> Status:           {state.status}</Text>
-      <Text> Engine:           {state.engine} ({state.model})</Text>
-      <Text> Created:          {state.createdAt}</Text>
-      <Text> Last modified:    {state.lastModified}</Text>
-      <Text> Branch:           {state.metadata.branch ?? "—"}</Text>
+      <Text> Status: {state.status}</Text>
+      <Text>
+        {" "}
+        Engine: {state.engine} ({state.model})
+      </Text>
+      <Text> Created: {state.createdAt}</Text>
+      <Text> Last modified: {state.lastModified}</Text>
+      <Text> Branch: {state.metadata.branch ?? "—"}</Text>
       <Text>{LIGHT_RULE}</Text>
 
       <Text> Usage:</Text>
-      <Text>   Cost:           ${cost}</Text>
-      <Text>   Time:           {time}</Text>
-      <Text>   Turns:          {state.usage.total_turns}</Text>
-      <Text>   Input tokens:   {state.usage.total_input_tokens}</Text>
-      <Text>   Output tokens:  {state.usage.total_output_tokens}</Text>
-      <Text>   Cached tokens:  {state.usage.total_cache_read_input_tokens}</Text>
+      <Text> Cost: ${cost}</Text>
+      <Text> Time: {time}</Text>
+      <Text> Turns: {state.usage.total_turns}</Text>
+      <Text> Input tokens: {state.usage.total_input_tokens}</Text>
+      <Text> Output tokens: {state.usage.total_output_tokens}</Text>
+      <Text> Cached tokens: {state.usage.total_cache_read_input_tokens}</Text>
       <Text>{LIGHT_RULE}</Text>
 
       <Text> Files:</Text>
       {documents.map((doc) => (
-        <Text key={doc.name}>   {doc.exists ? "[x]" : "[ ]"} {doc.name}</Text>
+        <Text key={doc.name}>
+          {" "}
+          {doc.exists ? "[x]" : "[ ]"} {doc.name}
+        </Text>
       ))}
 
       {progress !== null && (
-        <Text> Progress:         {progress.checked} done / {progress.unchecked} remaining</Text>
+        <Text>
+          {" "}
+          Progress: {progress.checked} done / {progress.unchecked} remaining
+        </Text>
       )}
 
       <Text>{LIGHT_RULE}</Text>

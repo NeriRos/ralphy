@@ -13,9 +13,7 @@ export interface TaskLoopProps {
   opts: LoopOptions;
 }
 
-type FeedItem =
-  | { id: string; kind: "banner" }
-  | { id: string; kind: "entry"; entry: LogEntry };
+type FeedItem = { id: string; kind: "banner" } | { id: string; kind: "entry"; entry: LogEntry };
 
 function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | undefined }) {
   switch (entry.kind) {

@@ -53,13 +53,11 @@ export function StatusBar({
       <Text color="gray">{bar}</Text>
       <Box>
         <Text> </Text>
-        {isRunning ? (
-          <Spinner label="" />
-        ) : (
-          <Text color="green">✓</Text>
-        )}
+        {isRunning ? <Spinner label="" /> : <Text color="green">✓</Text>}
         <Text> </Text>
-        <Text bold color="cyan">{phase}</Text>
+        <Text bold color="cyan">
+          {phase}
+        </Text>
         <Sep />
         <Text>iter </Text>
         <Text bold>{iteration}</Text>
@@ -81,7 +79,9 @@ export function StatusBar({
         <Sep />
         <Text dimColor>{formatElapsed(elapsed)}</Text>
         <Sep />
-        <Text dimColor>{engine}/{model}</Text>
+        <Text dimColor>
+          {engine}/{model}
+        </Text>
       </Box>
       <Text color="gray">{bar}</Text>
     </Box>

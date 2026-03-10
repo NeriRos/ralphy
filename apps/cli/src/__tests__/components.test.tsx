@@ -40,9 +40,7 @@ function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
 describe("Banner", () => {
   test("renders task name and mode", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" taskPrompt="Do something" />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" taskPrompt="Do something" />);
     const frame = lastFrame()!;
     expect(frame).toContain("Ralph Loop");
     expect(frame).toContain("test-task");
@@ -51,50 +49,38 @@ describe("Banner", () => {
 
   test("renders engine label with model", () => {
     const state = makeState({ engine: "claude", model: "sonnet" });
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" />);
     const frame = lastFrame()!;
     expect(frame).toContain("claude (sonnet)");
   });
 
   test("shows resumed indicator when isResume is true", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" isResume />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" isResume />);
     expect(lastFrame()!).toContain("(resumed)");
   });
 
   test("shows max iterations label", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" maxIterations={10} />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" maxIterations={10} />);
     expect(lastFrame()!).toContain("10");
   });
 
   test("shows unlimited when maxIterations is 0", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" maxIterations={0} />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" maxIterations={0} />);
     expect(lastFrame()!).toContain("unlimited");
   });
 
   test("shows cost cap when set", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" maxCostUsd={5.5} />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" maxCostUsd={5.5} />);
     expect(lastFrame()!).toContain("$5.5");
   });
 
   test("shows no-execute flag", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" noExecute />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" noExecute />);
     expect(lastFrame()!).toContain("yes (research+plan only)");
   });
 
@@ -123,9 +109,7 @@ describe("Banner", () => {
 
   test("shows branch name", () => {
     const state = makeState();
-    const { lastFrame } = render(
-      <Banner state={state} mode="task" />,
-    );
+    const { lastFrame } = render(<Banner state={state} mode="task" />);
     expect(lastFrame()!).toContain("Branch");
   });
 });
@@ -134,9 +118,7 @@ describe("TaskStatus", () => {
   test("renders task name and phase", () =>
     withStorage(() => {
       const state = makeState({ phase: "exec" });
-      const { lastFrame } = render(
-        <TaskStatus state={state} taskDir={tempDir} />,
-      );
+      const { lastFrame } = render(<TaskStatus state={state} taskDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("test-task");
       expect(frame).toContain("exec");
@@ -156,9 +138,7 @@ describe("TaskStatus", () => {
           total_cache_creation_input_tokens: 0,
         },
       };
-      const { lastFrame } = render(
-        <TaskStatus state={state} taskDir={tempDir} />,
-      );
+      const { lastFrame } = render(<TaskStatus state={state} taskDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("$1.23");
       expect(frame).toContain("5.5s");
@@ -171,9 +151,7 @@ describe("TaskStatus", () => {
       const state = makeState();
       writeFileSync(join(tempDir, "RESEARCH.md"), "research content", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "plan content", "utf-8");
-      const { lastFrame } = render(
-        <TaskStatus state={state} taskDir={tempDir} />,
-      );
+      const { lastFrame } = render(<TaskStatus state={state} taskDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("[x] RESEARCH.md");
       expect(frame).toContain("[x] PLAN.md");
@@ -188,9 +166,7 @@ describe("TaskStatus", () => {
         "- [x] Done item\n- [ ] Pending item\n- [ ] Another pending\n",
         "utf-8",
       );
-      const { lastFrame } = render(
-        <TaskStatus state={state} taskDir={tempDir} />,
-      );
+      const { lastFrame } = render(<TaskStatus state={state} taskDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("1 done");
       expect(frame).toContain("2 remaining");
@@ -211,9 +187,7 @@ describe("TaskStatus", () => {
           },
         ],
       };
-      const { lastFrame } = render(
-        <TaskStatus state={state} taskDir={tempDir} />,
-      );
+      const { lastFrame } = render(<TaskStatus state={state} taskDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("research");
       expect(frame).toContain("success");
@@ -258,11 +232,7 @@ describe("TaskList", () => {
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "prog-task", prompt: "Test" });
       writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
-      writeFileSync(
-        join(taskDir, "PROGRESS.md"),
-        "- [x] One\n- [x] Two\n- [ ] Three\n",
-        "utf-8",
-      );
+      writeFileSync(join(taskDir, "PROGRESS.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
 
       const { lastFrame } = render(<TaskList tasksDir={tempDir} />);
       expect(lastFrame()!).toContain("2/3");
@@ -286,17 +256,13 @@ describe("TaskList", () => {
 
 describe("IterationHeader", () => {
   test("renders iteration number", () => {
-    const { lastFrame } = render(
-      <IterationHeader iteration={3} time="12:34:56" />,
-    );
+    const { lastFrame } = render(<IterationHeader iteration={3} time="12:34:56" />);
     const frame = lastFrame()!;
     expect(frame).toContain("#3");
   });
 
   test("renders time", () => {
-    const { lastFrame } = render(
-      <IterationHeader iteration={1} time="09:15:00" />,
-    );
+    const { lastFrame } = render(<IterationHeader iteration={1} time="09:15:00" />);
     expect(lastFrame()!).toContain("09:15:00");
   });
 });
@@ -305,18 +271,9 @@ describe("StopMessage", () => {
   test("renders terminal stop with progress", () =>
     withStorage(() => {
       const state = makeState();
-      writeFileSync(
-        join(tempDir, "PROGRESS.md"),
-        "- [x] Done\n- [x] Also done\n",
-        "utf-8",
-      );
+      writeFileSync(join(tempDir, "PROGRESS.md"), "- [x] Done\n- [x] Also done\n", "utf-8");
       const { lastFrame } = render(
-        <StopMessage
-          reason="terminal"
-          state={state}
-          taskDir={tempDir}
-          consecutiveFailures={0}
-        />,
+        <StopMessage reason="terminal" state={state} taskDir={tempDir} consecutiveFailures={0} />,
       );
       const frame = lastFrame()!;
       expect(frame).toContain("2 done");
@@ -328,12 +285,7 @@ describe("StopMessage", () => {
     withStorage(() => {
       const state = makeState();
       const { lastFrame } = render(
-        <StopMessage
-          reason="noExecute"
-          state={state}
-          taskDir={tempDir}
-          consecutiveFailures={0}
-        />,
+        <StopMessage reason="noExecute" state={state} taskDir={tempDir} consecutiveFailures={0} />,
       );
       const frame = lastFrame()!;
       expect(frame).toContain("--no-execute");
@@ -437,9 +389,7 @@ describe("App", () => {
   test("list mode renders TaskList", () =>
     withStorage(() => {
       mkdirSync(tempDir, { recursive: true });
-      const { lastFrame } = render(
-        <App args={makeArgs({ mode: "list" })} tasksDir={tempDir} />,
-      );
+      const { lastFrame } = render(<App args={makeArgs({ mode: "list" })} tasksDir={tempDir} />);
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
@@ -454,9 +404,7 @@ describe("App", () => {
 
   test("status mode with missing task shows error", async () => {
     const { lastFrame } = withStorage(() =>
-      render(
-        <App args={makeArgs({ mode: "status", name: "nonexistent" })} tasksDir={tempDir} />,
-      ),
+      render(<App args={makeArgs({ mode: "status", name: "nonexistent" })} tasksDir={tempDir} />),
     );
     expect(lastFrame()!).toContain("not found");
     await tick();
