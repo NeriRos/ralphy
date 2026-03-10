@@ -1,4 +1,7 @@
-import { describe, expect, test, mock, beforeEach } from "bun:test";
+import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import { mkdtempSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import type { FeedEvent } from "../feed-events";
 
 // ─── Mock spawn ──────────────────────────────────────────────────
@@ -320,6 +323,126 @@ describe("runEngine", () => {
 
     const call = (spawnMock.mock.calls[0] as unknown[])[0] as { stderr: string };
     expect(call.stderr).toBe("pipe");
+  });
+
+  // ─── interactive mode ────────────────────────────────────────────
+
+  describe("interactive mode", () => {
+    let taskDir: string;
+
+    beforeEach(() => {
+      taskDir = mkdtempSync(join(tmpdir(), "engine-interactive-test-"));
+    });
+
+    afterEach(() => {
+      rmSync(taskDir, { recursive: true, force: true });
+    });
+
+    function setupInteractiveMock(exitCode = 0) {
+      mockProc = {
+        stdin: {
+          write: mock(() => {}),
+          flush: mock(() => Promise.resolve()),
+          end: mock(() => {}),
+        },
+        stdout: makeReadableStream([]),
+        stderr: makeReadableStream([]),
+        exited: Promise.resolve(exitCode),
+      };
+    }
+
+    test("spawns claude with inherited stdio", async () => {
+      setupInteractiveMock(0);
+
+      const result = await runEngine({
+        engine: "claude",
+        model: "test-model",
+        prompt: "interactive prompt",
+        interactive: true,
+        taskDir,
+        onFeedEvent: () => {},
+      });
+
+      expect(result.usage).toBeNull();
+      expect(spawnMock).toHaveBeenCalledTimes(1);
+      const call = (spawnMock.mock.calls[0] as unknown[])[0] as {
+        cmd: string[];
+        stdin: string;
+        stdout: string;
+        stderr: string;
+      };
+      expect(call.cmd[0]).toBe("claude");
+      expect(call.cmd).toContain("--model");
+      expect(call.cmd).toContain("test-model");
+      expect(call.cmd).toContain("--dangerously-skip-permissions");
+      expect(call.stdin).toBe("inherit");
+      expect(call.stdout).toBe("inherit");
+      expect(call.stderr).toBe("inherit");
+    });
+
+    test("writes prompt to taskDir and cleans up", async () => {
+      setupInteractiveMock(0);
+
+      await runEngine({
+        engine: "claude",
+        model: "test",
+        prompt: "my interactive prompt",
+        interactive: true,
+        taskDir,
+        onFeedEvent: () => {},
+      });
+
+      // Prompt file should be cleaned up after completion
+      expect(existsSync(join(taskDir, "_interactive_prompt.md"))).toBe(false);
+    });
+
+    test("returns exitCode 0 when _interactive_done file exists", async () => {
+      setupInteractiveMock(1);
+      // Simulate the MCP tool having written the done file
+      writeFileSync(join(taskDir, "_interactive_done"), "");
+
+      const result = await runEngine({
+        engine: "claude",
+        model: "test",
+        prompt: "test",
+        interactive: true,
+        taskDir,
+        onFeedEvent: () => {},
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.usage).toBeNull();
+    });
+
+    test("returns actual exitCode when no _interactive_done file", async () => {
+      setupInteractiveMock(1);
+
+      const result = await runEngine({
+        engine: "claude",
+        model: "test",
+        prompt: "test",
+        interactive: true,
+        taskDir,
+        onFeedEvent: () => {},
+      });
+
+      expect(result.exitCode).toBe(1);
+    });
+
+    test("creates temp dir when no taskDir provided", async () => {
+      setupInteractiveMock(0);
+
+      const result = await runEngine({
+        engine: "claude",
+        model: "test",
+        prompt: "test",
+        interactive: true,
+        onFeedEvent: () => {},
+      });
+
+      expect(result.exitCode).toBe(0);
+      expect(result.usage).toBeNull();
+    });
   });
 
   test("streamLines handles trailing buffer without newline", async () => {

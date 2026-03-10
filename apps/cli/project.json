@@ -49,8 +49,8 @@
     "test:coverage": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bun test --coverage apps/cli/src",
-        "cwd": "{workspaceRoot}"
+        "command": "bun test --coverage src",
+        "cwd": "{projectRoot}"
       }
     }
   }
