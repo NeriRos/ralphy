@@ -31,7 +31,7 @@ jobs:
         run: bun run typecheck:ci
 
       - name: Test
-        run: bun run test:ci
+        run: bun run test:coverage:ci
 
       - name: Circular deps
         run: bun run check:circular:ci
