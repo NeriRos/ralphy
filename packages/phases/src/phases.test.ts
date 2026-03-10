@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -9,7 +9,10 @@ import {
   getNextPhase,
   getFirstPhase,
   clearPhaseCache,
+  resolveChecklistDir,
+  listChecklists,
 } from "./phases";
+import { resolveScaffoldsDir, resolveTasksDir } from "@ralphy/content";
 
 function makeTempDir(): string {
   return mkdtempSync(join(tmpdir(), "phases-test-"));
@@ -272,5 +275,42 @@ describe("real phase files", () => {
     expect(getNextPhase("exec")).toBe("review");
     expect(getNextPhase("review")).toBe("exec"); // explicit next override
     expect(getNextPhase("done")).toBeNull(); // terminal, no next
+  });
+});
+
+describe("resolveChecklistDir", () => {
+  test("returns a path ending in /checklists", () => {
+    const dir = resolveChecklistDir();
+    expect(dir).toMatch(/checklists$/);
+  });
+
+  test("points to an existing directory", () => {
+    const { existsSync } = require("node:fs");
+    expect(existsSync(resolveChecklistDir())).toBe(true);
+  });
+});
+
+describe("listChecklists", () => {
+  test("returns an array of checklist names without .md extension", () => {
+    const names = listChecklists();
+    expect(Array.isArray(names)).toBe(true);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(name).not.toMatch(/\.md$/);
+    }
+  });
+});
+
+describe("@ralphy/content helpers (transitive)", () => {
+  test("resolveScaffoldsDir returns an existing scaffolds path", () => {
+    const dir = resolveScaffoldsDir();
+    expect(dir).toMatch(/scaffolds$/);
+    expect(existsSync(dir)).toBe(true);
+  });
+
+  test("resolveTasksDir returns an existing tasks path", () => {
+    const dir = resolveTasksDir();
+    expect(dir).toMatch(/tasks$/);
+    expect(existsSync(dir)).toBe(true);
   });
 });

@@ -1,5 +1,21 @@
 {
   "name": "context",
   "sourceRoot": "packages/context/src",
-  "tags": ["scope:shared"]
+  "tags": ["scope:shared"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/context/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test --coverage packages/context/src",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
 }

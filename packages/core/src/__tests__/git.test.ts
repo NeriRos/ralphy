@@ -12,7 +12,8 @@ mock.module("node:child_process", () => ({
 }));
 
 // Import after mocking
-const { getCurrentBranch, gitAdd, gitCommit, gitPush, commitState } = await import("../git");
+const { getCurrentBranch, gitAdd, gitCommit, gitPush, commitState, commitTaskDir } =
+  await import("../git");
 
 let tempDir: string;
 
@@ -139,5 +140,25 @@ describe("commitState", () => {
       throw new Error("nothing to commit");
     });
     expect(() => commitState("/tasks/test", "msg")).not.toThrow();
+  });
+});
+
+describe("commitTaskDir", () => {
+  test("adds task directory and commits with prefixed message", () => {
+    mockExecSync.mockReturnValue("");
+    commitTaskDir("/tasks/my-task", "save progress");
+    expect(mockExecSync).toHaveBeenCalledWith('git add "/tasks/my-task"', {
+      stdio: "pipe",
+    });
+    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "docs(ralph): save progress"', {
+      stdio: "pipe",
+    });
+  });
+
+  test("silently handles failure", () => {
+    mockExecSync.mockImplementation(() => {
+      throw new Error("nothing to commit");
+    });
+    expect(() => commitTaskDir("/tasks/test", "msg")).not.toThrow();
   });
 });

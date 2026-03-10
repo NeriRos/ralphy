@@ -1,4 +1,4 @@
-import { spawn } from "bun";
+import { spawn } from "./spawn";
 import { writeFileSync, unlinkSync, existsSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";

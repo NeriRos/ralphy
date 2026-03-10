@@ -1,5 +1,12 @@
 import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  readFileSync,
+  chmodSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
@@ -580,5 +587,300 @@ describe("ralph_apply_checklist", () => {
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as { applied: string[] };
     expect(data.applied).toEqual([]);
+  });
+
+  test("handles checklist without H1 heading (parseChecklist fallback)", async () => {
+    // Create a temporary checklist file without an H1 heading
+    const { resolveChecklistDir } = await import("@ralphy/phases");
+    const checklistDir = resolveChecklistDir();
+    const tempChecklistPath = join(checklistDir, "_test_no_h1.md");
+    writeFileSync(tempChecklistPath, "- [ ] Item without heading\n- [ ] Another item\n");
+
+    try {
+      const taskDir = createTask(tempDir, "no-h1-task");
+      writeFileSync(join(taskDir, "PROGRESS.md"), "## Section 1 — Setup\n\n- [ ] Item\n");
+      const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+      const result = await handler({
+        name: "no-h1-task",
+        checklists: ["_test_no_h1"],
+      });
+      expect(result.isError).toBeUndefined();
+      const data = parseResult(result) as { applied: string[]; totalSections: number };
+      expect(data.applied).toEqual(["_test_no_h1"]);
+      expect(data.totalSections).toBe(2);
+
+      // Verify PROGRESS.md uses fallback title "Checklist"
+      const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+      expect(progress).toContain("## Section 2 — Checklist");
+      expect(progress).toContain("Item without heading");
+    } finally {
+      rmSync(tempChecklistPath, { force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error path tests — cover catch blocks in each tool handler
+// ---------------------------------------------------------------------------
+
+describe("ralph_list_tasks error path", () => {
+  test("returns error when tasksDir is a file (not a directory)", async () => {
+    // Create a file where the tasks directory is expected, so storage.list() throws
+    const filePath = join(tempDir, "not-a-dir");
+    writeFileSync(filePath, "I am a file");
+
+    const handler = captureHandlers(filePath)("ralph_list_tasks");
+    const result = await handler({});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error listing tasks");
+  });
+});
+
+describe("ralph_read_document error path", () => {
+  test("returns error when document path is a directory (readFileSync throws)", async () => {
+    const taskDir = createTask(tempDir, "dir-doc-task");
+    // Create a directory where RESEARCH.md should be a file
+    mkdirSync(join(taskDir, "RESEARCH.md"), { recursive: true });
+
+    const handler = captureHandlers(tempDir)("ralph_read_document");
+    const result = await handler({ name: "dir-doc-task", document: "RESEARCH.md" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error reading document");
+  });
+});
+
+describe("ralph_create_task error path", () => {
+  test("returns error when task directory cannot be created", async () => {
+    // Create a file where the tasks dir is expected, so mkdir fails for the task subdir
+    const filePath = join(tempDir, "blocked");
+    writeFileSync(filePath, "I am a file");
+
+    const handler = captureHandlers(filePath)("ralph_create_task");
+    const result = await handler({ name: "new-task", prompt: "Will fail" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error creating task");
+  });
+});
+
+describe("ralph_run_task error path", () => {
+  test("returns error when spawn throws", async () => {
+    createTask(tempDir, "spawn-fail-task");
+    spawnMock.mockImplementationOnce(() => {
+      throw new Error("spawn failed");
+    });
+
+    const handler = captureHandlers(tempDir)("ralph_run_task");
+    const result = await handler({ name: "spawn-fail-task" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error running task");
+    expect(result.content[0]!.text).toContain("spawn failed");
+  });
+
+  test("includes maxCostUsd and maxRuntimeMinutes args when provided", async () => {
+    spawnMock.mockClear();
+    createTask(tempDir, "cost-runtime-task");
+    const handler = captureHandlers(tempDir)("ralph_run_task");
+
+    await handler({
+      name: "cost-runtime-task",
+      maxCostUsd: 10,
+      maxRuntimeMinutes: 30,
+    });
+
+    const calls = spawnMock.mock.calls as unknown as [string, string[], Record<string, unknown>][];
+    const call = calls[0]!;
+    expect(call[1]).toContain("--max-cost");
+    expect(call[1]).toContain("10");
+    expect(call[1]).toContain("--max-runtime");
+    expect(call[1]).toContain("30");
+  });
+});
+
+describe("ralph_update_steering error path", () => {
+  test("returns error when storage.write throws", async () => {
+    // Create a file where the tasks dir is expected, so the state check might still succeed
+    // but the write will fail. We need a task that exists but whose STEERING.md path is broken.
+    // Create a valid task, then make the task dir read-only to cause write failure.
+    const taskDir = createTask(tempDir, "write-fail-task");
+    // Create a directory where STEERING.md should be written, so writeFileSync throws EISDIR
+    mkdirSync(join(taskDir, "STEERING.md"), { recursive: true });
+
+    const handler = captureHandlers(tempDir)("ralph_update_steering");
+    const result = await handler({
+      name: "write-fail-task",
+      content: "New content",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error updating steering");
+  });
+});
+
+describe("ralph_finish_interactive", () => {
+  test("writes INTERACTIVE.md and signal file for existing task", async () => {
+    const { commitState: commitMock } = await import("@ralphy/core/git");
+    (commitMock as ReturnType<typeof mock>).mockClear();
+
+    createTask(tempDir, "interactive-task");
+    const handler = captureHandlers(tempDir)("ralph_finish_interactive");
+
+    const result = await handler({
+      name: "interactive-task",
+      context: "User wants feature X with constraint Y.",
+    });
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]!.text).toContain("Interactive session complete");
+    expect(result.content[0]!.text).toContain("interactive-task");
+
+    // Verify INTERACTIVE.md was written
+    const interactiveContent = readFileSync(
+      join(tempDir, "interactive-task", "INTERACTIVE.md"),
+      "utf-8",
+    );
+    expect(interactiveContent).toContain("# Interactive Session Context");
+    expect(interactiveContent).toContain("User wants feature X with constraint Y.");
+    expect(interactiveContent).toContain("authoritative requirements");
+
+    // Verify signal file was written
+    const signalContent = readFileSync(
+      join(tempDir, "interactive-task", "_interactive_done"),
+      "utf-8",
+    );
+    // Should be an ISO date string
+    expect(signalContent).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+    // Verify commitState was called
+    expect(commitMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns error for missing task", async () => {
+    const handler = captureHandlers(tempDir)("ralph_finish_interactive");
+
+    const result = await handler({
+      name: "nonexistent",
+      context: "Some context",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("nonexistent");
+    expect(result.content[0]!.text).toContain("does not exist");
+  });
+
+  test("returns error when write fails", async () => {
+    const taskDir = createTask(tempDir, "finish-fail-task");
+    // Create a directory where INTERACTIVE.md should be written, so writeFileSync throws EISDIR
+    mkdirSync(join(taskDir, "INTERACTIVE.md"), { recursive: true });
+
+    const handler = captureHandlers(tempDir)("ralph_finish_interactive");
+    const result = await handler({
+      name: "finish-fail-task",
+      context: "Will fail",
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error finishing interactive session");
+  });
+});
+
+describe("ralph_list_checklists error path", () => {
+  test("returns error when listChecklists throws", async () => {
+    // To trigger the catch block, we need resolveChecklistDir or listChecklists to throw.
+    // We can temporarily rename the checklists dir, but that's fragile.
+    // Instead, we use a mock approach: mock the module inline for this one test.
+    const { resolveChecklistDir } = await import("@ralphy/phases");
+    // We can't easily mock these since they're used inside the handler which imports them directly.
+    // However, if we make getStorage() throw by running without context, we can trigger the catch.
+    // Actually, the handler creates its own context via runWithContext(createDefaultContext(), ...).
+    // The most reliable approach is to create a situation where storage.read throws on the
+    // checklist dir content. Since the catch is a safety net, let's verify the handler
+    // structure by checking that the error path returns the expected format.
+    // We'll skip this test if we can't trigger it naturally.
+
+    // Alternative: remove read permission from the checklists dir temporarily
+    const checklistDir = resolveChecklistDir();
+    try {
+      chmodSync(checklistDir, 0o000);
+      const handler = captureHandlers(tempDir)("ralph_list_checklists");
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain("Error listing checklists");
+    } finally {
+      // Restore permissions
+      chmodSync(checklistDir, 0o755);
+    }
+  });
+});
+
+describe("ralph_apply_checklist error path", () => {
+  test("returns error when storage.write on PROGRESS.md throws", async () => {
+    const taskDir = createTask(tempDir, "apply-fail-task");
+    // Create PROGRESS.md as a directory so the final write fails
+    mkdirSync(join(taskDir, "PROGRESS.md"), { recursive: true });
+    // We need storage.read to succeed first. A directory with existsSync returns true,
+    // but readFileSync on a dir throws. So this will actually throw in the read step.
+    // That means we need a different approach: create PROGRESS.md as a file first,
+    // then replace it with a directory before the write. Since they happen sequentially
+    // in the same sync call, we can't do that.
+
+    // Alternative: use a path where checklist dir resolution fails
+    // Let's try: make the task have a PROGRESS.md that's valid, but then the storage.write
+    // call at the end will fail if we make it read-only.
+    rmSync(join(taskDir, "PROGRESS.md"), { recursive: true, force: true });
+    writeFileSync(join(taskDir, "PROGRESS.md"), "## Section 1\n\n- [ ] Item\n");
+    // Make the entire taskDir read-only so the write fails
+    chmodSync(join(taskDir, "PROGRESS.md"), 0o444);
+    chmodSync(taskDir, 0o555);
+
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+    const result = await handler({
+      name: "apply-fail-task",
+      checklists: ["static"],
+    });
+
+    // Restore permissions before assertions
+    chmodSync(taskDir, 0o755);
+    chmodSync(join(taskDir, "PROGRESS.md"), 0o644);
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error applying checklists");
+  });
+
+  test("applies checklist to PROGRESS.md with no existing sections", async () => {
+    const taskDir = createTask(tempDir, "no-sections-task");
+    writeFileSync(join(taskDir, "PROGRESS.md"), "# Progress\n\nNo sections yet.\n");
+    const handler = captureHandlers(tempDir)("ralph_apply_checklist");
+
+    const result = await handler({
+      name: "no-sections-task",
+      checklists: ["static"],
+    });
+    expect(result.isError).toBeUndefined();
+    const data = parseResult(result) as { applied: string[]; totalSections: number };
+    expect(data.applied).toEqual(["static"]);
+    expect(data.totalSections).toBe(1);
+
+    const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
+    expect(progress).toContain("## Section 1 — Static Analysis");
+  });
+
+  test("includes tasks with unknown phase in list_tasks", async () => {
+    // Create a task with a completely unknown phase to test the catch in line 42-44
+    createTask(tempDir, "unknown-phase-task", { phase: "nonexistent_phase_xyz" });
+    const handler = captureHandlers(tempDir)("ralph_list_tasks");
+
+    const result = await handler({});
+    const data = parseResult(result) as { tasks: { name: string; phase: string }[] };
+
+    // Unknown phase tasks should still be included
+    const found = data.tasks.find((t) => t.name === "unknown-phase-task");
+    expect(found).toBeDefined();
+    expect(found!.phase).toBe("nonexistent_phase_xyz");
   });
 });
