@@ -107,6 +107,7 @@ export function App({ args, tasksDir }: AppProps) {
             interactive: args.interactive,
             delay: args.delay,
             log: args.log,
+            verbose: args.verbose,
             tasksDir,
           }}
         />

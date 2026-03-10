@@ -21,6 +21,7 @@ export interface LoopOptions {
   interactive: boolean;
   delay: number;
   log: boolean;
+  verbose: boolean;
   tasksDir: string;
 }
 

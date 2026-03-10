@@ -17,14 +17,14 @@ type FeedItem =
   | { id: string; kind: "banner" }
   | { id: string; kind: "entry"; entry: LogEntry };
 
-function LogLine({ entry }: { entry: LogEntry }) {
+function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | undefined }) {
   switch (entry.kind) {
     case "iterationHeader":
       return <IterationHeader iteration={entry.iteration} time={entry.time} />;
     case "info":
       return <Text dimColor> {entry.text}</Text>;
     case "feed":
-      return <FeedLine event={entry.event} />;
+      return <FeedLine event={entry.event} verbose={verbose} />;
   }
 }
 
@@ -73,7 +73,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
               />
             );
           }
-          return <LogLine key={item.id} entry={item.entry} />;
+          return <LogLine key={item.id} entry={item.entry} verbose={opts.verbose} />;
         }}
       </Static>
 

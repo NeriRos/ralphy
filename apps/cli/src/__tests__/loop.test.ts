@@ -225,6 +225,7 @@ function makeOpts(overrides: Partial<LoopOptions> = {}): LoopOptions {
     interactive: false,
     delay: 0,
     log: false,
+    verbose: false,
     tasksDir: tempDir,
     ...overrides,
   };

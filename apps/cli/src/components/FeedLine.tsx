@@ -1,7 +1,13 @@
 import { Box, Text } from "ink";
 import type { FeedEvent } from "@ralphy/engine/feed-events";
 
-function SessionLine({ event }: { event: Extract<FeedEvent, { type: "session" }> }) {
+const INDENT = 2;
+
+function SessionLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "session" }>;
+}) {
   return (
     <Box>
       <Text color="gray">── </Text>
@@ -11,9 +17,13 @@ function SessionLine({ event }: { event: Extract<FeedEvent, { type: "session" }>
   );
 }
 
-function SessionUnknown({ event }: { event: Extract<FeedEvent, { type: "session-unknown" }> }) {
+function SessionUnknown({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "session-unknown" }>;
+}) {
   return (
-    <Box>
+    <Box paddingLeft={INDENT}>
       <Text color="red">✗ </Text>
       <Text bold>UNKNOWN</Text>
       <Text dimColor> ({event.sessionId}…) - see --log</Text>
@@ -21,63 +31,115 @@ function SessionUnknown({ event }: { event: Extract<FeedEvent, { type: "session-
   );
 }
 
-function ThinkingLine({ event }: { event: Extract<FeedEvent, { type: "thinking" }> }) {
+function ThinkingLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "thinking" }>;
+}) {
   if (event.preview) {
     return (
-      <Box>
-        <Text color="gray">  💭 </Text>
+      <Box paddingLeft={INDENT}>
+        <Text color="white">💭 </Text>
         <Text dimColor>{event.preview.split("\n")[0]}</Text>
       </Box>
     );
   }
-  return <Text color="gray">  💭</Text>;
+  return (
+    <Box paddingLeft={INDENT}>
+      <Text color="white">💭</Text>
+    </Box>
+  );
 }
 
 function TextLine({ event }: { event: Extract<FeedEvent, { type: "text" }> }) {
-  return <Text bold>{event.text}</Text>;
+  return (
+    <Box paddingLeft={INDENT}>
+      <Text>{event.text}</Text>
+    </Box>
+  );
 }
 
-function ToolStartLine({ event }: { event: Extract<FeedEvent, { type: "tool-start" }> }) {
+function ToolStartLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "tool-start" }>;
+}) {
   return (
-    <Box>
-      <Text>  </Text>
+    <Box paddingLeft={INDENT}>
       <Text color="cyan">▶ {event.name}</Text>
       {event.summary ? <Text dimColor> {event.summary}</Text> : null}
     </Box>
   );
 }
 
-function ToolEndLine({ event }: { event: Extract<FeedEvent, { type: "tool-end" }> }) {
+function ToolEndLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "tool-end" }>;
+}) {
   return (
-    <Box>
-      <Text color="green"> ✓</Text>
+    <Box paddingLeft={INDENT}>
+      <Text color="green">✓</Text>
       {event.name ? <Text dimColor> {event.name}</Text> : null}
       {event.summary ? <Text dimColor> → {event.summary}</Text> : null}
     </Box>
   );
 }
 
-function TurnStartLine() {
-  return <Text bold>{"\n"}▶ turn started</Text>;
+function ToolResultPreview({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "tool-result-preview" }>;
+}) {
+  return (
+    <Box flexDirection="column" paddingLeft={INDENT + 2}>
+      {event.lines.map((line, i) => (
+        <Text key={i} dimColor>
+          {line}
+        </Text>
+      ))}
+      {event.truncated ? (
+        <Text dimColor>… ({event.truncated} more lines)</Text>
+      ) : null}
+    </Box>
+  );
 }
 
-function TurnDoneLine({ event }: { event: Extract<FeedEvent, { type: "turn-done" }> }) {
-  if (event.inputTokens !== undefined) {
-    return (
-      <Box>
-        <Text color="green">✓ done</Text>
-        <Text dimColor>  in={event.inputTokens}  out={event.outputTokens ?? 0}</Text>
-      </Box>
-    );
-  }
-  return <Text color="green">✓ done</Text>;
+function TurnStartLine() {
+  return (
+    <Box paddingLeft={INDENT}>
+      <Text bold>▶ turn started</Text>
+    </Box>
+  );
+}
+
+function TurnDoneLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "turn-done" }>;
+}) {
+  return (
+    <Box paddingLeft={INDENT}>
+      <Text color="green">✓ done</Text>
+      {event.inputTokens !== undefined && (
+        <Text dimColor>
+          {" "}
+          in={event.inputTokens} out={event.outputTokens ?? 0}
+        </Text>
+      )}
+    </Box>
+  );
 }
 
 function formatCost(usd: number): string {
   return (Math.round(usd * 100) / 100).toFixed(2);
 }
 
-function ResultLine({ event }: { event: Extract<FeedEvent, { type: "result" }> }) {
+function ResultLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "result" }>;
+}) {
   const info = [
     `cost=$${formatCost(event.cost)}`,
     `time=${Math.round((event.timeMs / 1000) * 10) / 10}s`,
@@ -88,57 +150,95 @@ function ResultLine({ event }: { event: Extract<FeedEvent, { type: "result" }> }
   ].join("  ");
 
   return (
-    <Box>
+    <Box paddingLeft={INDENT}>
       <Text color="green">✓ done</Text>
-      <Text dimColor>  {info}</Text>
+      <Text dimColor> {info}</Text>
     </Box>
   );
 }
 
-function ResultErrorLine({ event }: { event: Extract<FeedEvent, { type: "result-error" }> }) {
+function ResultErrorLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "result-error" }>;
+}) {
   return (
-    <Box>
-      <Text color="red" bold>✗ Error</Text>
+    <Box paddingLeft={INDENT}>
+      <Text color="red" bold>
+        ✗ Error
+      </Text>
       <Text color="red"> {event.message}</Text>
     </Box>
   );
 }
 
-function ErrorLine({ event }: { event: Extract<FeedEvent, { type: "error" }> }) {
+function ErrorLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "error" }>;
+}) {
   return (
-    <Box>
+    <Box paddingLeft={INDENT}>
       <Text color="red">error: </Text>
       <Text>{event.message}</Text>
     </Box>
   );
 }
 
-function RateLimitLine({ event }: { event: Extract<FeedEvent, { type: "rate-limit" }> }) {
+function RateLimitLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "rate-limit" }>;
+}) {
   return (
-    <Box>
-      <Text color="red" bold>✗ Rate limit reached</Text>
+    <Box paddingLeft={INDENT}>
+      <Text color="red" bold>
+        ✗ Rate limit reached
+      </Text>
       <Text color="red"> {event.message}</Text>
     </Box>
   );
 }
 
-function InterruptedLine({ event }: { event: Extract<FeedEvent, { type: "interrupted" }> }) {
+function InterruptedLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "interrupted" }>;
+}) {
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" paddingLeft={INDENT}>
       <Box>
-        <Text color="red" bold>✗ Stream interrupted</Text>
-        <Text dimColor>  (no result received)</Text>
+        <Text color="red" bold>
+          ✗ Stream interrupted
+        </Text>
+        <Text dimColor> (no result received)</Text>
       </Box>
-      <Text dimColor>  turns={event.turns}  tools={event.tools}</Text>
+      <Text dimColor>
+        turns={event.turns} tools={event.tools}
+      </Text>
     </Box>
   );
 }
 
-function AgentLine({ event }: { event: Extract<FeedEvent, { type: "agent" }> }) {
-  return <Text dimColor>  ⊳ agent: {event.description}</Text>;
+function AgentLine({
+  event,
+}: {
+  event: Extract<FeedEvent, { type: "agent" }>;
+}) {
+  return (
+    <Box paddingLeft={INDENT}>
+      <Text dimColor>⊳ agent: {event.description}</Text>
+    </Box>
+  );
 }
 
-export function FeedLine({ event }: { event: FeedEvent }) {
+export function FeedLine({
+  event,
+  verbose,
+}: {
+  event: FeedEvent;
+  verbose?: boolean | undefined;
+}) {
   switch (event.type) {
     case "session":
       return <SessionLine event={event} />;
@@ -153,16 +253,11 @@ export function FeedLine({ event }: { event: FeedEvent }) {
     case "tool-start":
       return <ToolStartLine event={event} />;
     case "tool-end":
+      if (!event.name) return null;
       return <ToolEndLine event={event} />;
     case "tool-result-preview":
-      return (
-        <Box flexDirection="column">
-          {event.lines.map((line, i) => (
-            <Text key={i} dimColor>    {line}</Text>
-          ))}
-          {event.truncated ? <Text dimColor>    … ({event.truncated} more lines)</Text> : null}
-        </Box>
-      );
+      if (!verbose) return null;
+      return <ToolResultPreview event={event} />;
     case "turn-start":
       return <TurnStartLine />;
     case "turn-done":
