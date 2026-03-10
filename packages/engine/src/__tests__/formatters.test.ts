@@ -394,7 +394,7 @@ describe("processCodexLine", () => {
     const state = makeState();
     const lines = processCodexLine("thread main panicked at foo", state);
     const text = strip(lines.join("\n"));
-    expect(text).toContain("stderr:");
+    expect(text).toContain("error:");
   });
 
   test("shows non-JSON line in verbose mode only", () => {
@@ -511,7 +511,7 @@ describe("processCodexLine", () => {
     };
     const lines = processCodexLine(JSON.stringify(event), state);
     const text = strip(lines.join("\n"));
-    expect(text).toContain("thinking:");
+    expect(text).toContain("💭");
     expect(text).toContain("considering options");
   });
 

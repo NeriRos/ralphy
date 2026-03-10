@@ -34,16 +34,15 @@ copy-bin:
 
 copy-assets:
 	@rm -rf "$(INSTALL_PATH)/phases"
-	@cp -r packages/phases/phases "$(INSTALL_PATH)/phases"
+	@cp -r packages/content/phases "$(INSTALL_PATH)/phases"
 	@mkdir -p "$(INSTALL_PATH)/templates/checklists"
-	@for f in packages/phases/checklists/*.md; do \
+	@for f in packages/content/checklists/*.md; do \
 		name=$$(basename "$$f"); \
 		if [ ! -f "$(INSTALL_PATH)/templates/checklists/$$name" ]; then \
 			cp "$$f" "$(INSTALL_PATH)/templates/checklists/$$name"; \
 		fi; \
 	done
-	@cp -r packages/core/templates/* "$(INSTALL_PATH)/templates/"
-	@mv "$(INSTALL_PATH)/templates/README.md" "$(INSTALL_PATH)/README.md"
+	@cp -r packages/content/scaffolds/* "$(INSTALL_PATH)/templates/"
 	@echo "  ✓ Copied assets"
 
 init-tasks:

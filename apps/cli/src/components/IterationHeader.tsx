@@ -1,4 +1,4 @@
-import { Text } from "ink";
+import { Box, Text } from "ink";
 
 export interface IterationHeaderProps {
   iteration: number;
@@ -6,5 +6,12 @@ export interface IterationHeaderProps {
 }
 
 export function IterationHeader({ iteration, time }: IterationHeaderProps) {
-  return <Text>{"\n"}======== ITERATION {iteration} {time} ========{"\n"}</Text>;
+  return (
+    <Box>
+      <Text color="gray">{"─── "}</Text>
+      <Text bold color="cyan">#{iteration}</Text>
+      <Text color="gray"> {time} </Text>
+      <Text color="gray">{"───"}</Text>
+    </Box>
+  );
 }

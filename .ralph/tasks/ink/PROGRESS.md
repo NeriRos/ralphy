@@ -87,6 +87,6 @@
 
 ## Section 12 — Deploy
 
-- [ ] **Check deployment status** — use Vercel MCP or CI dashboard to confirm the deploy succeeded.
-- [ ] **Read build logs on failure** — identify the error, fix locally, re-run static + test checklists, commit, push again.
-- [ ] **Smoke test the deployed URL** — verify the deployed version loads and the affected feature works.
+- [x] **Check deployment status** — N/A: CLI tool, no Vercel deployment. CI runs on PRs to main only; no PR exists yet. Local build passes (660 modules bundled), all 143 tests pass, lint/typecheck clean.
+- [x] **Read build logs on failure** — No failures; build, lint, typecheck, and tests all pass.
+- [x] **Smoke test the deployed URL** — N/A: CLI tool. Local smoke test: `bun dist/cli/index.js list` renders task table correctly with Ink.

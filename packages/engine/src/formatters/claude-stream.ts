@@ -1,5 +1,5 @@
-import { styled } from "@ralphy/output";
 import type { IterationUsage } from "@ralphy/types";
+import { type FeedEvent, renderFeedEvent } from "../feed-events";
 
 export interface ClaudeStreamOptions {
   verbose?: boolean;
@@ -13,10 +13,11 @@ export interface ClaudeStreamResult {
   usage: IterationUsage | null;
 }
 
-const SEP = styled("━".repeat(50), "gray");
-
-function formatCost(usd: number): string {
-  return (Math.round(usd * 100) / 100).toFixed(2);
+export interface ClaudeStreamState {
+  turnCount: number;
+  toolCount: number;
+  gotResult: boolean;
+  usage: IterationUsage | null;
 }
 
 function extractToolInputSummary(input: Record<string, unknown>): string {
@@ -53,33 +54,22 @@ function extractUsage(event: Record<string, unknown>): IterationUsage {
 }
 
 /**
- * Process a single line of Claude stream-json output.
- * Returns output lines to print and updated state.
+ * Parse a single line of Claude stream-json output into structured FeedEvents.
  */
-export function processClaudeLine(
-  line: string,
-  state: {
-    turnCount: number;
-    toolCount: number;
-    gotResult: boolean;
-    usage: IterationUsage | null;
-  },
-  options: ClaudeStreamOptions = {},
-): string[] {
-  const verbose = options.verbose ?? false;
-  const output: string[] = [];
-
-  if (!line.trim()) return output;
+export function parseClaudeLine(line: string, state: ClaudeStreamState): FeedEvent[] {
+  if (!line.trim()) return [];
 
   let event: Record<string, unknown>;
   try {
     event = JSON.parse(line);
   } catch {
-    return output;
+    return [];
   }
 
   const type = event.type as string | undefined;
-  if (!type) return output;
+  if (!type) return [];
+
+  const events: FeedEvent[] = [];
 
   switch (type) {
     case "system": {
@@ -88,39 +78,20 @@ export function processClaudeLine(
         const model = (event.model as string) ?? "unknown";
         const sid = ((event.session_id as string) ?? "").slice(0, 8);
         if (model === "unknown") {
-          if (verbose) {
-            output.push(
-              `${styled("⚠ FAILED TO PARSE MODEL", "fail")} ${styled(`(${sid}…)`, "dim")}`,
-            );
-            output.push(
-              styled(
-                "  Check log file for raw JSON output. Run with --log to capture full output.",
-                "dim",
-              ),
-            );
-          } else {
-            output.push(
-              `${styled("✗", "error")} ${styled("UNKNOWN", "bold")} ${styled(`(${sid}…) - see --log`, "dim")}`,
-            );
-          }
+          events.push({ type: "session-unknown", sessionId: sid });
         } else {
-          if (verbose) {
-            const ver = (event.claude_code_version as string) ?? "";
-            const ntools = Array.isArray(event.tools) ? event.tools.length : 0;
-            output.push(SEP);
-            output.push(
-              `  ${styled("model:", "dim")} ${styled(model, "bold")}  ${styled(`session: ${sid}…  v${ver}  tools: ${ntools}`, "dim")}`,
-            );
-            output.push(SEP);
-          } else {
-            output.push(
-              `${styled("──", "gray")} ${styled(model, "bold")} ${styled(`(${sid}…)`, "gray")}`,
-            );
-          }
+          const se: Extract<FeedEvent, { type: "session" }> = {
+            type: "session",
+            model,
+            sessionId: sid,
+          };
+          if (typeof event.claude_code_version === "string") se.version = event.claude_code_version;
+          if (Array.isArray(event.tools)) se.toolCount = event.tools.length;
+          events.push(se);
         }
-      } else if (subtype === "task_started" && verbose) {
+      } else if (subtype === "task_started") {
         const desc = (event.description as string) ?? "";
-        if (desc) output.push(`  ${styled(`⊳ agent: ${desc}`, "dim")}`);
+        if (desc) events.push({ type: "agent", description: desc });
       }
       break;
     }
@@ -133,36 +104,23 @@ export function processClaudeLine(
         const btype = block.type as string;
         if (btype === "text") {
           const text = block.text as string;
-          if (text) output.push(`\n${styled(text, "bold")}`);
+          if (text) events.push({ type: "text", text });
         } else if (btype === "tool_use") {
           state.toolCount++;
           const name = (block.name as string) ?? "?";
-          const inputSummary = extractToolInputSummary(
-            (block.input ?? {}) as Record<string, unknown>,
-          );
-          if (verbose) {
-            output.push(`\n  ${styled(`▶ ${name}`, "header")}`);
-            if (inputSummary) output.push(`    ${styled(inputSummary, "dim")}`);
-          } else {
-            let line = `  ${styled("▶", "cyan")} ${styled(name, "cyan")}`;
-            if (inputSummary) line += ` ${styled(inputSummary, "dim")}`;
-            output.push(line);
-          }
+          const summary = extractToolInputSummary((block.input ?? {}) as Record<string, unknown>);
+          events.push({ type: "tool-start", name, summary });
         } else if (btype === "thinking") {
-          if (verbose) {
-            const thinking = (block.thinking as string) ?? "";
-            if (thinking) {
-              const lines = thinking.split("\n");
-              output.push(`\n  ${styled("💭 thinking", "gray")}`);
-              for (const tl of lines.slice(0, 3)) {
-                output.push(`  ${styled(tl, "gray")}`);
-              }
-              if (lines.length > 3) {
-                output.push(`  ${styled(`  … (${lines.length - 3} more lines)`, "gray")}`);
-              }
-            }
+          const thinking = (block.thinking as string) ?? "";
+          if (thinking) {
+            const lines = thinking.split("\n");
+            events.push({
+              type: "thinking",
+              preview: lines.slice(0, 3).join("\n"),
+              totalLines: lines.length,
+            });
           } else {
-            output.push(`  ${styled("💭", "gray")}`);
+            events.push({ type: "thinking" });
           }
         }
       }
@@ -170,35 +128,34 @@ export function processClaudeLine(
     }
 
     case "user": {
-      if (verbose) {
-        const message = event.message as Record<string, unknown> | undefined;
-        const content = (message?.content ?? []) as Array<Record<string, unknown>>;
-        for (const block of content) {
-          if ((block.type as string) === "tool_result") {
-            let resultText = "";
-            const blockContent = block.content;
-            if (typeof blockContent === "string") {
-              resultText = blockContent;
-            } else if (Array.isArray(blockContent)) {
-              resultText = blockContent
-                .filter((c: Record<string, unknown>) => (c.type as string) === "text")
-                .map((c: Record<string, unknown>) => c.text as string)
-                .join("\n");
-            }
-            if (resultText) {
-              const lines = resultText.split("\n");
-              const preview = lines.slice(0, 6);
-              for (const pl of preview) {
-                output.push(`    ${styled(pl, "dim")}`);
-              }
-              if (lines.length > 6) {
-                output.push(`    ${styled(`… (${lines.length - 6} more lines)`, "dim")}`);
-              }
-            }
+      const message = event.message as Record<string, unknown> | undefined;
+      const content = (message?.content ?? []) as Array<Record<string, unknown>>;
+      for (const block of content) {
+        if ((block.type as string) === "tool_result") {
+          // Always emit tool-end first
+          events.push({ type: "tool-end" });
+
+          let resultText = "";
+          const blockContent = block.content;
+          if (typeof blockContent === "string") {
+            resultText = blockContent;
+          } else if (Array.isArray(blockContent)) {
+            resultText = blockContent
+              .filter((c: Record<string, unknown>) => (c.type as string) === "text")
+              .map((c: Record<string, unknown>) => c.text as string)
+              .join("\n");
+          }
+          if (resultText) {
+            const lines = resultText.split("\n");
+            const preview = lines.slice(0, 6);
+            const ev: Extract<FeedEvent, { type: "tool-result-preview" }> = {
+              type: "tool-result-preview",
+              lines: preview,
+            };
+            if (lines.length > 6) ev.truncated = lines.length - 6;
+            events.push(ev);
           }
         }
-      } else {
-        output.push(` ${styled("✓", "success")}`);
       }
       break;
     }
@@ -207,29 +164,51 @@ export function processClaudeLine(
       state.gotResult = true;
       const usage = extractUsage(event);
       state.usage = usage;
-      const info = [
-        `cost=$${formatCost(usage.cost_usd)}`,
-        `time=${Math.round((usage.duration_ms / 1000) * 10) / 10}s`,
-        `turns=${usage.num_turns}`,
-        `in=${usage.input_tokens}`,
-        `out=${usage.output_tokens}`,
-        `cached=${usage.cache_read_input_tokens}`,
-      ].join("  ");
 
       const subtype = (event.subtype as string) ?? "unknown";
       if (subtype === "error") {
         const errmsg = (event.result as string) ?? "unknown error";
-        output.push(`\n${styled("✗ Error", "fail")} ${styled(errmsg, "error")}`);
+        events.push({ type: "result-error", message: errmsg });
       } else {
-        if (verbose) {
-          output.push(`\n${styled("✓ Done", "successBold")}  ${styled(info, "dim")}`);
-          output.push(`${SEP}\n`);
-        } else {
-          output.push(`\n${styled("✓ done", "success")}  ${styled(info, "dim")}`);
-        }
+        events.push({
+          type: "result",
+          cost: usage.cost_usd,
+          timeMs: usage.duration_ms,
+          turns: usage.num_turns,
+          inputTokens: usage.input_tokens,
+          outputTokens: usage.output_tokens,
+          cached: usage.cache_read_input_tokens,
+        });
       }
       break;
     }
+  }
+
+  return events;
+}
+
+/**
+ * Process a single line of Claude stream-json output.
+ * Returns chalk-styled output lines (backward compatible).
+ */
+export function processClaudeLine(
+  line: string,
+  state: ClaudeStreamState,
+  options: ClaudeStreamOptions = {},
+): string[] {
+  const verbose = options.verbose ?? false;
+  const events = parseClaudeLine(line, state);
+
+  const output: string[] = [];
+  for (const event of events) {
+    if (!verbose && event.type === "tool-result-preview") continue;
+    if (!verbose && event.type === "agent") continue;
+    // Claude compact mode: thinking shows only 💭 (no preview text)
+    if (!verbose && event.type === "thinking") {
+      output.push(...renderFeedEvent({ type: "thinking" }, false));
+      continue;
+    }
+    output.push(...renderFeedEvent(event, verbose));
   }
 
   return output;
@@ -237,17 +216,16 @@ export function processClaudeLine(
 
 /**
  * Format a complete Claude stream-json output.
- * Processes each line and returns the formatted output and result state.
  */
 export function formatClaudeStream(
   input: string,
   options: ClaudeStreamOptions = {},
 ): { output: string; result: ClaudeStreamResult } {
-  const state = {
+  const state: ClaudeStreamState = {
     turnCount: 0,
     toolCount: 0,
     gotResult: false,
-    usage: null as IterationUsage | null,
+    usage: null,
   };
 
   const allOutput: string[] = [];
@@ -257,14 +235,12 @@ export function formatClaudeStream(
   }
 
   if (!state.gotResult) {
-    allOutput.push("");
-    allOutput.push(
-      `${styled("✗ Stream interrupted", "fail")}  ${styled("(no result received — Claude may have hit usage limits or been interrupted)", "dim")}`,
-    );
-    if (options.verbose) {
-      allOutput.push(styled(`  turns=${state.turnCount}  tools=${state.toolCount}`, "dim"));
-      allOutput.push(SEP);
-    }
+    const interrupted: FeedEvent = {
+      type: "interrupted",
+      turns: state.turnCount,
+      tools: state.toolCount,
+    };
+    allOutput.push(...renderFeedEvent(interrupted, options.verbose ?? false));
   }
 
   return {

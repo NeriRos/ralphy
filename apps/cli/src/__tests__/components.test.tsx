@@ -290,7 +290,7 @@ describe("IterationHeader", () => {
       <IterationHeader iteration={3} time="12:34:56" />,
     );
     const frame = lastFrame()!;
-    expect(frame).toContain("ITERATION 3");
+    expect(frame).toContain("#3");
   });
 
   test("renders time", () => {

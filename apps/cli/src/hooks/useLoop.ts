@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
 import type { ProgressCount } from "@ralphy/core/progress";
+import type { FeedEvent } from "@ralphy/engine/feed-events";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
 import { scaffoldTaskDocuments } from "@ralphy/core/templates";
@@ -18,13 +19,10 @@ import {
   type LoopOptions,
 } from "../loop";
 
-export interface LogEntry {
-  id: string;
-  type: "output" | "iterationHeader" | "info";
-  text: string;
-  iteration?: number;
-  time?: string;
-}
+export type LogEntry =
+  | { id: string; kind: "iterationHeader"; iteration: number; time: string }
+  | { id: string; kind: "info"; text: string }
+  | { id: string; kind: "feed"; event: FeedEvent };
 
 export interface UseLoopResult {
   state: State | null;
@@ -36,6 +34,7 @@ export interface UseLoopResult {
   stopReason: StopReason | null;
   isRunning: boolean;
   isResume: boolean;
+  startedAt: number;
 }
 
 function sleep(seconds: number): Promise<void> {
@@ -52,19 +51,28 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
   const [stopReason, setStopReason] = useState<StopReason | null>(null);
   const [isRunning, setIsRunning] = useState(true);
   const [isResume, setIsResume] = useState(false);
+  const [startedAt] = useState(() => Date.now());
 
   const lineIdRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    const addLine = (
-      type: LogEntry["type"],
-      text: string,
-      extra?: { iteration?: number; time?: string },
-    ) => {
-      const id = String(lineIdRef.current++);
-      setLogLines((prev) => [...prev, { id, type, text, ...extra }]);
+    const nextId = () => String(lineIdRef.current++);
+
+    const addInfo = (text: string) => {
+      setLogLines((prev) => [...prev, { id: nextId(), kind: "info", text }]);
+    };
+
+    const addIterationHeader = (iterNum: number, time: string) => {
+      setLogLines((prev) => [
+        ...prev,
+        { id: nextId(), kind: "iterationHeader", iteration: iterNum, time },
+      ]);
+    };
+
+    const addFeedEvent = (event: FeedEvent) => {
+      setLogLines((prev) => [...prev, { id: nextId(), kind: "feed", event }]);
     };
 
     runWithContext(createDefaultContext(), async () => {
@@ -116,19 +124,19 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         setIteration(iter);
 
         const time = new Date().toLocaleTimeString("en-US", { hour12: false });
-        addLine("iterationHeader", "", { iteration: iter, time });
-        addLine("info", `Phase: ${currentState.phase} (iteration ${currentState.phaseIteration})`);
+        addIterationHeader(iter, time);
+        addInfo(`Phase: ${currentState.phase} (iteration ${currentState.phaseIteration})`);
 
         const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
         if (progressContent !== null) {
           const section = extractCurrentSection(progressContent);
           if (section) {
             const firstLine = section.split("\n")[0];
-            addLine("info", `Section: ${firstLine}`);
+            addInfo(`Section: ${firstLine}`);
           }
           const p = countProgress(progressContent);
           setProgress(p);
-          addLine("info", `Progress: ${p.checked} done / ${p.unchecked} remaining`);
+          addInfo(`Progress: ${p.checked} done / ${p.unchecked} remaining`);
         }
 
         const prompt = buildTaskPrompt(currentState, taskDir);
@@ -146,12 +154,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             logFlag: opts.log,
             taskDir,
             interactive: isInteractivePhase,
-            onOutput: (line) => addLine("output", line),
+            onFeedEvent: addFeedEvent,
           });
 
           if (engineResult.exitCode !== 0) {
             const failure = handleEngineFailure(engineResult.exitCode);
-            addLine("info", failure.message);
+            addInfo(failure.message);
 
             const result = `failed:exit-${engineResult.exitCode}`;
             updateStateIteration(
@@ -200,22 +208,22 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
           const stopSignal = checkStopSignal(taskDir);
           if (stopSignal) {
-            addLine("info", `STOP signal: ${stopSignal.trim()}`);
+            addInfo(`STOP signal: ${stopSignal.trim()}`);
             break;
           }
 
-          addLine("info", `Completed iteration ${iter}`);
+          addInfo(`Completed iteration ${iter}`);
 
           // Delay between iterations
           if (
             checkStopCondition(currentState, iter, opts, loopStartTime, consFailures) === null &&
             opts.delay > 0
           ) {
-            addLine("info", `Sleeping ${opts.delay}s before next iteration...`);
+            addInfo(`Sleeping ${opts.delay}s before next iteration...`);
             await sleep(opts.delay);
           }
         } catch (err) {
-          addLine("info", `Engine error: ${err}`);
+          addInfo(`Engine error: ${err}`);
           break;
         }
       }
@@ -245,7 +253,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
       }
       setState(currentState);
 
-      addLine("info", `Ralph loop finished after ${iter} iterations.`);
+      addInfo(`Ralph loop finished after ${iter} iterations.`);
 
       if (iter > 0) {
         commitTaskDir(taskDir, `task ${opts.name} finished`);
@@ -276,5 +284,6 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
     stopReason,
     isRunning,
     isResume,
+    startedAt,
   };
 }

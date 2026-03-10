@@ -3,8 +3,9 @@ import { writeFileSync, unlinkSync, existsSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { type Engine, type IterationUsage } from "@ralphy/types";
-import { processClaudeLine } from "./formatters/claude-stream";
-import { processCodexLine } from "./formatters/codex-stream";
+import { type FeedEvent, renderFeedEvent } from "./feed-events";
+import { parseClaudeLine } from "./formatters/claude-stream";
+import { parseCodexLine } from "./formatters/codex-stream";
 
 export interface RunEngineOptions {
   engine: Engine;
@@ -14,6 +15,7 @@ export interface RunEngineOptions {
   taskDir?: string;
   interactive?: boolean;
   onOutput?: (line: string) => void;
+  onFeedEvent?: (event: FeedEvent) => void;
 }
 
 export interface EngineResult {
@@ -144,6 +146,29 @@ async function runInteractive(
   }
 }
 
+async function* streamLines(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      yield line;
+    }
+  }
+
+  if (buffer.trim()) {
+    yield buffer;
+  }
+}
+
 export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const { engine, model, prompt } = opts;
   const write = opts.onOutput ?? ((l: string) => process.stdout.write(l + "\n"));
@@ -168,6 +193,19 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   await stdin.flush();
   stdin.end();
 
+  const emit = opts.onFeedEvent;
+
+  // Emit a FeedEvent: either via structured callback or fall back to chalk string
+  function emitEvent(event: FeedEvent): void {
+    if (emit) {
+      emit(event);
+    } else {
+      for (const l of renderFeedEvent(event)) {
+        write(l);
+      }
+    }
+  }
+
   // Stream stdout line-by-line through the formatter
   const stdout = proc.stdout as ReadableStream<Uint8Array>;
   let usage: IterationUsage | null = null;
@@ -180,31 +218,9 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       usage: null as IterationUsage | null,
     };
 
-    const reader = stdout.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const output = processClaudeLine(line, claudeState);
-        for (const l of output) {
-          write(l);
-        }
-      }
-    }
-
-    // Process remaining buffer
-    if (buffer.trim()) {
-      const output = processClaudeLine(buffer, claudeState);
-      for (const l of output) {
-        write(l);
+    for await (const line of streamLines(stdout)) {
+      for (const event of parseClaudeLine(line, claudeState)) {
+        emitEvent(event);
       }
     }
 
@@ -216,62 +232,18 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       pendingTools: 0,
     };
 
-    // Merge stdout and stderr for codex (codex uses stderr for some output)
-    const reader = stdout.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const output = processCodexLine(line, codexState);
-        for (const l of output) {
-          write(l);
-        }
-      }
-    }
-
-    // Process remaining buffer
-    if (buffer.trim()) {
-      const output = processCodexLine(buffer, codexState);
-      for (const l of output) {
-        write(l);
+    for await (const line of streamLines(stdout)) {
+      for (const event of parseCodexLine(line, codexState)) {
+        emitEvent(event);
       }
     }
 
     // Also drain stderr for codex
     if (proc.stderr) {
       const stderr = proc.stderr as ReadableStream<Uint8Array>;
-      const stderrReader = stderr.getReader();
-      const stderrDecoder = new TextDecoder();
-      let stderrBuffer = "";
-
-      while (true) {
-        const { done, value } = await stderrReader.read();
-        if (done) break;
-        stderrBuffer += stderrDecoder.decode(value, { stream: true });
-
-        const lines = stderrBuffer.split("\n");
-        stderrBuffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          const output = processCodexLine(line, codexState);
-          for (const l of output) {
-            write(l);
-          }
-        }
-      }
-
-      if (stderrBuffer.trim()) {
-        const output = processCodexLine(stderrBuffer, codexState);
-        for (const l of output) {
-          write(l);
+      for await (const line of streamLines(stderr)) {
+        for (const event of parseCodexLine(line, codexState)) {
+          emitEvent(event);
         }
       }
     }
