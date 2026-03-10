@@ -4,7 +4,7 @@ Ralph loop framework.
 
 ## Stack
 
-- Package Manager: bun
+- Package Manager: bun - USE ONLY `bun` and `bun run` and `bunx` to run commands.
 
 ## Cost Warning
 
