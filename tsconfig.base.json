@@ -34,19 +34,8 @@
     "noUncheckedIndexedAccess": true,
     // Distinguish between `{ x?: number }` (may be missing) and `{ x: number | undefined }` (present but undefined)
     "exactOptionalPropertyTypes": true,
-    // Catch dead code: unused variables and parameters are compile errors
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    // Prevent accidental fall-through in switch cases
-    "noFallthroughCasesInSwitch": true,
     // Require the `override` keyword when overriding base-class methods, preventing silent breakage
     "noImplicitOverride": true,
-    // Every code path in a function must explicitly return (no accidental `undefined`)
-    "noImplicitReturns": true,
-    // Flag unreachable code as an error instead of silently ignoring it
-    "allowUnreachableCode": false,
-    // Error on unused labels (catches leftover debugging labels)
-    "allowUnusedLabels": false,
     // Force bracket notation for index-signature properties (e.g. `obj["key"]` not `obj.key`),
     // making it explicit when a property is known vs dynamic
     "noPropertyAccessFromIndexSignature": true,

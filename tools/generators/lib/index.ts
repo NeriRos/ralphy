@@ -1,4 +1,4 @@
-import { type Tree, formatFiles, generateFiles, updateJson } from "@nx/devkit";
+import { type Tree, formatFiles, generateFiles } from "@nx/devkit";
 import * as path from "node:path";
 
 interface LibGeneratorSchema {

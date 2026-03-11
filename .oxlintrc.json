@@ -4,7 +4,14 @@
   "rules": {
     "no-explicit-any": "error",
     "import/no-cycle": "error",
-    "no-console": "warn"
+    "no-console": "warn",
+    "no-unused-vars": "error",
+    "no-fallthrough": "error",
+    "no-unreachable": "error",
+    "no-unused-labels": "error",
+    "typescript/consistent-return": "error",
+    "typescript/no-namespace": "error",
+    "typescript/parameter-properties": "error"
   },
   "overrides": [
     {
@@ -12,6 +19,12 @@
       "rules": {
         "no-console": "off",
         "no-control-regex": "off"
+      }
+    },
+    {
+      "files": ["packages/output/**/*.ts"],
+      "rules": {
+        "no-console": "off"
       }
     }
   ],
