@@ -467,8 +467,8 @@ describe("App", () => {
     process.exitCode = 0;
   });
 
-  test("advance mode with valid task advances phase", () =>
-    withStorage(() => {
+  test("advance mode with valid task advances phase", async () => {
+    const { frames } = withStorage(() => {
       const taskDir = join(tempDir, "adv-task");
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "adv-task", phase: "research" });
@@ -476,33 +476,37 @@ describe("App", () => {
       // research -> plan requires RESEARCH.md
       writeFileSync(join(taskDir, "RESEARCH.md"), "# Research\nFindings here\n", "utf-8");
 
-      const { lastFrame } = render(
+      return render(
         <App args={makeArgs({ mode: "advance", name: "adv-task" })} tasksDir={tempDir} />,
       );
-      const frame = lastFrame()!;
-      expect(frame).toContain("Advanced");
-      expect(frame).toContain("research");
-      expect(frame).toContain("plan");
-    }));
+    });
+    await tick();
+    const frame = findFrame(frames, "Advanced");
+    expect(frame).toContain("Advanced");
+    expect(frame).toContain("research");
+    expect(frame).toContain("plan");
+  });
 
-  test("set-phase mode with valid args sets phase", () =>
-    withStorage(() => {
+  test("set-phase mode with valid args sets phase", async () => {
+    const { frames } = withStorage(() => {
       const taskDir = join(tempDir, "sp-task");
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "sp-task", phase: "research" });
       writeFileSync(join(taskDir, "state.json"), JSON.stringify(state), "utf-8");
 
-      const { lastFrame } = render(
+      return render(
         <App
           args={makeArgs({ mode: "set-phase", name: "sp-task", phase: "exec" })}
           tasksDir={tempDir}
         />,
       );
-      const frame = lastFrame()!;
-      expect(frame).toContain("Set phase");
-      expect(frame).toContain("research");
-      expect(frame).toContain("exec");
-    }));
+    });
+    await tick();
+    const frame = findFrame(frames, "Set phase");
+    expect(frame).toContain("Set phase");
+    expect(frame).toContain("research");
+    expect(frame).toContain("exec");
+  });
 
   test("task mode without name shows error", async () => {
     const { frames } = withStorage(() =>
