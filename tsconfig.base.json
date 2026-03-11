@@ -15,9 +15,6 @@
     "verbatimModuleSyntax": true,
     // Treat each file as an independent transpilation unit (required by bundlers and SWC)
     "isolatedModules": true,
-    // Require explicit return types on exported functions so declarations can be generated per-file;
-    // also makes exports self-documenting for AI agents and consumers
-    "isolatedDeclarations": true,
     // Allow `import config from "./config.json"`
     "resolveJsonModule": true,
     // Treat every file as a module even without imports/exports; prevents accidental global scripts
