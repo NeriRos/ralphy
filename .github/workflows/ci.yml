@@ -31,7 +31,7 @@ jobs:
         run: bun run typecheck:ci
 
       - name: Test
-        run: nx affected -t test
+        run: bunx nx affected -t test
 
       - name: Coverage
         run: bun run test:ci
