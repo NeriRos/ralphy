@@ -27,7 +27,7 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "tsc --noEmit -p packages/<%= name %>/tsconfig.json",
+        "command": "tsc -b packages/<%= name %>/tsconfig.json",
         "cwd": "{workspaceRoot}"
       }
     },
@@ -36,6 +36,13 @@
       "options": {
         "command": "bun test packages/<%= name %>/src",
         "cwd": "{workspaceRoot}"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test --coverage src",
+        "cwd": "{projectRoot}"
       }
     }
   }
