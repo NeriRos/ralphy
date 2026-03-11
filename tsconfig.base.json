@@ -15,8 +15,16 @@
     "verbatimModuleSyntax": true,
     // Treat each file as an independent transpilation unit (required by bundlers and SWC)
     "isolatedModules": true,
+    // Require explicit return types on exported functions so declarations can be generated per-file;
+    // also makes exports self-documenting for AI agents and consumers
+    "isolatedDeclarations": true,
     // Allow `import config from "./config.json"`
     "resolveJsonModule": true,
+    // Treat every file as a module even without imports/exports; prevents accidental global scripts
+    "moduleDetection": "force",
+    // Only allow type syntax that can be erased (bans enum, parameter properties, namespace);
+    // aligns with TC39 type annotations proposal and prevents enum-related bugs
+    "erasableSyntaxOnly": true,
 
     // --- Type Checking (strict + extras) ---
 
@@ -37,6 +45,20 @@
     "noImplicitReturns": true,
     // Flag unreachable code as an error instead of silently ignoring it
     "allowUnreachableCode": false,
+    // Error on unused labels (catches leftover debugging labels)
+    "allowUnusedLabels": false,
+    // Force bracket notation for index-signature properties (e.g. `obj["key"]` not `obj.key`),
+    // making it explicit when a property is known vs dynamic
+    "noPropertyAccessFromIndexSignature": true,
+    // Stricter return type for built-in iterators (not included in `strict`); prevents iterator returns from being `any`
+    "strictBuiltinIteratorReturn": true,
+    // Validate that side-effect imports (e.g. `import "./setup"`) actually resolve to a file
+    "noUncheckedSideEffectImports": true,
+
+    // --- AI & Diagnostics ---
+
+    // Show full type errors without truncation; critical for AI agents that parse compiler output
+    "noErrorTruncation": true,
 
     // --- Build & Output ---
 
@@ -51,6 +73,8 @@
 
     // --- Environment ---
 
+    // Only expose ESNext APIs; prevents accidentally using DOM globals (document, window) in server code
+    "lib": ["ESNext"],
     // Use Bun's type definitions instead of Node's
     "types": ["bun-types"],
     // Skip type-checking third-party .d.ts files for faster builds
