@@ -273,29 +273,32 @@ describe("IterationHeader", () => {
 });
 
 describe("StopMessage", () => {
-  test("renders terminal stop with progress", () =>
-    withStorage(() => {
-      const state = makeState();
-      writeFileSync(join(tempDir, "PROGRESS.md"), "- [x] Done\n- [x] Also done\n", "utf-8");
-      const { lastFrame } = render(
-        <StopMessage reason="terminal" state={state} taskDir={tempDir} consecutiveFailures={0} />,
-      );
-      const frame = lastFrame()!;
-      expect(frame).toContain("2 done");
-      expect(frame).toContain("Task complete");
-      expect(frame).toContain("PROGRESS.md");
-    }));
+  test("renders terminal stop with progress", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage
+        reason="terminal"
+        state={state}
+        taskDir={tempDir}
+        progress={{ checked: 2, unchecked: 0, total: 2 }}
+        consecutiveFailures={0}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("2 done");
+    expect(frame).toContain("Task complete");
+    expect(frame).toContain("PROGRESS.md");
+  });
 
-  test("renders noExecute stop", () =>
-    withStorage(() => {
-      const state = makeState();
-      const { lastFrame } = render(
-        <StopMessage reason="noExecute" state={state} taskDir={tempDir} consecutiveFailures={0} />,
-      );
-      const frame = lastFrame()!;
-      expect(frame).toContain("--no-execute");
-      expect(frame).toContain("PLAN.md");
-    }));
+  test("renders noExecute stop", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage reason="noExecute" state={state} taskDir={tempDir} consecutiveFailures={0} />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("--no-execute");
+    expect(frame).toContain("PLAN.md");
+  });
 
   test("renders maxIterations stop", () => {
     const state = makeState();

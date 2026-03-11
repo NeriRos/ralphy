@@ -1,14 +1,13 @@
-import { join } from "node:path";
 import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
-import { countProgress } from "@ralphy/core/progress";
-import { getStorage } from "@ralphy/context";
+import type { ProgressCount } from "@ralphy/core/progress";
 import type { StopReason } from "../loop";
 
 export interface StopMessageProps {
   reason: StopReason;
   state: State;
   taskDir: string;
+  progress?: ProgressCount | null;
   maxIterations?: number;
   maxCostUsd?: number;
   maxRuntimeMinutes?: number;
@@ -19,6 +18,7 @@ export function StopMessage({
   reason,
   state,
   taskDir,
+  progress,
   maxIterations,
   maxCostUsd,
   maxRuntimeMinutes,
@@ -26,12 +26,9 @@ export function StopMessage({
 }: StopMessageProps) {
   switch (reason) {
     case "terminal": {
-      const storage = getStorage();
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      const progress = progressContent !== null ? countProgress(progressContent) : null;
       return (
         <Box flexDirection="column">
-          {progress !== null && (
+          {progress != null && (
             <Text>
               {"\n"}All items checked ({progress.checked} done / {progress.unchecked} remaining).
               Task complete!

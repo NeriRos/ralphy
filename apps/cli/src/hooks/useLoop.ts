@@ -230,6 +230,10 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
       // Cleanup
       storage.remove(join(taskDir, "_interactive_done"));
+      const finalProgressContent = storage.read(join(taskDir, "PROGRESS.md"));
+      if (finalProgressContent !== null) {
+        setProgress(countProgress(finalProgressContent));
+      }
 
       currentState = readState(taskDir);
       if (currentState.status === "completed") {
