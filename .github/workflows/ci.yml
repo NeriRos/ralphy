@@ -38,3 +38,6 @@ jobs:
 
       - name: Circular deps
         run: bun run check:circular:ci
+
+      - name: Outdated deps
+        run: bun run check:outdated
