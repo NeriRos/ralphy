@@ -38,61 +38,61 @@ function shortenInline(text: string, max = 140): string {
 }
 
 function extractToolName(event: Record<string, unknown>): string {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
-  const itemCall = (item.call ?? {}) as Record<string, unknown>;
-  const rawCall = (rawItem.call ?? {}) as Record<string, unknown>;
-  const itemFunc = (item.function ?? {}) as Record<string, unknown>;
-  const rawFunc = (rawItem.function ?? {}) as Record<string, unknown>;
-  const itemTool = item.tool as Record<string, unknown> | string | undefined;
-  const rawTool = rawItem.tool as Record<string, unknown> | string | undefined;
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
+  const itemCall = (item["call"] ?? {}) as Record<string, unknown>;
+  const rawCall = (rawItem["call"] ?? {}) as Record<string, unknown>;
+  const itemFunc = (item["function"] ?? {}) as Record<string, unknown>;
+  const rawFunc = (rawItem["function"] ?? {}) as Record<string, unknown>;
+  const itemTool = item["tool"] as Record<string, unknown> | string | undefined;
+  const rawTool = rawItem["tool"] as Record<string, unknown> | string | undefined;
 
   const candidates: unknown[] = [
-    event.name,
-    event.tool_name,
-    (event.tool as Record<string, unknown> | undefined)?.name,
-    event.tool,
-    item.name,
-    item.tool_name,
-    typeof itemTool === "object" && itemTool ? itemTool.name : itemTool,
-    rawItem.name,
-    rawItem.tool_name,
-    rawItem.recipient_name,
-    typeof rawTool === "object" && rawTool ? rawTool.name : rawTool,
-    itemCall.name,
-    rawCall.name,
-    itemFunc.name,
-    rawFunc.name,
+    event["name"],
+    event["tool_name"],
+    (event["tool"] as Record<string, unknown> | undefined)?.["name"],
+    event["tool"],
+    item["name"],
+    item["tool_name"],
+    typeof itemTool === "object" && itemTool ? itemTool["name"] : itemTool,
+    rawItem["name"],
+    rawItem["tool_name"],
+    rawItem["recipient_name"],
+    typeof rawTool === "object" && rawTool ? rawTool["name"] : rawTool,
+    itemCall["name"],
+    rawCall["name"],
+    itemFunc["name"],
+    rawFunc["name"],
   ];
 
   const name = candidates.find((c) => typeof c === "string" && c.length > 0) as string | undefined;
 
-  const server = (item.server as string) ?? (event.server as string) ?? "";
+  const server = (item["server"] as string) ?? (event["server"] as string) ?? "";
   if (server && name) return `${server}/${name}`;
   return name ?? "";
 }
 
 function extractToolInputSummary(event: Record<string, unknown>): ToolInputSummary | undefined {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
-  const itemCall = (item.call ?? {}) as Record<string, unknown>;
-  const rawCall = (rawItem.call ?? {}) as Record<string, unknown>;
-  const itemFunc = (item.function ?? {}) as Record<string, unknown>;
-  const rawFunc = (rawItem.function ?? {}) as Record<string, unknown>;
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
+  const itemCall = (item["call"] ?? {}) as Record<string, unknown>;
+  const rawCall = (rawItem["call"] ?? {}) as Record<string, unknown>;
+  const itemFunc = (item["function"] ?? {}) as Record<string, unknown>;
+  const rawFunc = (rawItem["function"] ?? {}) as Record<string, unknown>;
 
   const candidates: unknown[] = [
-    item.command,
-    event.command,
-    event.arguments,
-    event.input,
-    item.arguments,
-    item.input,
-    rawItem.arguments,
-    rawItem.input,
-    itemCall.arguments,
-    rawCall.arguments,
-    itemFunc.arguments,
-    rawFunc.arguments,
+    item["command"],
+    event["command"],
+    event["arguments"],
+    event["input"],
+    item["arguments"],
+    item["input"],
+    rawItem["arguments"],
+    rawItem["input"],
+    itemCall["arguments"],
+    rawCall["arguments"],
+    itemFunc["arguments"],
+    rawFunc["arguments"],
   ];
 
   const val = candidates.find((c) => c !== undefined && c !== null);
@@ -102,29 +102,29 @@ function extractToolInputSummary(event: Record<string, unknown>): ToolInputSumma
 }
 
 function extractToolResultSummary(event: Record<string, unknown>): string {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
-  const itemCall = (item.call ?? {}) as Record<string, unknown>;
-  const rawCall = (rawItem.call ?? {}) as Record<string, unknown>;
-  const itemError = (item.error ?? {}) as Record<string, unknown>;
-  const eventError = (event.error ?? {}) as Record<string, unknown>;
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
+  const itemCall = (item["call"] ?? {}) as Record<string, unknown>;
+  const rawCall = (rawItem["call"] ?? {}) as Record<string, unknown>;
+  const itemError = (item["error"] ?? {}) as Record<string, unknown>;
+  const eventError = (event["error"] ?? {}) as Record<string, unknown>;
 
   const candidates: unknown[] = [
-    itemError.message,
-    eventError.message,
-    item.aggregated_output,
-    event.aggregated_output,
-    event.output,
-    event.result,
-    event.content,
-    item.output,
-    item.result,
-    item.content,
-    rawItem.output,
-    rawItem.result,
-    rawItem.content,
-    itemCall.output,
-    rawCall.output,
+    itemError["message"],
+    eventError["message"],
+    item["aggregated_output"],
+    event["aggregated_output"],
+    event["output"],
+    event["result"],
+    event["content"],
+    item["output"],
+    item["result"],
+    item["content"],
+    rawItem["output"],
+    rawItem["result"],
+    rawItem["content"],
+    itemCall["output"],
+    rawCall["output"],
   ];
 
   const val = candidates.find((c) => c !== undefined && c !== null);
@@ -134,44 +134,44 @@ function extractToolResultSummary(event: Record<string, unknown>): string {
 }
 
 function extractThinkingText(event: Record<string, unknown>): string {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
   const candidates: unknown[] = [
-    event.delta,
-    event.text,
-    event.summary,
-    event.reasoning,
-    event.message,
-    item.delta,
-    item.text,
-    item.summary,
-    item.reasoning,
-    rawItem.delta,
-    rawItem.text,
-    rawItem.summary,
-    rawItem.reasoning,
+    event["delta"],
+    event["text"],
+    event["summary"],
+    event["reasoning"],
+    event["message"],
+    item["delta"],
+    item["text"],
+    item["summary"],
+    item["reasoning"],
+    rawItem["delta"],
+    rawItem["text"],
+    rawItem["summary"],
+    rawItem["reasoning"],
   ];
   const val = candidates.find((c) => typeof c === "string" && c.length > 0) as string | undefined;
   return val ?? "";
 }
 
 function extractMessageText(event: Record<string, unknown>): string {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
-  const itemType = (item.type as string) ?? (rawItem.type as string) ?? "";
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
+  const itemType = (item["type"] as string) ?? (rawItem["type"] as string) ?? "";
 
   if (itemType === "agent_message") {
-    return (item.text as string) ?? "";
+    return (item["text"] as string) ?? "";
   }
 
   if (itemType === "message") {
-    const content = (item.content ?? rawItem.content ?? []) as Array<Record<string, unknown>>;
+    const content = (item["content"] ?? rawItem["content"] ?? []) as Array<Record<string, unknown>>;
     return content
       .filter((c) => {
-        const t = (c.type as string) ?? "";
+        const t = (c["type"] as string) ?? "";
         return t === "output_text" || t === "text" || t === "summary_text";
       })
-      .map((c) => (c.text as string) ?? (c.value as string) ?? "")
+      .map((c) => (c["text"] as string) ?? (c["value"] as string) ?? "")
       .join("");
   }
 
@@ -185,9 +185,9 @@ function isImportantNonJson(line: string): boolean {
 }
 
 function getItemType(event: Record<string, unknown>): string {
-  const item = (event.item ?? {}) as Record<string, unknown>;
-  const rawItem = (item.raw_item ?? {}) as Record<string, unknown>;
-  return (item.type as string) ?? (rawItem.type as string) ?? "";
+  const item = (event["item"] ?? {}) as Record<string, unknown>;
+  const rawItem = (item["raw_item"] ?? {}) as Record<string, unknown>;
+  return (item["type"] as string) ?? (rawItem["type"] as string) ?? "";
 }
 
 /**
@@ -210,14 +210,14 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
     return [{ type: "raw", text: line }];
   }
 
-  const type = event.type as string | undefined;
+  const type = event["type"] as string | undefined;
   if (!type) return [];
 
   const events: FeedEvent[] = [];
 
   switch (type) {
     case "thread.started": {
-      const tid = ((event.thread_id as string) ?? "").slice(0, 8);
+      const tid = ((event["thread_id"] as string) ?? "").slice(0, 8);
       events.push({ type: "session", model: "codex", sessionId: tid });
       break;
     }
@@ -227,19 +227,19 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
       break;
 
     case "turn.completed": {
-      const usage = event.usage as Record<string, number> | undefined;
+      const usage = event["usage"] as Record<string, number> | undefined;
       if (state.printingText) state.printingText = false;
       const td: Extract<FeedEvent, { type: "turn-done" }> = { type: "turn-done" };
-      if (usage?.input_tokens !== undefined) td.inputTokens = usage.input_tokens;
-      if (usage?.output_tokens !== undefined) td.outputTokens = usage.output_tokens;
+      if (usage?.["input_tokens"] !== undefined) td.inputTokens = usage["input_tokens"];
+      if (usage?.["output_tokens"] !== undefined) td.outputTokens = usage["output_tokens"];
       events.push(td);
       break;
     }
 
     case "turn.failed": {
       const err =
-        ((event.error as Record<string, unknown>)?.message as string) ??
-        (event.message as string) ??
+        ((event["error"] as Record<string, unknown>)?.["message"] as string) ??
+        (event["message"] as string) ??
         "unknown error";
       if (state.printingText) state.printingText = false;
       events.push({ type: "result-error", message: err });
@@ -247,7 +247,7 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
     }
 
     case "error": {
-      const msg = (event.message as string) ?? "unknown error";
+      const msg = (event["message"] as string) ?? "unknown error";
       if (/hit your limit/i.test(msg)) {
         state.rateLimited = true;
         events.push({ type: "rate-limit", message: msg });
@@ -262,7 +262,10 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
     case "message.delta":
     case "output_text.delta": {
       const delta =
-        (event.delta as string) ?? (event.text as string) ?? (event.message as string) ?? "";
+        (event["delta"] as string) ??
+        (event["text"] as string) ??
+        (event["message"] as string) ??
+        "";
       if (delta) {
         state.printingText = true;
         events.push({ type: "text", text: delta });
@@ -274,7 +277,7 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
     case "assistant.message.completed":
     case "message.completed":
     case "output_text.done": {
-      const doneText = (event.text as string) ?? "";
+      const doneText = (event["text"] as string) ?? "";
       if (doneText) events.push({ type: "text", text: doneText });
       state.printingText = false;
       break;
@@ -369,16 +372,16 @@ export function parseCodexLine(line: string, state: CodexStreamState): FeedEvent
     }
 
     case "response.completed": {
-      const response = (event.response ?? {}) as Record<string, unknown>;
-      const responseOutput = (response.output ?? []) as Array<Record<string, unknown>>;
+      const response = (event["response"] ?? {}) as Record<string, unknown>;
+      const responseOutput = (response["output"] ?? []) as Array<Record<string, unknown>>;
       const finalTexts: string[] = [];
       for (const item of responseOutput) {
-        if ((item.type as string) !== "message") continue;
-        const content = (item.content ?? []) as Array<Record<string, unknown>>;
+        if ((item["type"] as string) !== "message") continue;
+        const content = (item["content"] ?? []) as Array<Record<string, unknown>>;
         for (const c of content) {
-          const ct = (c.type as string) ?? "";
+          const ct = (c["type"] as string) ?? "";
           if (ct === "output_text" || ct === "text") {
-            const text = (c.text as string) ?? "";
+            const text = (c["text"] as string) ?? "";
             if (text) finalTexts.push(text);
           }
         }

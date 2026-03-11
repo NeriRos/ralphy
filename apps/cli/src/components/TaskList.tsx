@@ -34,9 +34,9 @@ function buildRows(tasksDir: string): TaskRow[] {
       continue;
     }
 
-    if (state.phase === "done") continue;
+    if (state["phase"] === "done") continue;
 
-    const promptRaw = String(state.prompt ?? "");
+    const promptRaw = String(state["prompt"] ?? "");
     const firstLine = promptRaw.split("\n").find((l) => l.trim() !== "") ?? "";
 
     let progress = "—";
@@ -52,10 +52,10 @@ function buildRows(tasksDir: string): TaskRow[] {
     }
 
     rows.push({
-      name: String(state.name ?? entry),
-      phase: String(state.phase ?? "unknown"),
-      status: String(state.status ?? "unknown"),
-      iters: String(state.totalIterations ?? 0),
+      name: String(state["name"] ?? entry),
+      phase: String(state["phase"] ?? "unknown"),
+      status: String(state["status"] ?? "unknown"),
+      iters: String(state["totalIterations"] ?? 0),
       progress,
       progressStyled,
       prompt: firstLine
