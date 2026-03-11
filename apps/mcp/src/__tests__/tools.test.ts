@@ -216,19 +216,19 @@ describe("ralph_get_task", () => {
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as Record<string, unknown>;
 
-    expect(data.name).toBe("detail-task");
-    expect(data.prompt).toBe("Test task detail-task");
-    expect(data.phase).toBe("research");
-    expect(data.status).toBe("active");
-    expect(data.progress).toEqual({ checked: 1, unchecked: 2, total: 3 });
+    expect(data["name"]).toBe("detail-task");
+    expect(data["prompt"]).toBe("Test task detail-task");
+    expect(data["phase"]).toBe("research");
+    expect(data["status"]).toBe("active");
+    expect(data["progress"]).toEqual({ checked: 1, unchecked: 2, total: 3 });
     // Section 1 still has unchecked items, so it's the current section
-    expect(data.currentSection).toContain("Section 1");
-    expect(data.documents).toContain("PROGRESS.md");
-    expect(data.documents).toContain("STEERING.md");
-    expect(data.documents).toContain("RESEARCH.md");
-    expect(data.steering).toBe("# Steering\nDo things carefully.");
-    expect(data.metadata).toBeDefined();
-    expect(data.historyLength).toBe(0);
+    expect(data["currentSection"]).toContain("Section 1");
+    expect(data["documents"]).toContain("PROGRESS.md");
+    expect(data["documents"]).toContain("STEERING.md");
+    expect(data["documents"]).toContain("RESEARCH.md");
+    expect(data["steering"]).toBe("# Steering\nDo things carefully.");
+    expect(data["metadata"]).toBeDefined();
+    expect(data["historyLength"]).toBe(0);
   });
 
   test("returns error for missing task", async () => {
@@ -247,10 +247,10 @@ describe("ralph_get_task", () => {
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as Record<string, unknown>;
 
-    expect(data.progress).toBeNull();
-    expect(data.currentSection).toBeNull();
-    expect(data.documents).toEqual([]);
-    expect(data.steering).toBeNull();
+    expect(data["progress"]).toBeNull();
+    expect(data["currentSection"]).toBeNull();
+    expect(data["documents"]).toEqual([]);
+    expect(data["steering"]).toBeNull();
   });
 });
 
