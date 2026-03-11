@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { parseArgs } from "./cli";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { scaffoldTasksDir } from "@ralphy/core/templates";
+import { initRalphFromTasksDir } from "@ralphy/core/init";
 import { App } from "./components/App";
 
 /**
@@ -27,6 +28,7 @@ try {
   const tasksDir = resolveTasksDir();
 
   runWithContext(createDefaultContext(), () => {
+    initRalphFromTasksDir(tasksDir);
     scaffoldTasksDir(tasksDir);
     render(createElement(App, { args, tasksDir }));
   });

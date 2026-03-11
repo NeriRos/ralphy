@@ -16,6 +16,18 @@ Each phase runs in a loop — the engine iterates until the phase's completion c
 
 ## Installation
 
+### npm (global)
+
+```bash
+npm install -g ralphy
+# or
+bunx ralphy
+```
+
+Requires [Bun](https://bun.sh) as the runtime.
+
+### Local (per-project)
+
 ```bash
 bun install
 make install            # Install to ./.ralph

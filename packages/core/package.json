@@ -11,7 +11,8 @@
     "./documents": "./src/documents.ts",
     "./templates": "./src/templates.ts",
     "./format": "./src/format.ts",
-    "./smoke": "./src/smoke.ts"
+    "./smoke": "./src/smoke.ts",
+    "./init": "./src/init.ts"
   },
   "dependencies": {
     "@ralphy/content": "workspace:*",

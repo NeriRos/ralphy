@@ -17,7 +17,7 @@ export interface StorageProvider {
 
 export type Phase = string;
 export type Engine = "claude" | "codex";
-export type Mode = "task" | "list" | "status" | "advance" | "set-phase";
+export type Mode = "task" | "list" | "status" | "advance" | "set-phase" | "init";
 
 // --- Phase config types ---
 
