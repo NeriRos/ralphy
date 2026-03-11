@@ -104,6 +104,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
             reason={loop.stopReason}
             state={loop.state}
             taskDir={taskDir}
+            progress={loop.progress}
             maxIterations={opts.maxIterations}
             maxCostUsd={opts.maxCostUsd}
             maxRuntimeMinutes={opts.maxRuntimeMinutes}
