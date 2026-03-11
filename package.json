@@ -20,7 +20,8 @@
     "lint:ci": "nx affected -t lint",
     "fmt:ci": "nx affected -t fmt:check",
     "typecheck:ci": "nx affected -t typecheck --parallel=1",
-    "test:ci": "nx affected -t test:coverage",
+    "test:ci": "nx affected -t test",
+    "test:coverage:ci": "nx affected -t test:coverage",
     "check:circular:ci": "nx affected -t check:circular",
     "prepare": "husky"
   },
