@@ -16,11 +16,11 @@ Run all CI verification steps. Save all output to `/tmp/<project-name>/<branch-n
 
 ## Step 2: Run local CI targets
 
-For each `run:` step extracted from the workflow (skipping `bun install`), run it sequentially. Save stdout+stderr to `/tmp/<project-name>/<branch-name>/verify-<step-name>.log` (derive `<step-name>` from the step's `name:` field, lowercased and hyphenated, e.g. "Circular deps" -> "circular-deps").
+Run ALL `run:` steps extracted from the workflow (skipping `bun install`) **in parallel** using the Bash tool. Each step saves stdout+stderr to `/tmp/<project-name>/<branch-name>/verify-<step-name>.log` (derive `<step-name>` from the step's `name:` field, lowercased and hyphenated, e.g. "Circular deps" -> "circular-deps").
 
-Stop early if a step fails — do NOT continue to subsequent steps after a failure.
+Launch all steps at the same time — do NOT run them sequentially.
 
-After running all (or stopping on failure), read the log files and report a concise summary:
+After all complete, read the log files for any that failed and report a concise summary:
 
 - Which steps passed / failed
 - For failures: extract the key error lines (not the full log)
