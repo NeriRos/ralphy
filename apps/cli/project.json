@@ -27,7 +27,7 @@
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "bun build apps/cli/src/index.ts --outdir dist/cli --target bun --external react-devtools-core",
+        "command": "bun build apps/cli/src/index.ts --outdir dist/cli --target bun",
         "cwd": "{workspaceRoot}"
       },
       "outputs": ["{workspaceRoot}/dist/cli"]
