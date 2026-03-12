@@ -87,6 +87,13 @@ export function App({ args, tasksDir }: AppProps) {
       );
     }
 
+    case "init":
+      return (
+        <ExitAfterRender>
+          <Text color="green">Initialized .ralph directory</Text>
+        </ExitAfterRender>
+      );
+
     case "task": {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for task mode" />;

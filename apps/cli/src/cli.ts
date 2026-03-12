@@ -20,7 +20,7 @@ export interface ParsedArgs {
   verbose: boolean;
 }
 
-const VALID_MODES = new Set<string>(["task", "list", "status", "advance", "set-phase"]);
+const VALID_MODES = new Set<string>(["task", "list", "status", "advance", "set-phase", "init"]);
 
 const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
 
