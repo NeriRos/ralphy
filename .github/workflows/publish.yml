@@ -21,7 +21,7 @@ jobs:
       - name: Set version from tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          bun pkg set version="$VERSION"
+          npm pkg set version="$VERSION"
 
       - run: bun install --frozen-lockfile
 
