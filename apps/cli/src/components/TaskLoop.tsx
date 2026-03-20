@@ -27,28 +27,68 @@ function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | unde
   }
 }
 
-function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
+/**
+ * Navigate input history. Returns the value to display, or null if no change.
+ */
+export function navigateHistory(
+  history: string[],
+  currentIndex: number,
+  direction: "up" | "down",
+): { value: string; index: number } | null {
+  if (history.length === 0) return null;
+
+  if (direction === "up") {
+    const nextIndex = currentIndex < history.length - 1 ? currentIndex + 1 : currentIndex;
+    return { value: history[history.length - 1 - nextIndex]!, index: nextIndex };
+  }
+  const nextIndex = currentIndex > 0 ? currentIndex - 1 : -1;
+  return {
+    value: nextIndex >= 0 ? history[history.length - 1 - nextIndex]! : "",
+    index: nextIndex,
+  };
+}
+
+/**
+ * Process a submitted steering value: trim, add to history, and call onSubmit.
+ * Returns true if the value was submitted, false if it was empty.
+ */
+export function processSteerSubmit(
+  value: string,
+  history: string[],
+  onSubmit: (msg: string) => void,
+): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  history.push(trimmed);
+  onSubmit(trimmed);
+  return true;
+}
+
+/**
+ * Process key input for history navigation.
+ * Returns updated state if navigation occurred, null otherwise.
+ */
+export function handleSteerKeyInput(
+  key: { upArrow: boolean; downArrow: boolean },
+  history: string[],
+  currentIndex: number,
+): { value: string; index: number } | null {
+  const dir = key.upArrow ? ("up" as const) : key.downArrow ? ("down" as const) : null;
+  if (!dir) return null;
+  return navigateHistory(history, currentIndex, dir);
+}
+
+export function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
   const [inputKey, setInputKey] = useState(0);
   const [defaultValue, setDefaultValue] = useState("");
   const historyRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
 
   useInput((_input, key) => {
-    const history = historyRef.current;
-    if (history.length === 0) return;
-
-    if (key.upArrow) {
-      const nextIndex =
-        historyIndexRef.current < history.length - 1
-          ? historyIndexRef.current + 1
-          : historyIndexRef.current;
-      historyIndexRef.current = nextIndex;
-      setDefaultValue(history[history.length - 1 - nextIndex]!);
-      setInputKey((k) => k + 1);
-    } else if (key.downArrow) {
-      const nextIndex = historyIndexRef.current > 0 ? historyIndexRef.current - 1 : -1;
-      historyIndexRef.current = nextIndex;
-      setDefaultValue(nextIndex >= 0 ? history[history.length - 1 - nextIndex]! : "");
+    const result = handleSteerKeyInput(key, historyRef.current, historyIndexRef.current);
+    if (result) {
+      historyIndexRef.current = result.index;
+      setDefaultValue(result.value);
       setInputKey((k) => k + 1);
     }
   });
@@ -60,11 +100,8 @@ function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
         key={inputKey}
         defaultValue={defaultValue}
         onSubmit={(v) => {
-          const trimmed = v.trim();
-          if (trimmed) {
-            historyRef.current.push(trimmed);
+          if (processSteerSubmit(v, historyRef.current, onSubmit)) {
             historyIndexRef.current = -1;
-            onSubmit(trimmed);
             setDefaultValue("");
             setInputKey((k) => k + 1);
           }

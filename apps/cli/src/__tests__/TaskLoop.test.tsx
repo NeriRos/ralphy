@@ -534,6 +534,215 @@ describe("TaskLoop", () => {
     });
   });
 
+  test("live steering kills engine, writes STEERING.md, and resumes session", async () => {
+    let engineStartResolve: () => void;
+    const engineStarted = new Promise<void>((r) => {
+      engineStartResolve = r;
+    });
+
+    // First call: return a sessionId, wait for abort
+    runEngineMock.mockImplementationOnce(
+      async (opts: { signal?: AbortSignal }): Promise<EngineResult> => {
+        engineStarted;
+        engineStartResolve!();
+        await new Promise<void>((resolve) => {
+          if (opts.signal?.aborted) return resolve();
+          opts.signal?.addEventListener("abort", () => resolve(), { once: true });
+          setTimeout(resolve, 2000);
+        });
+        return { exitCode: 0, usage: null, sessionId: "sess-abc123" };
+      },
+    );
+
+    // Second call: the resumed session
+    runEngineMock.mockImplementationOnce(
+      async (opts: { resumeSessionId?: string }): Promise<EngineResult> => {
+        // Verify it's a resume call
+        expect(opts.resumeSessionId).toBe("sess-abc123");
+        return { exitCode: 0, usage: null, sessionId: "sess-abc123" };
+      },
+    );
+
+    await withStorage(async () => {
+      const taskDir = join(tempDir, "steer-live-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "steer-live-task" });
+      writeState(taskDir, state);
+      writeFileSync(join(taskDir, "STEERING.md"), "original\n", "utf-8");
+
+      // Use a wrapper to capture the steer function
+      let steerFn: ((msg: string) => void) | null = null;
+      const WrappedTaskLoop = () => {
+        const { useLoop: useLoopHook } = require("../hooks/useLoop");
+        const loop = useLoopHook({
+          name: "steer-live-task",
+          prompt: "Steer live test",
+          engine: "claude" as const,
+          model: "opus",
+          maxIterations: 1,
+          maxCostUsd: 0,
+          maxRuntimeMinutes: 0,
+          maxConsecutiveFailures: 5,
+          noExecute: false,
+          interactive: false,
+          delay: 0,
+          log: false,
+          verbose: false,
+          tasksDir: tempDir,
+        });
+        steerFn = loop.steer;
+        return null;
+      };
+
+      render(<WrappedTaskLoop />);
+
+      // Wait for engine to start
+      await engineStarted;
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Trigger steer
+      steerFn!("focus on tests");
+
+      // Wait for resume to complete
+      await new Promise((r) => setTimeout(r, 500));
+
+      // Verify STEERING.md was appended
+      const { readFileSync } = await import("node:fs");
+      const steeringContent = readFileSync(join(taskDir, "STEERING.md"), "utf-8");
+      expect(steeringContent).toContain("original");
+      expect(steeringContent).toContain("focus on tests");
+
+      // Verify engine was called twice (original + resume)
+      expect(runEngineMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  test("processSteerSubmit trims, adds to history, and calls onSubmit", () => {
+    const { processSteerSubmit } = require("../components/TaskLoop");
+    const history: string[] = [];
+    const submitted: string[] = [];
+    const onSubmit = (msg: string) => submitted.push(msg);
+
+    // Empty/whitespace returns false
+    expect(processSteerSubmit("", history, onSubmit)).toBe(false);
+    expect(processSteerSubmit("   ", history, onSubmit)).toBe(false);
+    expect(submitted).toEqual([]);
+    expect(history).toEqual([]);
+
+    // Valid input returns true, adds to history, calls onSubmit
+    expect(processSteerSubmit("  focus on tests  ", history, onSubmit)).toBe(true);
+    expect(submitted).toEqual(["focus on tests"]);
+    expect(history).toEqual(["focus on tests"]);
+
+    // Another submission
+    expect(processSteerSubmit("skip lint", history, onSubmit)).toBe(true);
+    expect(submitted).toEqual(["focus on tests", "skip lint"]);
+    expect(history).toEqual(["focus on tests", "skip lint"]);
+  });
+
+  test("handleSteerKeyInput delegates to navigateHistory for arrow keys", () => {
+    const { handleSteerKeyInput } = require("../components/TaskLoop");
+    const history = ["a", "b", "c"];
+
+    // Non-arrow key returns null
+    expect(handleSteerKeyInput({ upArrow: false, downArrow: false }, history, -1)).toBeNull();
+
+    // Up arrow navigates
+    const r1 = handleSteerKeyInput({ upArrow: true, downArrow: false }, history, -1);
+    expect(r1).toEqual({ value: "c", index: 0 });
+
+    // Down arrow navigates
+    const r2 = handleSteerKeyInput({ upArrow: false, downArrow: true }, history, 1);
+    expect(r2).toEqual({ value: "c", index: 0 });
+  });
+
+  test("navigateHistory returns correct values for up/down", () => {
+    const { navigateHistory } = require("../components/TaskLoop");
+    const history = ["first", "second", "third"];
+
+    // Empty history returns null
+    expect(navigateHistory([], -1, "up")).toBeNull();
+
+    // Up from start recalls most recent
+    const r1 = navigateHistory(history, -1, "up");
+    expect(r1).toEqual({ value: "third", index: 0 });
+
+    // Up again goes further back
+    const r2 = navigateHistory(history, 0, "up");
+    expect(r2).toEqual({ value: "second", index: 1 });
+
+    // Up at the end stays
+    const r3 = navigateHistory(history, 2, "up");
+    expect(r3).toEqual({ value: "first", index: 2 });
+
+    // Down from middle
+    const r4 = navigateHistory(history, 1, "down");
+    expect(r4).toEqual({ value: "third", index: 0 });
+
+    // Down from 0 clears
+    const r5 = navigateHistory(history, 0, "down");
+    expect(r5).toEqual({ value: "", index: -1 });
+
+    // Down from -1 stays empty
+    const r6 = navigateHistory(history, -1, "down");
+    expect(r6).toEqual({ value: "", index: -1 });
+  });
+
+  test("SteerInput renders and handles keyboard input", async () => {
+    const submitted: string[] = [];
+    const { SteerInput } = await import("../components/TaskLoop");
+
+    const { stdin } = render(<SteerInput onSubmit={(msg) => submitted.push(msg)} />);
+
+    // Send up arrow to exercise the useInput handler (no history yet, so no-op)
+    stdin.write("\x1B[A");
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Send a regular key to exercise the useInput handler's non-arrow path
+    stdin.write("x");
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Send return to exercise onSubmit
+    stdin.write("\r");
+    await new Promise((r) => setTimeout(r, 50));
+
+    // "x" should have been submitted
+    expect(submitted).toEqual(["x"]);
+  });
+
+  test("steer input is rendered while task is running", async () => {
+    await withStorage(async () => {
+      const taskDir = join(tempDir, "steer-vis-task");
+      mkdirSync(taskDir, { recursive: true });
+      const state = makeState({ name: "steer-vis-task" });
+      writeState(taskDir, state);
+
+      const opts = {
+        name: "steer-vis-task",
+        prompt: "Steer vis",
+        engine: "claude" as const,
+        model: "opus",
+        maxIterations: 1,
+        maxCostUsd: 0,
+        maxRuntimeMinutes: 0,
+        maxConsecutiveFailures: 5,
+        noExecute: false,
+        interactive: false,
+        delay: 0,
+        log: false,
+        verbose: false,
+        tasksDir: tempDir,
+      };
+
+      const { frames } = render(<TaskLoop opts={opts} />);
+      await new Promise((r) => setTimeout(r, 500));
+
+      const allText = frames.join("\n");
+      // Steer input should have been rendered at some point while running
+      expect(allText).toContain("steer:");
+    });
+  });
+
   test("delay between iterations triggers sleep", async () => {
     // Two successful iterations with a small delay
     runEngineMock
