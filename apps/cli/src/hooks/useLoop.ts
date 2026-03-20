@@ -178,8 +178,10 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             const steerMessage = pendingSteerRef.current;
             pendingSteerRef.current = null;
 
-            // Update STEERING.md
-            storage.write(join(taskDir, "STEERING.md"), steerMessage);
+            // Append to STEERING.md
+            const existing = storage.read(join(taskDir, "STEERING.md")) ?? "";
+            const updated = existing.trimEnd() + "\n\n" + steerMessage + "\n";
+            storage.write(join(taskDir, "STEERING.md"), updated);
             addInfo(`Live steering: ${steerMessage}`);
 
             // Resume the session with the steering message
