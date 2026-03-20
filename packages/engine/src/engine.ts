@@ -143,10 +143,10 @@ async function runInteractive(
     // Keep the file — the loop uses it to avoid re-entering interactive mode
     const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
     if (doneFile && existsSync(doneFile)) {
-      return { exitCode: 0, usage: null };
+      return { exitCode: 0, usage: null, sessionId: null };
     }
 
-    return { exitCode, usage: null };
+    return { exitCode, usage: null, sessionId: null };
   } finally {
     try {
       unlinkSync(promptFile);
