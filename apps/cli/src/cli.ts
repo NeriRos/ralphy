@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { log } from "@ralphy/output";
 import type { Engine, Mode } from "@ralphy/types";
 
-import HELP_TEXT from "./help.md" with { type: "text" };
+import HELP_TEXT from "./help.txt" with { type: "text" };
 
 export interface ParsedArgs {
   mode: Mode;
