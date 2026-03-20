@@ -16,6 +16,7 @@ const DOCUMENTS = getDocumentNames();
 
 export function registerTools(server: McpServer, tasksDir: string): void {
   // --- ralph_list_tasks ---
+  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
   server.registerTool(
     "ralph_list_tasks",
     {
@@ -147,6 +148,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_read_document ---
+  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
   server.registerTool(
     "ralph_read_document",
     {
@@ -188,6 +190,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_create_task ---
+  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
   server.registerTool(
     "ralph_create_task",
     {
@@ -245,6 +248,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_run_task ---
+  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
   server.registerTool(
     "ralph_run_task",
     {
@@ -516,6 +520,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_apply_checklist ---
+  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
   server.registerTool(
     "ralph_apply_checklist",
     {
