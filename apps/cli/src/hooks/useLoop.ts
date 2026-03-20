@@ -139,6 +139,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           addInfo(`Progress: ${p.checked} done / ${p.unchecked} remaining`);
         }
 
+        const phaseBeforeEngine = currentState.phase;
         const prompt = buildTaskPrompt(currentState, taskDir);
 
         const iterStart = new Date().toISOString();
@@ -179,7 +180,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             }
             setConsecutiveFailures(consFailures);
 
-            break;
+            continue;
           }
 
           // Success
@@ -196,7 +197,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           lastResult = "";
           setConsecutiveFailures(0);
 
-          currentState = autoTransitionAfterIteration(currentState, taskDir);
+          // Only auto-transition if the agent didn't already advance the phase
+          // (e.g. via ralph_advance_phase MCP tool during the engine run).
+          // Otherwise we'd double-transition, skipping the review engine run.
+          if (currentState.phase === phaseBeforeEngine) {
+            currentState = autoTransitionAfterIteration(currentState, taskDir);
+          }
           setState(currentState);
           setCurrentPhase(currentState.phase);
 
