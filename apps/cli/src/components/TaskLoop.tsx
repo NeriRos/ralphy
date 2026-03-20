@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { join } from "node:path";
-import { Box, Static, Text, useApp } from "ink";
+import { Box, Static, Text, useApp, useInput } from "ink";
 import { TextInput } from "@inkjs/ui";
 import { Banner } from "./Banner";
 import { IterationHeader } from "./IterationHeader";
@@ -29,16 +29,29 @@ function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | unde
 
 function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
   const [inputKey, setInputKey] = useState(0);
+  const [defaultValue, setDefaultValue] = useState("");
+  const historyRef = useRef<string[]>([]);
+
+  useInput((_input, key) => {
+    if (key.upArrow && historyRef.current.length > 0) {
+      const last = historyRef.current[historyRef.current.length - 1]!;
+      setDefaultValue(last);
+      setInputKey((k) => k + 1);
+    }
+  });
 
   return (
     <Box>
       <Text dimColor>steer: </Text>
       <TextInput
         key={inputKey}
+        defaultValue={defaultValue}
         onSubmit={(v) => {
           const trimmed = v.trim();
           if (trimmed) {
+            historyRef.current.push(trimmed);
             onSubmit(trimmed);
+            setDefaultValue("");
             setInputKey((k) => k + 1);
           }
         }}
