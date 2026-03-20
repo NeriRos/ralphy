@@ -35,6 +35,8 @@ export interface UseLoopResult {
   isRunning: boolean;
   isResume: boolean;
   startedAt: number;
+  /** Send a live steering message to the current engine session. */
+  steer: (message: string) => void;
 }
 
 function sleep(seconds: number): Promise<void> {
@@ -54,6 +56,13 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
   const [startedAt] = useState(() => Date.now());
 
   const lineIdRef = useRef(0);
+  const steerControllerRef = useRef<AbortController | null>(null);
+  const pendingSteerRef = useRef<string | null>(null);
+
+  const steer = (message: string) => {
+    pendingSteerRef.current = message;
+    steerControllerRef.current?.abort();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +157,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           const isInteractivePhase =
             opts.interactive && currentState.phase === "research" && !interactiveDone;
 
-          const engineResult = await runEngine({
+          // Set up abort controller for live steering
+          const controller = new AbortController();
+          steerControllerRef.current = controller;
+          pendingSteerRef.current = null;
+
+          let engineResult = await runEngine({
             engine: opts.engine,
             model: opts.model,
             prompt,
@@ -156,7 +170,66 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             taskDir,
             interactive: isInteractivePhase,
             onFeedEvent: addFeedEvent,
+            signal: controller.signal,
           });
+
+          // Handle live steering: kill → resume with steering message
+          while (pendingSteerRef.current !== null && engineResult.sessionId) {
+            const steerMessage = pendingSteerRef.current;
+            pendingSteerRef.current = null;
+
+            // Update STEERING.md
+            storage.write(join(taskDir, "STEERING.md"), steerMessage);
+            addInfo(`Live steering: ${steerMessage}`);
+
+            // Resume the session with the steering message
+            const resumeController = new AbortController();
+            steerControllerRef.current = resumeController;
+
+            const steerPrompt = [
+              "LIVE STEERING UPDATE FROM USER:",
+              "",
+              steerMessage,
+              "",
+              "Acknowledge this steering update briefly, then continue your current task with this new guidance.",
+            ].join("\n");
+
+            const resumeResult = await runEngine({
+              engine: opts.engine,
+              model: opts.model,
+              prompt: steerPrompt,
+              logFlag: opts.log,
+              taskDir,
+              onFeedEvent: addFeedEvent,
+              signal: resumeController.signal,
+              resumeSessionId: engineResult.sessionId,
+            });
+
+            // Merge usage from both runs
+            if (resumeResult.usage && engineResult.usage) {
+              resumeResult.usage = {
+                cost_usd: (engineResult.usage.cost_usd ?? 0) + (resumeResult.usage.cost_usd ?? 0),
+                duration_ms:
+                  (engineResult.usage.duration_ms ?? 0) + (resumeResult.usage.duration_ms ?? 0),
+                num_turns:
+                  (engineResult.usage.num_turns ?? 0) + (resumeResult.usage.num_turns ?? 0),
+                input_tokens:
+                  (engineResult.usage.input_tokens ?? 0) + (resumeResult.usage.input_tokens ?? 0),
+                output_tokens:
+                  (engineResult.usage.output_tokens ?? 0) + (resumeResult.usage.output_tokens ?? 0),
+                cache_read_input_tokens:
+                  (engineResult.usage.cache_read_input_tokens ?? 0) +
+                  (resumeResult.usage.cache_read_input_tokens ?? 0),
+                cache_creation_input_tokens:
+                  (engineResult.usage.cache_creation_input_tokens ?? 0) +
+                  (resumeResult.usage.cache_creation_input_tokens ?? 0),
+              };
+            }
+
+            engineResult = resumeResult;
+          }
+
+          steerControllerRef.current = null;
 
           if (engineResult.exitCode !== 0) {
             const failure = handleEngineFailure(engineResult.exitCode);
@@ -295,5 +368,6 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
     isRunning,
     isResume,
     startedAt,
+    steer,
   };
 }

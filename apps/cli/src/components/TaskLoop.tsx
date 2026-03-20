@@ -1,6 +1,7 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { join } from "node:path";
 import { Box, Static, Text, useApp } from "ink";
+import { TextInput } from "@inkjs/ui";
 import { Banner } from "./Banner";
 import { IterationHeader } from "./IterationHeader";
 import { FeedLine } from "./FeedLine";
@@ -24,6 +25,27 @@ function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | unde
     case "feed":
       return <FeedLine event={entry.event} verbose={verbose} />;
   }
+}
+
+function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
+  const [value, setValue] = useState("");
+
+  return (
+    <Box>
+      <Text dimColor>steer: </Text>
+      <TextInput
+        value={value}
+        onChange={setValue}
+        onSubmit={(v) => {
+          const trimmed = v.trim();
+          if (trimmed) {
+            onSubmit(trimmed);
+            setValue("");
+          }
+        }}
+      />
+    </Box>
+  );
 }
 
 export function TaskLoop({ opts }: TaskLoopProps) {
@@ -76,16 +98,19 @@ export function TaskLoop({ opts }: TaskLoopProps) {
       </Static>
 
       {loop.isRunning && (
-        <StatusBar
-          phase={loop.currentPhase}
-          iteration={loop.iteration}
-          progress={loop.progress}
-          costUsd={loop.state.usage.total_cost_usd}
-          startedAt={loop.startedAt}
-          engine={opts.engine}
-          model={opts.model}
-          isRunning
-        />
+        <>
+          <StatusBar
+            phase={loop.currentPhase}
+            iteration={loop.iteration}
+            progress={loop.progress}
+            costUsd={loop.state.usage.total_cost_usd}
+            startedAt={loop.startedAt}
+            engine={opts.engine}
+            model={opts.model}
+            isRunning
+          />
+          <SteerInput onSubmit={loop.steer} />
+        </>
       )}
 
       {loop.stopReason && (
