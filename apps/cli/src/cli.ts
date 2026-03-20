@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
+import { log } from "@ralphy/output";
 import type { Engine, Mode } from "@ralphy/types";
+
+import HELP_TEXT from "./help.md" with { type: "text" };
 
 export interface ParsedArgs {
   mode: Mode;
@@ -24,30 +27,10 @@ const VALID_MODES = new Set<string>(["task", "list", "status", "advance", "set-p
 
 const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
 
-/**
- * Parse CLI arguments, porting the shell `parse_args` logic.
- *
- * Supports:
- *   --name <name>           Task name
- *   --prompt <text>         Task description
- *   --prompt-file <path>    Read prompt from file
- *   --model <model>         Set model (haiku|sonnet|opus)
- *   --claude [model]        Use Claude engine (haiku|sonnet|opus)
- *   --codex                 Use Codex engine
- *   --phase <phase>         Target phase for set-phase mode
- *   --no-execute            Stop after research+plan
- *   --interactive           Run research+plan interactively, then continue automated
- *   --delay N               Seconds between iterations
- *   --log                   Log raw stream JSON
- *   --max-cost N            Stop when total cost exceeds $N (0 = no limit)
- *   --max-runtime N         Stop after N minutes of wall-clock time (0 = no limit)
- *   --max-iterations N      Stop after N iterations (0 = unlimited)
- *   --max-failures N        Stop after N consecutive failures (default: 5, 0 = disable)
- *   --unlimited             Set max to 0 (unlimited, default)
- *   --timeout N             Deprecated (consumed and ignored)
- *   --push-interval N       Deprecated (consumed and ignored)
- *   [mode]                  task|list|status|advance|set-phase
- */
+export function printHelp(): void {
+  log(HELP_TEXT.trim());
+}
+
 export function parseArgs(argv: string[]): ParsedArgs {
   const result: ParsedArgs = {
     mode: "task",
@@ -159,6 +142,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
 
     switch (arg) {
+      case "--help":
+      case "-h":
+        printHelp();
+        process.exit(0);
       case "--claude":
         if (result.engineSet && result.engine !== "claude") {
           throw new Error("Choose only one engine flag: --claude or --codex");
@@ -229,7 +216,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         if (VALID_MODES.has(arg)) {
           result.mode = arg as Mode;
         } else {
-          throw new Error(`Unknown argument or mode '${arg}'`);
+          throw new Error(`Unknown argument '${arg}'\n\nRun 'ralph --help' for usage information.`);
         }
         break;
     }

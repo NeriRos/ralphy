@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, spyOn } from "bun:test";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
-import { parseArgs } from "../cli";
+import { parseArgs, printHelp } from "../cli";
 
 describe("parseArgs", () => {
   test("defaults to task mode with claude/opus", () => {
@@ -77,7 +77,7 @@ describe("parseArgs", () => {
   });
 
   test("throws on bare number (use --max-iterations instead)", () => {
-    expect(() => parseArgs(["20"])).toThrow("Unknown argument or mode");
+    expect(() => parseArgs(["20"])).toThrow("Unknown argument '20'");
   });
 
   test("parses --max-iterations flag", () => {
@@ -122,7 +122,7 @@ describe("parseArgs", () => {
   });
 
   test("throws on unknown argument", () => {
-    expect(() => parseArgs(["--bogus"])).toThrow("Unknown argument or mode");
+    expect(() => parseArgs(["--bogus"])).toThrow("Unknown argument '--bogus'");
   });
 
   test("parses complex real-world command", () => {
@@ -205,5 +205,28 @@ describe("parseArgs", () => {
   test("parses --verbose flag", () => {
     const result = parseArgs(["--verbose"]);
     expect(result.verbose).toBe(true);
+  });
+
+  test("unknown argument error includes help hint", () => {
+    expect(() => parseArgs(["--bogus"])).toThrow("ralph --help");
+  });
+});
+
+describe("printHelp", () => {
+  test("outputs usage text", () => {
+    const logs: string[] = [];
+    const spy = spyOn(console, "log").mockImplementation((msg: string) => {
+      logs.push(msg);
+    });
+    try {
+      printHelp();
+    } finally {
+      spy.mockRestore();
+    }
+    const output = logs.join("\n");
+    expect(output).toContain("Usage: ralph");
+    expect(output).toContain("--name");
+    expect(output).toContain("--help");
+    expect(output).toContain("Examples:");
   });
 });
