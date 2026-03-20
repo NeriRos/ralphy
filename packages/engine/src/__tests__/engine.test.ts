@@ -15,6 +15,7 @@ interface MockProc {
   stdout: ReadableStream<Uint8Array>;
   stderr: ReadableStream<Uint8Array> | null;
   exited: Promise<number>;
+  kill: ReturnType<typeof mock>;
 }
 
 let mockProc: MockProc;
@@ -93,6 +94,7 @@ describe("runEngine", () => {
       stdout: makeReadableStream(stdoutLines),
       stderr: stderrLines.length > 0 ? makeReadableStream(stderrLines) : makeReadableStream([]),
       exited: Promise.resolve(exitCode),
+      kill: mock(() => {}),
     };
   }
 
@@ -348,6 +350,7 @@ describe("runEngine", () => {
         stdout: makeReadableStream([]),
         stderr: makeReadableStream([]),
         exited: Promise.resolve(exitCode),
+        kill: mock(() => {}),
       };
     }
 
@@ -464,6 +467,7 @@ describe("runEngine", () => {
       stdout: customStdout,
       stderr: makeReadableStream([]),
       exited: Promise.resolve(0),
+      kill: mock(() => {}),
     };
 
     const events: FeedEvent[] = [];

@@ -222,6 +222,13 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       for (const event of parseClaudeLine(line, claudeState)) {
         emitEvent(event);
       }
+      // Kill the process after the first result event — the agent is done.
+      // Without this, the CLI keeps the session alive and the agent wastes
+      // tokens responding to system reminders with idle "standing by" messages.
+      if (claudeState.gotResult) {
+        proc.kill();
+        break;
+      }
     }
 
     usage = claudeState.usage;
@@ -251,5 +258,9 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
 
   const exitCode = await proc.exited;
 
-  return { exitCode, usage };
+  // If we killed the process after receiving a result, treat as success
+  const normalizedExitCode =
+    usage !== null && (exitCode === 143 || exitCode === 137) ? 0 : exitCode;
+
+  return { exitCode: normalizedExitCode, usage };
 }
