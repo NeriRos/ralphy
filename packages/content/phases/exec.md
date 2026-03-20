@@ -137,4 +137,3 @@ Only use this for genuine blockers. For item-level blocks, add a note in PROGRES
 - **Follow `CLAUDE.md` conventions exactly** — lint/typecheck must pass on the first try.
 - If blocked on a specific item, add a note under it in PROGRESS.md and continue with remaining items.
 - Ultrathink when making architectural decisions.
-- Keep `CLAUDE.md` current with learnings.
