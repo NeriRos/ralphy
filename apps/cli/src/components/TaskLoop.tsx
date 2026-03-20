@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { join } from "node:path";
 import { Box, Static, Text, useApp, useInput } from "ink";
 import { TextInput } from "@inkjs/ui";
