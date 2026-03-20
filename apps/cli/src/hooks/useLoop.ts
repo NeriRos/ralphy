@@ -191,7 +191,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               "",
               steerMessage,
               "",
-              "Acknowledge this steering update briefly, then continue your current task with this new guidance.",
+              "Continue your current task with this new guidance. Do not acknowledge the steering — just apply it.",
             ].join("\n");
 
             const resumeResult = await runEngine({
