@@ -327,6 +327,74 @@ describe("runEngine", () => {
     expect(call.stderr).toBe("pipe");
   });
 
+  test("passes --resume flag when resumeSessionId is provided", async () => {
+    setupMockProc([INIT, RESULT]);
+
+    await runEngine({
+      engine: "claude",
+      model: "test",
+      prompt: "resumed prompt",
+      resumeSessionId: "sess-abc123",
+      onFeedEvent: () => {},
+    });
+
+    const call = (spawnMock.mock.calls[0] as unknown[])[0] as { cmd: string[] };
+    expect(call.cmd).toContain("--resume");
+    expect(call.cmd).toContain("sess-abc123");
+  });
+
+  test("captures sessionId from init event", async () => {
+    setupMockProc([INIT, RESULT]);
+
+    const result = await runEngine({
+      engine: "claude",
+      model: "test",
+      prompt: "test",
+      onFeedEvent: () => {},
+    });
+
+    expect(result.sessionId).toBe("test12345678");
+  });
+
+  test("abort signal kills the process and normalizes exit code", async () => {
+    setupMockProc([INIT, RESULT], 143);
+    const controller = new AbortController();
+
+    // Abort immediately
+    controller.abort();
+
+    const result = await runEngine({
+      engine: "claude",
+      model: "test",
+      prompt: "test",
+      signal: controller.signal,
+      onFeedEvent: () => {},
+    });
+
+    expect(mockProc.kill).toHaveBeenCalled();
+    expect(result.exitCode).toBe(0); // normalized from 143
+  });
+
+  test("abort signal during execution kills process", async () => {
+    setupMockProc([INIT, RESULT], 143);
+    const controller = new AbortController();
+
+    const resultPromise = runEngine({
+      engine: "claude",
+      model: "test",
+      prompt: "test",
+      signal: controller.signal,
+      onFeedEvent: () => {},
+    });
+
+    // Abort after engine starts
+    controller.abort();
+    const result = await resultPromise;
+
+    expect(mockProc.kill).toHaveBeenCalled();
+    expect(result.exitCode).toBe(0);
+  });
+
   // ─── interactive mode ────────────────────────────────────────────
 
   describe("interactive mode", () => {

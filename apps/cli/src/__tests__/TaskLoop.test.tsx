@@ -542,8 +542,7 @@ describe("TaskLoop", () => {
 
     // First call: return a sessionId, wait for abort
     runEngineMock.mockImplementationOnce(
-      async (opts: { signal?: AbortSignal }): Promise<EngineResult> => {
-        engineStarted;
+      async (opts: { onFeedEvent?: (e: unknown) => void; signal?: AbortSignal }) => {
         engineStartResolve!();
         await new Promise<void>((resolve) => {
           if (opts.signal?.aborted) return resolve();
@@ -556,7 +555,7 @@ describe("TaskLoop", () => {
 
     // Second call: the resumed session
     runEngineMock.mockImplementationOnce(
-      async (opts: { resumeSessionId?: string }): Promise<EngineResult> => {
+      async (opts: { onFeedEvent?: (e: unknown) => void; resumeSessionId?: string }) => {
         // Verify it's a resume call
         expect(opts.resumeSessionId).toBe("sess-abc123");
         return { exitCode: 0, usage: null, sessionId: "sess-abc123" };
