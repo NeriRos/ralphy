@@ -15,7 +15,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/neriros/ralphy.git"
+    "url": "https://github.com/NeriRos/ralphy.git"
   },
   "bin": {
     "ralphy": "./dist/cli/index.js",
