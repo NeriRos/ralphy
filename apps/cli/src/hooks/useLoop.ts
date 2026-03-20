@@ -194,13 +194,19 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               "Continue your current task with this new guidance. Do not acknowledge the steering — just apply it.",
             ].join("\n");
 
+            // Filter out session init events on resume — they're noise
+            const addResumeFeedEvent = (event: FeedEvent) => {
+              if (event.type === "session" || event.type === "session-unknown") return;
+              addFeedEvent(event);
+            };
+
             const resumeResult = await runEngine({
               engine: opts.engine,
               model: opts.model,
               prompt: steerPrompt,
               logFlag: opts.log,
               taskDir,
-              onFeedEvent: addFeedEvent,
+              onFeedEvent: addResumeFeedEvent,
               signal: resumeController.signal,
               resumeSessionId: engineResult.sessionId,
             });

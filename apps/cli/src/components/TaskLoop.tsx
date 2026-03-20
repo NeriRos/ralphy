@@ -28,19 +28,18 @@ function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | unde
 }
 
 function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
-  const [value, setValue] = useState("");
+  const [inputKey, setInputKey] = useState(0);
 
   return (
     <Box>
       <Text dimColor>steer: </Text>
       <TextInput
-        value={value}
-        onChange={setValue}
+        key={inputKey}
         onSubmit={(v) => {
           const trimmed = v.trim();
           if (trimmed) {
             onSubmit(trimmed);
-            setValue("");
+            setInputKey((k) => k + 1);
           }
         }}
       />
