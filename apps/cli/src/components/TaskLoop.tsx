@@ -38,16 +38,15 @@ function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
     if (history.length === 0) return;
 
     if (key.upArrow) {
-      const nextIndex = historyIndexRef.current < history.length - 1
-        ? historyIndexRef.current + 1
-        : historyIndexRef.current;
+      const nextIndex =
+        historyIndexRef.current < history.length - 1
+          ? historyIndexRef.current + 1
+          : historyIndexRef.current;
       historyIndexRef.current = nextIndex;
       setDefaultValue(history[history.length - 1 - nextIndex]!);
       setInputKey((k) => k + 1);
     } else if (key.downArrow) {
-      const nextIndex = historyIndexRef.current > 0
-        ? historyIndexRef.current - 1
-        : -1;
+      const nextIndex = historyIndexRef.current > 0 ? historyIndexRef.current - 1 : -1;
       historyIndexRef.current = nextIndex;
       setDefaultValue(nextIndex >= 0 ? history[history.length - 1 - nextIndex]! : "");
       setInputKey((k) => k + 1);
