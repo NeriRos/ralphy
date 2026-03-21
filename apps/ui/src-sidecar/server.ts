@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { existsSync } from "node:fs";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { taskRoutes } from "./routes/tasks";
 import { loopRoutes } from "./routes/loop";
@@ -9,8 +10,19 @@ import type { SidecarContext } from "./types";
 // Use SIDECAR_PORT env var, or 0 to let the OS assign a free port
 const port = Number(process.env["SIDECAR_PORT"] ?? 0);
 
-// Resolve the .ralph/tasks directory relative to cwd
-const projectRoot = process.cwd();
+// Walk up from cwd to find the project root (directory containing .ralph/)
+function findProjectRoot(start: string): string {
+  let dir = start;
+  while (true) {
+    if (existsSync(join(dir, ".ralph"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return start; // fallback to cwd
+}
+
+const projectRoot = findProjectRoot(process.cwd());
 const ralphDir = join(projectRoot, ".ralph");
 const tasksDir = join(ralphDir, "tasks");
 
