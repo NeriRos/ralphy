@@ -1,0 +1,42 @@
+{
+  "name": "ui",
+  "sourceRoot": "apps/ui/src",
+  "tags": ["scope:ui"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json apps/ui/src apps/ui/src-sidecar",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check apps/ui/src apps/ui/src-sidecar",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bunx tauri build",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bunx tauri dev",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -b apps/ui/tsconfig.json && tsc -b apps/ui/tsconfig.sidecar.json",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}
