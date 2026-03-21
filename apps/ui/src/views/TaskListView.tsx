@@ -95,11 +95,7 @@ export function TaskListView() {
                     {formatCost(task.usage.total_cost_usd)}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    {task.isRunning ? (
-                      <RunningIndicator />
-                    ) : (
-                      <StatusBadge status={task.status} />
-                    )}
+                    {task.isRunning ? <RunningIndicator /> : <StatusBadge status={task.status} />}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {pendingDelete === task.name ? (
