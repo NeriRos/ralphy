@@ -1,6 +1,7 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { join } from "node:path";
-import { Box, Static, Text, useApp } from "ink";
+import { Box, Static, Text, useApp, useInput } from "ink";
+import { TextInput } from "@inkjs/ui";
 import { Banner } from "./Banner";
 import { IterationHeader } from "./IterationHeader";
 import { FeedLine } from "./FeedLine";
@@ -24,6 +25,90 @@ function LogLine({ entry, verbose }: { entry: LogEntry; verbose?: boolean | unde
     case "feed":
       return <FeedLine event={entry.event} verbose={verbose} />;
   }
+}
+
+/**
+ * Navigate input history. Returns the value to display, or null if no change.
+ */
+export function navigateHistory(
+  history: string[],
+  currentIndex: number,
+  direction: "up" | "down",
+): { value: string; index: number } | null {
+  if (history.length === 0) return null;
+
+  if (direction === "up") {
+    const nextIndex = currentIndex < history.length - 1 ? currentIndex + 1 : currentIndex;
+    return { value: history[history.length - 1 - nextIndex]!, index: nextIndex };
+  }
+  const nextIndex = currentIndex > 0 ? currentIndex - 1 : -1;
+  return {
+    value: nextIndex >= 0 ? history[history.length - 1 - nextIndex]! : "",
+    index: nextIndex,
+  };
+}
+
+/**
+ * Process a submitted steering value: trim, add to history, and call onSubmit.
+ * Returns true if the value was submitted, false if it was empty.
+ */
+export function processSteerSubmit(
+  value: string,
+  history: string[],
+  onSubmit: (msg: string) => void,
+): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  history.push(trimmed);
+  onSubmit(trimmed);
+  return true;
+}
+
+/**
+ * Process key input for history navigation.
+ * Returns updated state if navigation occurred, null otherwise.
+ */
+export function handleSteerKeyInput(
+  key: { upArrow: boolean; downArrow: boolean },
+  history: string[],
+  currentIndex: number,
+): { value: string; index: number } | null {
+  const dir = key.upArrow ? ("up" as const) : key.downArrow ? ("down" as const) : null;
+  if (!dir) return null;
+  return navigateHistory(history, currentIndex, dir);
+}
+
+export function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
+  const [inputKey, setInputKey] = useState(0);
+  const [defaultValue, setDefaultValue] = useState("");
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+
+  useInput((_input, key) => {
+    const result = handleSteerKeyInput(key, historyRef.current, historyIndexRef.current);
+    if (result) {
+      historyIndexRef.current = result.index;
+      setDefaultValue(result.value);
+      setInputKey((k) => k + 1);
+    }
+  });
+
+  return (
+    <Box>
+      <Text dimColor>steer: </Text>
+      <TextInput
+        key={inputKey}
+        defaultValue={defaultValue}
+        onSubmit={(v) => {
+          if (processSteerSubmit(v, historyRef.current, onSubmit)) {
+            historyIndexRef.current = -1;
+            setDefaultValue("");
+            setInputKey((k) => k + 1);
+          }
+        }}
+      />
+    </Box>
+  );
 }
 
 export function TaskLoop({ opts }: TaskLoopProps) {
@@ -76,16 +161,19 @@ export function TaskLoop({ opts }: TaskLoopProps) {
       </Static>
 
       {loop.isRunning && (
-        <StatusBar
-          phase={loop.currentPhase}
-          iteration={loop.iteration}
-          progress={loop.progress}
-          costUsd={loop.state.usage.total_cost_usd}
-          startedAt={loop.startedAt}
-          engine={opts.engine}
-          model={opts.model}
-          isRunning
-        />
+        <>
+          <StatusBar
+            phase={loop.currentPhase}
+            iteration={loop.iteration}
+            progress={loop.progress}
+            costUsd={loop.state.usage.total_cost_usd}
+            startedAt={loop.startedAt}
+            engine={opts.engine}
+            model={opts.model}
+            isRunning
+          />
+          <SteerInput onSubmit={loop.steer} />
+        </>
       )}
 
       {loop.stopReason && (

@@ -17,12 +17,17 @@ export interface RunEngineOptions {
   cwd?: string;
   onOutput?: (line: string) => void;
   onFeedEvent?: (event: FeedEvent) => void;
+  /** AbortSignal to kill the engine process (used for live steering). */
   signal?: AbortSignal;
+  /** Resume an existing Claude session instead of starting fresh. */
+  resumeSessionId?: string;
 }
 
 export interface EngineResult {
   exitCode: number;
   usage: IterationUsage | null;
+  /** Claude session ID, used for --resume on live steering. */
+  sessionId: string | null;
 }
 
 /**
@@ -65,8 +70,8 @@ export function handleEngineFailure(exitCode: number): {
 /**
  * Build the CLI arguments for the engine subprocess.
  */
-function buildClaudeArgs(model: string): string[] {
-  return [
+function buildClaudeArgs(model: string, resumeSessionId?: string): string[] {
+  const args = [
     "-p",
     "-",
     "--dangerously-skip-permissions",
@@ -76,6 +81,10 @@ function buildClaudeArgs(model: string): string[] {
     "stream-json",
     "--verbose",
   ];
+  if (resumeSessionId) {
+    args.push("--resume", resumeSessionId);
+  }
+  return args;
 }
 
 function buildCodexArgs(): string[] {
@@ -135,10 +144,10 @@ async function runInteractive(
     // Keep the file — the loop uses it to avoid re-entering interactive mode
     const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
     if (doneFile && existsSync(doneFile)) {
-      return { exitCode: 0, usage: null };
+      return { exitCode: 0, usage: null, sessionId: null };
     }
 
-    return { exitCode, usage: null };
+    return { exitCode, usage: null, sessionId: null };
   } finally {
     try {
       unlinkSync(promptFile);
@@ -180,7 +189,9 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   }
 
   const isClaude = engine === "claude";
-  const cmd = isClaude ? ["claude", ...buildClaudeArgs(model)] : ["codex", ...buildCodexArgs()];
+  const cmd = isClaude
+    ? ["claude", ...buildClaudeArgs(model, opts.resumeSessionId)]
+    : ["codex", ...buildCodexArgs()];
 
   const proc = spawn({
     cmd,
@@ -218,9 +229,24 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
     }
   }
 
+  // Wire up abort signal for live steering
+  let aborted = false;
+  if (opts.signal) {
+    const onAbort = () => {
+      aborted = true;
+      proc.kill();
+    };
+    if (opts.signal.aborted) {
+      onAbort();
+    } else {
+      opts.signal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+
   // Stream stdout line-by-line through the formatter
   const stdout = proc.stdout as ReadableStream<Uint8Array>;
   let usage: IterationUsage | null = null;
+  let sessionId: string | null = null;
 
   if (engine === "claude") {
     const claudeState = {
@@ -231,6 +257,18 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
     };
 
     for await (const line of streamLines(stdout)) {
+      // Capture full session_id from init event
+      if (sessionId === null) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.type === "system" && parsed.subtype === "init" && parsed.session_id) {
+            sessionId = parsed.session_id as string;
+          }
+        } catch {
+          // not JSON, skip
+        }
+      }
+
       for (const event of parseClaudeLine(line, claudeState)) {
         emitEvent(event);
       }
@@ -270,9 +308,9 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
 
   const exitCode = await proc.exited;
 
-  // If we killed the process after receiving a result, treat as success
-  const normalizedExitCode =
-    usage !== null && (exitCode === 143 || exitCode === 137) ? 0 : exitCode;
+  // Normalize exit code: treat kills as success when we have a result or aborted intentionally
+  const wasIntentionalKill = (exitCode === 143 || exitCode === 137) && (usage !== null || aborted);
+  const normalizedExitCode = wasIntentionalKill ? 0 : exitCode;
 
-  return { exitCode: normalizedExitCode, usage };
+  return { exitCode: normalizedExitCode, usage, sessionId };
 }
