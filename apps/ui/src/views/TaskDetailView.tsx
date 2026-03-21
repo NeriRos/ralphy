@@ -66,17 +66,15 @@ export function TaskDetailView() {
   const [maxIterations, setMaxIterations] = useState("10");
   const [maxCost, setMaxCost] = useState("0");
 
-  // Send steering message: update STEERING.md and restart the current iteration
+  // Send steering message: appends to STEERING.md and resumes the session with new guidance
   const handleSendSteering = useCallback(
     async (message: string) => {
       if (!name || !baseUrl) return;
-      const current = steering.content ?? "";
-      const newContent = current ? `${current}\n\n---\n\n${message}` : message;
-      // Call the steer endpoint which saves STEERING.md and kills the current engine
+      // Call the steer endpoint which appends to STEERING.md and resumes the session
       await fetch(`${baseUrl}/tasks/${name}/steer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newContent }),
+        body: JSON.stringify({ message }),
       });
       // Update local state so the steering panel stays in sync
       steering.refresh();

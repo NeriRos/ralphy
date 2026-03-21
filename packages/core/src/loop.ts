@@ -1,0 +1,300 @@
+import { join } from "node:path";
+import type { State, Engine, IterationUsage } from "@ralphy/types";
+import { updateState } from "./state";
+import { extractCurrentSection } from "./progress";
+import { renderTemplate } from "./templates";
+import { getPromptDocuments, getDocumentNames } from "./documents";
+import { getPhase } from "@ralphy/phases";
+import { getStorage } from "@ralphy/context";
+
+export interface LoopOptions {
+  name: string;
+  prompt: string;
+  engine: Engine;
+  model: string;
+  maxIterations: number;
+  maxCostUsd: number;
+  maxRuntimeMinutes: number;
+  maxConsecutiveFailures: number;
+  noExecute: boolean;
+  interactive: boolean;
+  delay: number;
+  log: boolean;
+  verbose: boolean;
+  tasksDir: string;
+}
+
+/**
+ * Build the full prompt for a task iteration by concatenating:
+ * 1. STEERING.md content (if present, filtered, max 20 lines)
+ * 2. Phase-specific prompt from phase config
+ * 3. Phase-specific context driven by phase config's `context` array
+ */
+export function buildTaskPrompt(state: State, taskDir: string): string {
+  const phaseConfig = getPhase(state.phase);
+  let prompt = "";
+
+  // 1. Inject documents registered for this phase
+  const storage = getStorage();
+  for (const doc of getPromptDocuments(state.phase)) {
+    const injection = doc.promptInjection!;
+    const content = storage.read(join(taskDir, doc.name));
+    if (content === null) continue;
+
+    if (injection.filterHeaders) {
+      const lines = content
+        .split("\n")
+        .filter((line: string) => !line.startsWith("#"))
+        .filter((line: string) => line.trim())
+        .slice(0, injection.maxLines);
+      if (lines.length === 0) continue;
+      prompt += "---\n";
+      prompt += `# ${injection.header}\n\n`;
+      prompt += lines.join("\n") + "\n\n";
+      prompt += "---\n\n";
+    } else {
+      prompt += "---\n";
+      prompt += `# ${injection.header}\n\n`;
+      prompt += content + "\n\n";
+      prompt += "---\n\n";
+    }
+  }
+
+  // 2. Phase prompt (rendered with template vars)
+  if (phaseConfig.prompt) {
+    prompt += renderTemplate(phaseConfig.prompt, buildTemplateVars(state, taskDir));
+  }
+
+  // 3. Context injection driven by phase config
+  for (const entry of phaseConfig.context) {
+    switch (entry.type) {
+      case "file": {
+        const content = storage.read(join(taskDir, entry.file));
+        if (content !== null) {
+          prompt += `\n---\n\n## ${entry.label}\n\n`;
+          prompt += content;
+        }
+        break;
+      }
+      case "currentSection": {
+        const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
+        if (progressContent !== null) {
+          const section = extractCurrentSection(progressContent);
+          if (section) {
+            if (entry.label) {
+              prompt += `\n---\n\n## ${entry.label}\n\n`;
+            }
+            prompt += "\n" + section;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  return prompt;
+}
+
+/**
+ * Build the template variable map for renderTemplate.
+ */
+function buildTemplateVars(state: State, taskDir: string): Record<string, string> {
+  const mcpTools =
+    state.engine === "claude"
+      ? [
+          "",
+          "## MCP Tools Available",
+          "",
+          "You have access to ralph MCP tools. **Use these instead of shell commands where applicable.**",
+          "",
+          "To load these tools, use ToolSearch with `select:` and the exact tool name (e.g. `select:mcp__ralph__ralph_advance_phase`).",
+          "",
+          "- `mcp__ralph__ralph_advance_phase(name)` — Advance this task to the next phase. **Use this instead of the CLI `ralph advance` command.**",
+          `- \`mcp__ralph__ralph_read_document(name, document)\` — Read task documents (${getDocumentNames().join(", ")})`,
+          "- `mcp__ralph__ralph_get_task(name)` — Get task status, metadata, and progress",
+          "- `mcp__ralph__ralph_list_checklists()` — List available verification checklists with their contents",
+          '- `mcp__ralph__ralph_apply_checklist(name, checklists)` — Append checklists as sections to PROGRESS.md (e.g. `["static", "tests"]`)',
+          "- `mcp__ralph__ralph_finish_interactive(name, context)` — **Interactive mode only.** Call with a comprehensive summary of the interactive session to save it as context for all subsequent automated phases. You MUST use /exit immediately after.",
+          "",
+          `Task name: \`${state.name}\``,
+          "",
+        ].join("\n")
+      : "";
+
+  return {
+    TASK_NAME: state.name,
+    TASK_DIR: taskDir,
+    TASK_PROMPT: state.prompt,
+    DATE: new Date().toISOString().split("T")[0]!,
+    PHASE: state.phase,
+    PHASE_ITERATION: String(state.phaseIteration),
+    MCP_TOOLS: mcpTools,
+  };
+}
+
+/**
+ * Check for a STOP signal file in the task directory.
+ * If found, reads the reason, removes the file, marks state as blocked.
+ * Returns the reason string if stopped, null otherwise.
+ */
+export function checkStopSignal(taskDir: string): string | null {
+  const storage = getStorage();
+  const stopFile = join(taskDir, "STOP");
+  const reason = storage.read(stopFile);
+  if (reason === null) return null;
+
+  storage.remove(stopFile);
+
+  updateState(taskDir, (s) => ({
+    ...s,
+    status: "blocked",
+    lastModified: new Date().toISOString(),
+  }));
+
+  return reason;
+}
+
+/**
+ * Stop reason returned by shouldContinue when the loop must end.
+ */
+export type StopReason =
+  | "maxIterations"
+  | "terminal"
+  | "noExecute"
+  | "costCap"
+  | "runtimeLimit"
+  | "consecutiveFailures";
+
+/**
+ * Determine whether the loop should continue.
+ * Returns null if it should continue, or a reason string if it should stop.
+ */
+export function checkStopCondition(
+  state: State,
+  iteration: number,
+  opts: LoopOptions,
+  startTime: number,
+  consecutiveFailures: number,
+): StopReason | null {
+  if (opts.maxIterations > 0 && iteration >= opts.maxIterations) return "maxIterations";
+  const phaseConfig = getPhase(state.phase);
+  if (phaseConfig.terminal) return "terminal";
+  if (opts.noExecute && state.phase === "exec") return "noExecute";
+  if (opts.maxCostUsd > 0 && state.usage.total_cost_usd >= opts.maxCostUsd) return "costCap";
+  if (opts.maxRuntimeMinutes > 0) {
+    const elapsedMs = Date.now() - startTime;
+    if (elapsedMs >= opts.maxRuntimeMinutes * 60_000) return "runtimeLimit";
+  }
+  if (opts.maxConsecutiveFailures > 0 && consecutiveFailures >= opts.maxConsecutiveFailures)
+    return "consecutiveFailures";
+  return null;
+}
+
+/**
+ * Update state after a completed iteration.
+ */
+export function updateStateIteration(
+  taskDir: string,
+  result: string,
+  startedAt: string,
+  engine: string,
+  model: string,
+  usage: IterationUsage | null,
+): State {
+  return updateState(taskDir, (s) => {
+    const now = new Date().toISOString();
+    const newState: State = {
+      ...s,
+      phaseIteration: s.phaseIteration + 1,
+      totalIterations: s.totalIterations + 1,
+      lastModified: now,
+      engine,
+      model,
+      history: [
+        ...s.history,
+        {
+          timestamp: now,
+          startedAt,
+          endedAt: now,
+          phase: s.phase,
+          iteration: s.phaseIteration + 1,
+          engine,
+          model,
+          result,
+          usage: usage
+            ? {
+                cost_usd: usage.cost_usd,
+                duration_ms: usage.duration_ms,
+                num_turns: usage.num_turns,
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+                cache_read_input_tokens: usage.cache_read_input_tokens,
+                cache_creation_input_tokens: usage.cache_creation_input_tokens,
+              }
+            : undefined,
+        },
+      ],
+    };
+
+    // Accumulate usage totals if engine reported stats
+    if (usage) {
+      newState.usage = {
+        total_cost_usd: s.usage.total_cost_usd + (usage.cost_usd ?? 0),
+        total_duration_ms: s.usage.total_duration_ms + (usage.duration_ms ?? 0),
+        total_turns: s.usage.total_turns + (usage.num_turns ?? 0),
+        total_input_tokens: s.usage.total_input_tokens + (usage.input_tokens ?? 0),
+        total_output_tokens: s.usage.total_output_tokens + (usage.output_tokens ?? 0),
+        total_cache_read_input_tokens:
+          s.usage.total_cache_read_input_tokens + (usage.cache_read_input_tokens ?? 0),
+        total_cache_creation_input_tokens:
+          s.usage.total_cache_creation_input_tokens + (usage.cache_creation_input_tokens ?? 0),
+      };
+    }
+
+    return newState;
+  });
+}
+
+/**
+ * Append a steering message to STEERING.md.
+ */
+export function appendSteeringMessage(taskDir: string, message: string): void {
+  const storage = getStorage();
+  const existing = storage.read(join(taskDir, "STEERING.md")) ?? "";
+  const updated = existing.trimEnd() + "\n\n" + message + "\n";
+  storage.write(join(taskDir, "STEERING.md"), updated);
+}
+
+/**
+ * Build a steering prompt to inject into a resumed session.
+ */
+export function buildSteeringPrompt(message: string): string {
+  return [
+    "LIVE STEERING UPDATE FROM USER:",
+    "",
+    message,
+    "",
+    "Continue your current task with this new guidance. Do not acknowledge the steering — just apply it.",
+  ].join("\n");
+}
+
+/**
+ * Merge usage stats from two engine runs (used when steering resumes a session).
+ */
+export function mergeUsage(
+  base: IterationUsage | null,
+  resumed: IterationUsage | null,
+): IterationUsage | null {
+  if (!base || !resumed) return resumed ?? base;
+  return {
+    cost_usd: (base.cost_usd ?? 0) + (resumed.cost_usd ?? 0),
+    duration_ms: (base.duration_ms ?? 0) + (resumed.duration_ms ?? 0),
+    num_turns: (base.num_turns ?? 0) + (resumed.num_turns ?? 0),
+    input_tokens: (base.input_tokens ?? 0) + (resumed.input_tokens ?? 0),
+    output_tokens: (base.output_tokens ?? 0) + (resumed.output_tokens ?? 0),
+    cache_read_input_tokens:
+      (base.cache_read_input_tokens ?? 0) + (resumed.cache_read_input_tokens ?? 0),
+    cache_creation_input_tokens:
+      (base.cache_creation_input_tokens ?? 0) + (resumed.cache_creation_input_tokens ?? 0),
+  };
+}

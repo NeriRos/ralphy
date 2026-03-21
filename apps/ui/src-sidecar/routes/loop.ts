@@ -11,6 +11,9 @@ import {
   checkStopCondition,
   updateStateIteration,
   checkStopSignal,
+  appendSteeringMessage,
+  buildSteeringPrompt,
+  mergeUsage,
   type LoopOptions,
 } from "../loop-utils";
 import { getActiveStreams } from "../streams";
@@ -22,6 +25,9 @@ const runningLoops = new Map<string, { cancel: () => void }>();
 
 // Track the current engine AbortController per task so steering can kill it
 const engineAbortControllers = new Map<string, AbortController>();
+
+// Track pending steering messages per task (set by steer endpoint, consumed by loop)
+const pendingSteerMessages = new Map<string, string>();
 
 interface RouteResult {
   status: number;
@@ -66,11 +72,13 @@ export async function loopRoutes(
   }
 
   if (route.action === "steer") {
-    const body = (await req.json()) as { content: string };
-    // Save steering content to STEERING.md
-    const storage = getStorage();
-    storage.write(join(taskDir, "STEERING.md"), body.content);
-    // Kill the current engine process so the loop restarts with new steering
+    const body = (await req.json()) as { message: string };
+    // Append to STEERING.md using shared helper
+    await runWithContext(createDefaultContext(), async () => {
+      appendSteeringMessage(taskDir, body.message);
+    });
+    // Store pending message and kill the current engine so the loop can resume with it
+    pendingSteerMessages.set(taskName, body.message);
     const ac = engineAbortControllers.get(taskName);
     if (ac) {
       ac.abort();
@@ -195,8 +203,9 @@ async function runLoopAsync(
         // Create an AbortController so steering can kill this iteration
         const ac = new AbortController();
         engineAbortControllers.set(taskName, ac);
+        pendingSteerMessages.delete(taskName);
 
-        const engineResult = await runEngine({
+        let engineResult = await runEngine({
           engine: opts.engine,
           model: opts.model,
           prompt,
@@ -208,16 +217,43 @@ async function runLoopAsync(
           signal: ac.signal,
         });
 
-        engineAbortControllers.delete(taskName);
+        // Handle live steering: kill → resume with steering message
+        while (pendingSteerMessages.has(taskName) && engineResult.sessionId) {
+          const steerMessage = pendingSteerMessages.get(taskName)!;
+          pendingSteerMessages.delete(taskName);
 
-        // If aborted by steering, skip failure handling and restart the iteration
-        if (ac.signal.aborted) {
           broadcast(taskName, {
             type: "info",
-            text: "Steering received — restarting iteration with updated prompt",
+            text: `Live steering: ${steerMessage}`,
           });
-          continue;
+
+          const resumeAc = new AbortController();
+          engineAbortControllers.set(taskName, resumeAc);
+
+          // Filter out session init events on resume — they're noise
+          const onResumeFeedEvent = (event: FeedEvent) => {
+            if (event.type === "session" || event.type === "session-unknown") return;
+            onFeedEvent(event);
+          };
+
+          const resumeResult = await runEngine({
+            engine: opts.engine,
+            model: opts.model,
+            prompt: buildSteeringPrompt(steerMessage),
+            logFlag: opts.log,
+            taskDir,
+            interactive: false,
+            cwd: projectRoot,
+            onFeedEvent: onResumeFeedEvent,
+            signal: resumeAc.signal,
+            resumeSessionId: engineResult.sessionId,
+          });
+
+          resumeResult.usage = mergeUsage(engineResult.usage, resumeResult.usage);
+          engineResult = resumeResult;
         }
+
+        engineAbortControllers.delete(taskName);
 
         if (engineResult.exitCode !== 0) {
           const failure = handleEngineFailure(engineResult.exitCode);

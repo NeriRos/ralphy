@@ -15,6 +15,9 @@ import {
   checkStopCondition,
   updateStateIteration,
   checkStopSignal,
+  appendSteeringMessage,
+  buildSteeringPrompt,
+  mergeUsage,
   type StopReason,
   type LoopOptions,
 } from "../loop";
@@ -178,23 +181,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             const steerMessage = pendingSteerRef.current;
             pendingSteerRef.current = null;
 
-            // Append to STEERING.md
-            const existing = storage.read(join(taskDir, "STEERING.md")) ?? "";
-            const updated = existing.trimEnd() + "\n\n" + steerMessage + "\n";
-            storage.write(join(taskDir, "STEERING.md"), updated);
+            appendSteeringMessage(taskDir, steerMessage);
             addInfo(`Live steering: ${steerMessage}`);
 
             // Resume the session with the steering message
             const resumeController = new AbortController();
             steerControllerRef.current = resumeController;
-
-            const steerPrompt = [
-              "LIVE STEERING UPDATE FROM USER:",
-              "",
-              steerMessage,
-              "",
-              "Continue your current task with this new guidance. Do not acknowledge the steering — just apply it.",
-            ].join("\n");
 
             // Filter out session init events on resume — they're noise
             const addResumeFeedEvent = (event: FeedEvent) => {
@@ -205,7 +197,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             const resumeResult = await runEngine({
               engine: opts.engine,
               model: opts.model,
-              prompt: steerPrompt,
+              prompt: buildSteeringPrompt(steerMessage),
               logFlag: opts.log,
               taskDir,
               onFeedEvent: addResumeFeedEvent,
@@ -213,27 +205,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               resumeSessionId: engineResult.sessionId,
             });
 
-            // Merge usage from both runs
-            if (resumeResult.usage && engineResult.usage) {
-              resumeResult.usage = {
-                cost_usd: (engineResult.usage.cost_usd ?? 0) + (resumeResult.usage.cost_usd ?? 0),
-                duration_ms:
-                  (engineResult.usage.duration_ms ?? 0) + (resumeResult.usage.duration_ms ?? 0),
-                num_turns:
-                  (engineResult.usage.num_turns ?? 0) + (resumeResult.usage.num_turns ?? 0),
-                input_tokens:
-                  (engineResult.usage.input_tokens ?? 0) + (resumeResult.usage.input_tokens ?? 0),
-                output_tokens:
-                  (engineResult.usage.output_tokens ?? 0) + (resumeResult.usage.output_tokens ?? 0),
-                cache_read_input_tokens:
-                  (engineResult.usage.cache_read_input_tokens ?? 0) +
-                  (resumeResult.usage.cache_read_input_tokens ?? 0),
-                cache_creation_input_tokens:
-                  (engineResult.usage.cache_creation_input_tokens ?? 0) +
-                  (resumeResult.usage.cache_creation_input_tokens ?? 0),
-              };
-            }
-
+            resumeResult.usage = mergeUsage(engineResult.usage, resumeResult.usage);
             engineResult = resumeResult;
           }
 

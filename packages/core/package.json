@@ -12,7 +12,8 @@
     "./templates": "./src/templates.ts",
     "./format": "./src/format.ts",
     "./smoke": "./src/smoke.ts",
-    "./init": "./src/init.ts"
+    "./init": "./src/init.ts",
+    "./loop": "./src/loop.ts"
   },
   "dependencies": {
     "@ralphy/content": "workspace:*",
