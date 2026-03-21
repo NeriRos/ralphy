@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist-sidecar",
+    "rootDir": "src-sidecar"
+  },
+  "include": ["src-sidecar"],
+  "references": [
+    {
+      "path": "../../packages/types"
+    },
+    {
+      "path": "../../packages/content"
+    },
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/engine"
+    },
+    {
+      "path": "../../packages/output"
+    },
+    {
+      "path": "../../packages/phases"
+    },
+    {
+      "path": "../../packages/context"
+    }
+  ]
+}

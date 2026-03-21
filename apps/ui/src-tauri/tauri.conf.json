@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicerobot/tauri/refs/heads/dev/crates/tauri-config-schema/schema.json",
+  "productName": "Ralphy",
+  "version": "0.1.0",
+  "identifier": "com.ralphy.ui",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "bunx vite",
+    "beforeBuildCommand": "bunx vite build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Ralphy",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

@@ -28,7 +28,7 @@ You have a RESEARCH.md with detailed codebase findings. Your job is to create an
 0c. Read `TASK_DIR/RESEARCH.md` thoroughly — it contains the codebase analysis, file details, callsites, and dependency graph.
 0d. You may do additional targeted searches if the research missed something, but most exploration should already be done.
 0e. If PLAN.md and PROGRESS.md already exist, you are refining them — review, identify issues, improve.
-0f. Phase iteration: {{PHASE_ITERATION}}. After committing, advance to execution (use `ralph_advance_phase` MCP tool if available, otherwise `./loop.sh advance`).
+0f. Phase iteration: {{PHASE_ITERATION}}. After committing, advance to execution (use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise `ralph advance --name "{{TASK_NAME}}"`).
 
 {{MCP_TOOLS}}
 
@@ -84,7 +84,7 @@ Rules:
 
 ### 5. Append verification checklists
 
-Use `ralph_list_checklists` to see available verification checklists, then `ralph_apply_checklist` to append the relevant ones as final sections of PROGRESS.md before advancing to exec. Checklists are auto-appended during phase transition as a fallback, but explicitly choosing which ones to include is preferred.
+Use `mcp__ralph__ralph_list_checklists` to see available verification checklists, then `mcp__ralph__ralph_apply_checklist` to append the relevant ones as final sections of PROGRESS.md before advancing to exec. Checklists are auto-appended during phase transition as a fallback, but explicitly choosing which ones to include is preferred.
 
 ### 6. Commit and advance
 
@@ -93,10 +93,10 @@ git add TASK_DIR/PLAN.md TASK_DIR/PROGRESS.md
 git commit -m "plan: <task-name>"
 ```
 
-Then advance to the execution phase so the next iteration starts correctly. Use `ralph_advance_phase` MCP tool if available, otherwise fall back to:
+Then advance to the execution phase so the next iteration starts correctly. Use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise fall back to:
 
 ```
-./loop.sh advance --name "{{TASK_NAME}}"
+ralph advance --name "{{TASK_NAME}}"
 ```
 
 **Stop after advancing. Do not implement anything.**

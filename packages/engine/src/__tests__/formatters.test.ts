@@ -501,10 +501,8 @@ describe("processCodexLine", () => {
       output: "file contents here",
     };
     const lines = processCodexLine(JSON.stringify(event), state);
-    const text = strip(lines.join("\n"));
-    expect(text).toContain("✓");
-    expect(text).toContain("Read");
-    expect(text).toContain("file contents here");
+    // tool-end events are suppressed (empty output)
+    expect(lines).toEqual([]);
     expect(state.pendingTools).toBe(0);
   });
 

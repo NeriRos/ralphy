@@ -30,6 +30,20 @@
         "command": "tsc -b packages/types/tsconfig.json",
         "cwd": "{workspaceRoot}"
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/types/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test --coverage src",
+        "cwd": "{projectRoot}"
+      }
     }
   }
 }

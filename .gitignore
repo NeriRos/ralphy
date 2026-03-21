@@ -1,7 +1,9 @@
 node_modules/
 dist/
+dist-sidecar/
 bun.lock
 .DS_Store
 .nx/
 *.tsbuildinfo
 .ralph
+target/
