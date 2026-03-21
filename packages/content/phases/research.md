@@ -72,10 +72,10 @@ git add TASK_DIR/RESEARCH.md
 git commit -m "research: <task-name>"
 ```
 
-Then advance to the planning phase so the next iteration starts correctly. Use `ralph_advance_phase` MCP tool if available, otherwise fall back to:
+Then advance to the planning phase so the next iteration starts correctly. Use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise fall back to:
 
 ```
-./loop.sh advance --name "{{TASK_NAME}}"
+ralph advance --name "{{TASK_NAME}}"
 ```
 
 **Stop after advancing. Do not create PLAN.md or PROGRESS.md — that happens in the next phase. Do not implement anything.**
@@ -92,7 +92,7 @@ If you hit a blocker (task description is ambiguous, critical information is mis
 
 - **RESEARCH ONLY. Do NOT implement anything. Do NOT write application code. Do NOT create PLAN.md or PROGRESS.md.**
 - If RESEARCH.md already exists, you are refining it — read it first, identify gaps, then enhance.
-- Phase iteration: {{PHASE_ITERATION}}. After committing, advance to planning (use `ralph_advance_phase` MCP tool if available, otherwise `./loop.sh advance`).
+- Phase iteration: {{PHASE_ITERATION}}. After committing, advance to planning (use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise `ralph advance --name "{{TASK_NAME}}"`).
 - Read actual files — don't guess at what's in them.
 - Use parallel subagents aggressively to explore the codebase.
 - The quality of the plan depends entirely on the quality of this research. Be thorough.

@@ -90,16 +90,8 @@ const feedRenderers: { [K in FeedEvent["type"]]: FeedRenderer<K> } = {
     return [line];
   },
 
-  "tool-end": (e) => {
-    if (e.name && e.summary) {
-      return [
-        ` ${styled("✓", "success")} ${styled(e.name, "dim")} ${styled(`→ ${e.summary}`, "dim")}`,
-      ];
-    }
-    if (e.name) {
-      return [` ${styled("✓", "success")} ${styled(e.name, "dim")}`];
-    }
-    return [` ${styled("✓", "success")}`];
+  "tool-end": (_e) => {
+    return [];
   },
 
   "tool-result-preview": (e) => {

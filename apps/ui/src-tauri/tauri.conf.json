@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "cd .. && bunx vite",
-    "beforeBuildCommand": "cd .. && bunx vite build"
+    "beforeDevCommand": "bunx vite",
+    "beforeBuildCommand": "bunx vite build"
   },
   "app": {
     "windows": [

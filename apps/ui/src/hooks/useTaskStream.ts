@@ -8,17 +8,23 @@ interface ProgressCount {
   total: number;
 }
 
+export interface ProgressItem {
+  text: string;
+  checked: boolean;
+  section: string;
+}
+
 type WsMessage =
   | { type: "feed"; event: FeedEvent }
   | { type: "state"; state: State }
-  | { type: "progress"; progress: ProgressCount }
+  | { type: "progress"; progress: ProgressCount; items?: ProgressItem[] }
   | { type: "info"; text: string }
   | { type: "stopped"; reason: string }
   | { type: "error"; message: string };
 
 export interface LogEntry {
   id: string;
-  kind: "feed" | "info";
+  kind: "feed" | "info" | "steering";
   event?: FeedEvent;
   text?: string;
   timestamp: number;
@@ -29,6 +35,7 @@ export function useTaskStream(taskName: string | undefined) {
   const [state, setState] = useState<State | null>(null);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [progress, setProgress] = useState<ProgressCount | null>(null);
+  const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [stopReason, setStopReason] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -55,6 +62,7 @@ export function useTaskStream(taskName: string | undefined) {
           break;
         case "progress":
           setProgress(msg.progress);
+          if (msg.items) setProgressItems(msg.items);
           break;
         case "info":
           setLogEntries((prev) => [
@@ -120,13 +128,22 @@ export function useTaskStream(taskName: string | undefined) {
     await fetch(`${baseUrl}/tasks/${taskName}/stop`, { method: "POST" });
   }, [taskName, baseUrl]);
 
+  const addLogEntry = useCallback((kind: LogEntry["kind"], text: string) => {
+    setLogEntries((prev) => [
+      ...prev,
+      { id: String(idRef.current++), kind, text, timestamp: Date.now() },
+    ]);
+  }, []);
+
   return {
     state,
     logEntries,
     progress,
+    progressItems,
     isRunning,
     stopReason,
     startTask,
     stopTask,
+    addLogEntry,
   };
 }

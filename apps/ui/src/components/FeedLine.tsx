@@ -64,15 +64,7 @@ function renderEvent(event: FeedEvent) {
       );
 
     case "tool-end":
-      return (
-        <div>
-          <span style={{ color: "var(--success)", marginRight: 6 }}>✓</span>
-          {event.name && <span style={{ color: "var(--text-dim)" }}>{event.name}</span>}
-          {event.summary && (
-            <span style={{ color: "var(--text-dim)", marginLeft: 8 }}>→ {event.summary}</span>
-          )}
-        </div>
-      );
+      return null;
 
     case "tool-result-preview":
       return (
@@ -126,6 +118,24 @@ function renderEvent(event: FeedEvent) {
 }
 
 export function FeedLine({ entry }: { entry: LogEntry }) {
+  if (entry.kind === "steering") {
+    return (
+      <div
+        style={{
+          padding: "6px 10px",
+          margin: "6px 0",
+          background: "var(--accent-dim)",
+          border: "1px solid var(--accent)",
+          borderRadius: 4,
+          fontSize: 12,
+        }}
+      >
+        <span style={{ color: "var(--accent)", fontWeight: 600, marginRight: 8 }}>STEERING</span>
+        <span style={{ color: "var(--text)" }}>{entry.text}</span>
+      </div>
+    );
+  }
+
   if (entry.kind === "info") {
     return <div style={{ color: "var(--text-muted)", padding: "2px 0" }}>{entry.text}</div>;
   }

@@ -10,10 +10,11 @@ import type { SidecarContext } from "./types";
 const port = Number(process.env["SIDECAR_PORT"] ?? 0);
 
 // Resolve the .ralph/tasks directory relative to cwd
-const ralphDir = join(process.cwd(), ".ralph");
+const projectRoot = process.cwd();
+const ralphDir = join(projectRoot, ".ralph");
 const tasksDir = join(ralphDir, "tasks");
 
-const ctx: SidecarContext = { tasksDir, ralphDir };
+const ctx: SidecarContext = { tasksDir, ralphDir, projectRoot };
 
 interface WsData {
   taskName: string;
@@ -35,16 +36,20 @@ function parseRoute(pathname: string): Route | null {
     return { handler: "documents", name: parts[1]!, doc: parts[3]! };
   }
 
-  // /tasks/:name/start or /tasks/:name/stop
-  if (parts.length === 3 && parts[0] === "tasks" && (parts[2] === "start" || parts[2] === "stop")) {
-    return { handler: "loop", name: parts[1]!, action: parts[2]! };
-  }
-
-  // /tasks/:name/advance or /tasks/:name/set-phase
+  // /tasks/:name/start or /tasks/:name/stop or /tasks/:name/steer
   if (
     parts.length === 3 &&
     parts[0] === "tasks" &&
-    (parts[2] === "advance" || parts[2] === "set-phase")
+    (parts[2] === "start" || parts[2] === "stop" || parts[2] === "steer")
+  ) {
+    return { handler: "loop", name: parts[1]!, action: parts[2]! };
+  }
+
+  // /tasks/:name/advance or /tasks/:name/set-phase or /tasks/:name/delete
+  if (
+    parts.length === 3 &&
+    parts[0] === "tasks" &&
+    (parts[2] === "advance" || parts[2] === "set-phase" || parts[2] === "delete")
   ) {
     return { handler: "tasks", action: parts[2]!, name: parts[1]! };
   }

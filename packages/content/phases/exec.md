@@ -101,9 +101,9 @@ Before committing, review all changes made in this section:
 - `git add` the specific files you changed (not `git add -A`)
 - `git commit` with a descriptive message summarizing the section's work
 - `git push`
-- Check PROGRESS.md for remaining unchecked items. If **all items across all sections** are now checked, advance to done. Use `ralph_advance_phase` MCP tool if available, otherwise fall back to:
+- Check PROGRESS.md for remaining unchecked items. If **all items across all sections** are now checked, advance to done. Use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise fall back to:
   ```
-  ./loop.sh advance --name "{{TASK_NAME}}"
+  ralph advance --name "{{TASK_NAME}}"
   ```
 
 ---

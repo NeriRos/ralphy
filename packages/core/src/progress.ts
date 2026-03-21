@@ -8,7 +8,7 @@ export interface ProgressCount {
  * Find the first section (## heading) that contains unchecked items (`- [ ]`).
  * Returns the section header and its body, or null if no such section exists.
  *
- * Port of the AWK logic from loop.sh `extract_current_section()`.
+ * Finds the first unchecked section in PROGRESS.md.
  */
 export function extractCurrentSection(content: string): string | null {
   const lines = content.split("\n");
@@ -53,4 +53,36 @@ export function countProgress(content: string): ProgressCount {
   const checked = (content.match(/^- \[x\]/gm) ?? []).length;
   const unchecked = (content.match(/^- \[ \]/gm) ?? []).length;
   return { checked, unchecked, total: checked + unchecked };
+}
+
+export interface ProgressItem {
+  text: string;
+  checked: boolean;
+  section: string;
+}
+
+/**
+ * Parse PROGRESS.md into individual items with section context.
+ */
+export function parseProgressItems(content: string): ProgressItem[] {
+  const items: ProgressItem[] = [];
+  let currentSection = "";
+
+  for (const line of content.split("\n")) {
+    if (line.startsWith("## ")) {
+      currentSection = line.replace(/^## /, "").trim();
+      continue;
+    }
+    const checkedMatch = line.match(/^- \[x\] (.+)/);
+    if (checkedMatch) {
+      items.push({ text: checkedMatch[1]!, checked: true, section: currentSection });
+      continue;
+    }
+    const uncheckedMatch = line.match(/^- \[ \] (.+)/);
+    if (uncheckedMatch) {
+      items.push({ text: uncheckedMatch[1]!, checked: false, section: currentSection });
+    }
+  }
+
+  return items;
 }

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import type { State } from "@ralphy/types";
 
 interface ProgressCount {
@@ -27,6 +28,26 @@ function formatDuration(ms: number): string {
 export function StatusBar({ state, progress, isRunning, stopReason }: StatusBarProps) {
   const pct =
     progress && progress.total > 0 ? Math.round((progress.checked / progress.total) * 100) : null;
+
+  // Live elapsed time: track when running started and tick every second
+  const [extraMs, setExtraMs] = useState(0);
+  const runStartRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      runStartRef.current = Date.now();
+      setExtraMs(0);
+      const interval = setInterval(() => {
+        setExtraMs(Date.now() - runStartRef.current!);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+    runStartRef.current = null;
+    setExtraMs(0);
+    return undefined;
+  }, [isRunning]);
+
+  const totalMs = state.usage.total_duration_ms + extraMs;
 
   return (
     <div
@@ -63,8 +84,7 @@ export function StatusBar({ state, progress, isRunning, stopReason }: StatusBarP
       </span>
 
       <span>
-        <strong style={{ color: "var(--text)" }}>Time:</strong>{" "}
-        {formatDuration(state.usage.total_duration_ms)}
+        <strong style={{ color: "var(--text)" }}>Time:</strong> {formatDuration(totalMs)}
       </span>
 
       <span>

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { getStorage } from "@ralphy/context";
 import { readState, buildInitialState, writeState } from "@ralphy/core/state";
 import { countProgress } from "@ralphy/core/progress";
@@ -86,6 +87,18 @@ export async function taskRoutes(
         return { status: 200, body: newState };
       } catch {
         return { status: 404, body: { error: "Task not found" } };
+      }
+    }
+
+    case "delete": {
+      if (req.method !== "DELETE") return { status: 405, body: { error: "Method not allowed" } };
+      if (!route.name) return { status: 400, body: { error: "Missing task name" } };
+      const taskDir = join(ctx.tasksDir, route.name);
+      try {
+        rmSync(taskDir, { recursive: true, force: true });
+        return { status: 200, body: { deleted: true } };
+      } catch {
+        return { status: 500, body: { error: "Failed to delete task" } };
       }
     }
 

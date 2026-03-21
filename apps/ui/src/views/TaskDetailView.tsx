@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useSidecar } from "../context/SidecarContext";
 import { useTaskStream } from "../hooks/useTaskStream";
 import { useDocument } from "../hooks/useDocument";
@@ -8,19 +8,24 @@ import { PhaseStepper } from "../components/PhaseStepper";
 import { FeedLine } from "../components/FeedLine";
 import { StatusBar } from "../components/StatusBar";
 import { DocumentEditor } from "../components/DocumentEditor";
+import { ProgressList } from "../components/ProgressList";
+import { SteeringInput } from "../components/SteeringInput";
 import type { State } from "@ralphy/types";
 
 export function TaskDetailView() {
   const { name } = useParams<{ name: string }>();
+  const navigate = useNavigate();
   const { baseUrl } = useSidecar();
   const {
     state: streamState,
     logEntries,
     progress,
+    progressItems,
     isRunning,
     stopReason,
     startTask,
     stopTask,
+    addLogEntry,
   } = useTaskStream(name);
 
   // Fetch initial state if not streaming
@@ -37,7 +42,9 @@ export function TaskDetailView() {
 
   // STEERING.md editor
   const steering = useDocument(name, "STEERING.md");
-  const [showSteering, setShowSteering] = useState(false);
+
+  // Right panel tab: "progress" or "steering"
+  const [rightPanel, setRightPanel] = useState<"progress" | "steering" | null>(null);
 
   // Auto-scroll feed
   const feedRef = useRef<HTMLDivElement>(null);
@@ -59,6 +66,32 @@ export function TaskDetailView() {
   const [maxIterations, setMaxIterations] = useState("10");
   const [maxCost, setMaxCost] = useState("0");
 
+  // Send steering message: update STEERING.md and restart the current iteration
+  const handleSendSteering = useCallback(
+    async (message: string) => {
+      if (!name || !baseUrl) return;
+      const current = steering.content ?? "";
+      const newContent = current ? `${current}\n\n---\n\n${message}` : message;
+      // Call the steer endpoint which saves STEERING.md and kills the current engine
+      await fetch(`${baseUrl}/tasks/${name}/steer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newContent }),
+      });
+      // Update local state so the steering panel stays in sync
+      steering.refresh();
+      addLogEntry("steering", message);
+    },
+    [name, baseUrl, steering, addLogEntry],
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!name || !baseUrl) return;
+    if (!window.confirm(`Delete task "${name}"? This cannot be undone.`)) return;
+    await fetch(`${baseUrl}/tasks/${name}/delete`, { method: "DELETE" });
+    navigate("/");
+  }, [name, baseUrl, navigate]);
+
   if (!name) return null;
 
   return (
@@ -77,28 +110,48 @@ export function TaskDetailView() {
           )}
         </h1>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setShowSteering(!showSteering)}>
-            {showSteering ? "Hide Steering" : "Steering"}
+          <button
+            onClick={() => setRightPanel(rightPanel === "progress" ? null : "progress")}
+            style={{
+              borderColor: rightPanel === "progress" ? "var(--accent)" : undefined,
+              color: rightPanel === "progress" ? "var(--accent)" : undefined,
+            }}
+          >
+            Progress
+          </button>
+          <button
+            onClick={() => setRightPanel(rightPanel === "steering" ? null : "steering")}
+            style={{
+              borderColor: rightPanel === "steering" ? "var(--accent)" : undefined,
+              color: rightPanel === "steering" ? "var(--accent)" : undefined,
+            }}
+          >
+            Steering
           </button>
           {isRunning ? (
             <button className="danger" onClick={stopTask}>
               Stop
             </button>
           ) : (
-            <button
-              className="primary"
-              onClick={() =>
-                startTask({
-                  engine: state?.engine ?? "claude",
-                  model: state?.model ?? "sonnet",
-                  prompt: state?.prompt ?? "",
-                  maxIterations: Number(maxIterations) || 0,
-                  maxCostUsd: Number(maxCost) || 0,
-                })
-              }
-            >
-              Start
-            </button>
+            <>
+              <button
+                className="primary"
+                onClick={() =>
+                  startTask({
+                    engine: state?.engine ?? "claude",
+                    model: state?.model ?? "sonnet",
+                    prompt: state?.prompt ?? "",
+                    maxIterations: Number(maxIterations) || 0,
+                    maxCostUsd: Number(maxCost) || 0,
+                  })
+                }
+              >
+                {state?.totalIterations ? "Resume" : "Start"}
+              </button>
+              <button className="danger" onClick={handleDelete}>
+                Delete
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -147,45 +200,49 @@ export function TaskDetailView() {
       )}
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <div
-          ref={feedRef}
-          onScroll={handleScroll}
-          style={{
-            flex: 1,
-            overflow: "auto",
-            padding: "12px 20px",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            lineHeight: 1.7,
-          }}
-        >
-          {logEntries.length === 0 && !isRunning ? (
-            <p style={{ color: "var(--text-dim)", textAlign: "center", paddingTop: 40 }}>
-              {state?.totalIterations
-                ? `${state.totalIterations} iterations completed. Click Start to continue.`
-                : "Click Start to begin the task loop."}
-            </p>
-          ) : (
-            logEntries.map((entry) => <FeedLine key={entry.id} entry={entry} />)
-          )}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div
+            ref={feedRef}
+            onScroll={handleScroll}
+            style={{
+              flex: 1,
+              overflow: "auto",
+              padding: "12px 20px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              lineHeight: 1.7,
+            }}
+          >
+            {logEntries.length === 0 && !isRunning ? (
+              <p style={{ color: "var(--text-dim)", textAlign: "center", paddingTop: 40 }}>
+                {state?.totalIterations
+                  ? `${state.totalIterations} iterations completed. Click Start to continue.`
+                  : "Click Start to begin the task loop."}
+              </p>
+            ) : (
+              logEntries.map((entry) => <FeedLine key={entry.id} entry={entry} />)
+            )}
 
-          {stopReason && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: "8px 12px",
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 4,
-                color: "var(--warning)",
-              }}
-            >
-              Loop stopped: {stopReason}
-            </div>
-          )}
+            {stopReason && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "8px 12px",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 4,
+                  color: "var(--warning)",
+                }}
+              >
+                Loop stopped: {stopReason}
+              </div>
+            )}
+          </div>
+
+          <SteeringInput onSend={handleSendSteering} disabled={!isRunning} />
         </div>
 
-        {showSteering && (
+        {rightPanel === "steering" && (
           <div
             style={{
               width: 360,
@@ -200,6 +257,30 @@ export function TaskDetailView() {
               loading={steering.loading}
               onSave={steering.save}
             />
+          </div>
+        )}
+
+        {rightPanel === "progress" && (
+          <div
+            style={{
+              width: 360,
+              borderLeft: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "8px 12px",
+                borderBottom: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              PROGRESS.md
+            </div>
+            <ProgressList items={progressItems} />
           </div>
         )}
       </div>

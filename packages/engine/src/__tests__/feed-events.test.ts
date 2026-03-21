@@ -220,25 +220,14 @@ describe("renderFeedEvent", () => {
   });
 
   describe("tool-end event", () => {
-    test("renders tool-end with name and summary", () => {
+    test("renders tool-end as empty", () => {
       const lines = renderFeedEvent({ type: "tool-end", name: "Read", summary: "200 lines" });
-      const text = strip(lines.join("\n"));
-      expect(text).toContain("✓");
-      expect(text).toContain("Read");
-      expect(text).toContain("200 lines");
+      expect(lines).toEqual([]);
     });
 
-    test("renders tool-end with name only", () => {
-      const lines = renderFeedEvent({ type: "tool-end", name: "Read" });
-      const text = strip(lines.join("\n"));
-      expect(text).toContain("✓");
-      expect(text).toContain("Read");
-    });
-
-    test("renders tool-end without name", () => {
+    test("renders tool-end without name as empty", () => {
       const lines = renderFeedEvent({ type: "tool-end" });
-      const text = strip(lines.join("\n"));
-      expect(text).toContain("✓");
+      expect(lines).toEqual([]);
     });
   });
 

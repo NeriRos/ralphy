@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bunx tauri dev",
+    "dev:tauri": "bunx tauri dev",
     "build": "bunx tauri build",
-    "dev:sidecar": "bun --watch src-sidecar/server.ts",
+    "dev:sidecar": "SIDECAR_PORT=3210 bun --watch src-sidecar/server.ts",
     "dev:frontend": "bunx vite"
   },
   "dependencies": {

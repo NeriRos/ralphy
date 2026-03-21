@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { runWithContext, createDefaultContext, getStorage } from "@ralphy/context";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
-import { countProgress } from "@ralphy/core/progress";
+import { countProgress, parseProgressItems } from "@ralphy/core/progress";
 import { scaffoldTaskDocuments } from "@ralphy/core/templates";
 import { runEngine, handleEngineFailure } from "@ralphy/engine/engine";
 import { autoTransitionAfterIteration } from "@ralphy/core/phases";
@@ -19,6 +19,9 @@ import type { FeedEvent, State } from "@ralphy/types";
 
 // Track running loops so we can stop them
 const runningLoops = new Map<string, { cancel: () => void }>();
+
+// Track the current engine AbortController per task so steering can kill it
+const engineAbortControllers = new Map<string, AbortController>();
 
 interface RouteResult {
   status: number;
@@ -62,6 +65,19 @@ export async function loopRoutes(
     return { status: 200, body: { stopped: true } };
   }
 
+  if (route.action === "steer") {
+    const body = (await req.json()) as { content: string };
+    // Save steering content to STEERING.md
+    const storage = getStorage();
+    storage.write(join(taskDir, "STEERING.md"), body.content);
+    // Kill the current engine process so the loop restarts with new steering
+    const ac = engineAbortControllers.get(taskName);
+    if (ac) {
+      ac.abort();
+    }
+    return { status: 200, body: { steered: true } };
+  }
+
   if (route.action === "start") {
     if (runningLoops.has(taskName)) {
       return { status: 409, body: { error: "Task is already running" } };
@@ -93,7 +109,7 @@ export async function loopRoutes(
     runningLoops.set(taskName, { cancel });
 
     // Run loop in background
-    runLoopAsync(taskName, taskDir, opts, () => cancelled)
+    runLoopAsync(taskName, taskDir, opts, () => cancelled, ctx.projectRoot)
       .catch((err) => {
         broadcast(taskName, { type: "error", message: String(err) });
       })
@@ -112,6 +128,7 @@ async function runLoopAsync(
   taskDir: string,
   opts: LoopOptions,
   isCancelled: () => boolean,
+  projectRoot: string,
 ): Promise<void> {
   await runWithContext(createDefaultContext(), async () => {
     const storage = getStorage();
@@ -162,7 +179,8 @@ async function runLoopAsync(
       const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
       if (progressContent !== null) {
         const progress = countProgress(progressContent);
-        broadcast(taskName, { type: "progress", progress });
+        const items = parseProgressItems(progressContent);
+        broadcast(taskName, { type: "progress", progress, items });
       }
 
       const phaseBeforeEngine = currentState.phase;
@@ -174,6 +192,10 @@ async function runLoopAsync(
           broadcast(taskName, { type: "feed", event });
         };
 
+        // Create an AbortController so steering can kill this iteration
+        const ac = new AbortController();
+        engineAbortControllers.set(taskName, ac);
+
         const engineResult = await runEngine({
           engine: opts.engine,
           model: opts.model,
@@ -181,8 +203,21 @@ async function runLoopAsync(
           logFlag: opts.log,
           taskDir,
           interactive: false,
+          cwd: projectRoot,
           onFeedEvent,
+          signal: ac.signal,
         });
+
+        engineAbortControllers.delete(taskName);
+
+        // If aborted by steering, skip failure handling and restart the iteration
+        if (ac.signal.aborted) {
+          broadcast(taskName, {
+            type: "info",
+            text: "Steering received — restarting iteration with updated prompt",
+          });
+          continue;
+        }
 
         if (engineResult.exitCode !== 0) {
           const failure = handleEngineFailure(engineResult.exitCode);
@@ -219,6 +254,14 @@ async function runLoopAsync(
         broadcast(taskName, { type: "state", state: currentState });
         consFailures = 0;
         lastResult = "";
+
+        // Broadcast updated progress after iteration
+        const postProgressContent = storage.read(join(taskDir, "PROGRESS.md"));
+        if (postProgressContent !== null) {
+          const postProgress = countProgress(postProgressContent);
+          const postItems = parseProgressItems(postProgressContent);
+          broadcast(taskName, { type: "progress", progress: postProgress, items: postItems });
+        }
 
         if (currentState.phase === phaseBeforeEngine) {
           currentState = autoTransitionAfterIteration(currentState, taskDir);

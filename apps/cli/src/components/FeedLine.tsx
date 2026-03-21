@@ -121,16 +121,6 @@ function ToolStartLine({ event }: { event: Extract<FeedEvent, { type: "tool-star
   );
 }
 
-function ToolEndLine({ event }: { event: Extract<FeedEvent, { type: "tool-end" }> }) {
-  return (
-    <Box paddingLeft={INDENT}>
-      <Text color="green">✓</Text>
-      {event.name ? <Text dimColor> {event.name}</Text> : null}
-      {event.summary ? <Text dimColor> → {event.summary}</Text> : null}
-    </Box>
-  );
-}
-
 function ToolResultPreview({
   event,
 }: {
@@ -262,8 +252,7 @@ export function FeedLine({ event, verbose }: { event: FeedEvent; verbose?: boole
     case "tool-start":
       return <ToolStartLine event={event} />;
     case "tool-end":
-      if (!event.name) return null;
-      return <ToolEndLine event={event} />;
+      return null;
     case "tool-result-preview":
       if (!verbose) return null;
       return <ToolResultPreview event={event} />;

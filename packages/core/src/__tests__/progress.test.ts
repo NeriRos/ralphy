@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractCurrentSection, countProgress } from "../progress";
+import { extractCurrentSection, countProgress, parseProgressItems } from "../progress";
 
 const SAMPLE_PROGRESS = `# Progress — typescript
 
@@ -104,5 +104,34 @@ describe("countProgress", () => {
     const mixed = "# Title\nSome text\n- [x] Done\n- [ ] Todo\nMore text\n";
     const result = countProgress(mixed);
     expect(result).toEqual({ checked: 1, unchecked: 1, total: 2 });
+  });
+});
+
+describe("parseProgressItems", () => {
+  test("parses items with section context", () => {
+    const items = parseProgressItems(SAMPLE_PROGRESS);
+    expect(items).toEqual([
+      { text: "Initialize workspace", checked: true, section: "Section 1 — Scaffolding" },
+      { text: "Run bun install", checked: true, section: "Section 1 — Scaffolding" },
+      { text: "Create types.ts", checked: true, section: "Section 2 — Types" },
+      { text: "Write tests", checked: true, section: "Section 2 — Types" },
+      { text: "Create state.ts", checked: false, section: "Section 3 — State Management" },
+      { text: "Create progress.ts", checked: false, section: "Section 3 — State Management" },
+      { text: "Write tests", checked: false, section: "Section 3 — State Management" },
+      { text: "Create git.ts", checked: false, section: "Section 4 — Git Operations" },
+      { text: "Create display.ts", checked: false, section: "Section 4 — Git Operations" },
+    ]);
+  });
+
+  test("returns empty array for empty content", () => {
+    expect(parseProgressItems("")).toEqual([]);
+  });
+
+  test("handles items without sections", () => {
+    const items = parseProgressItems("- [x] Done\n- [ ] Todo\n");
+    expect(items).toEqual([
+      { text: "Done", checked: true, section: "" },
+      { text: "Todo", checked: false, section: "" },
+    ]);
   });
 });

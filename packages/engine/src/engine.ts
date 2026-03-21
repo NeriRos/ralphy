@@ -14,8 +14,10 @@ export interface RunEngineOptions {
   logFlag?: boolean;
   taskDir?: string;
   interactive?: boolean;
+  cwd?: string;
   onOutput?: (line: string) => void;
   onFeedEvent?: (event: FeedEvent) => void;
+  signal?: AbortSignal;
 }
 
 export interface EngineResult {
@@ -112,11 +114,11 @@ async function runInteractive(
         `Read the file ${promptFile} for background on the task.`,
         `Start by using /plan mode. Ask the user clarifying questions to deeply understand the requirements,`,
         `constraints, edge cases, and preferences. Do not rush — thorough understanding is the goal.`,
-        `Once the user is satisfied and approves, call the ralph_finish_interactive MCP tool with the task name`,
+        `Once the user is satisfied and approves, call the mcp__ralph__ralph_finish_interactive MCP tool with the task name`,
         `and a comprehensive context summary of everything discussed: refined requirements, architectural decisions,`,
         `constraints, edge cases, and user preferences.`,
         `The automated loop will then run all phases (research, plan, exec, review) using this context.`,
-        `After calling ralph_finish_interactive, use /exit immediately.`,
+        `After calling mcp__ralph__ralph_finish_interactive, use /exit immediately.`,
       ].join(" "),
     ];
 
@@ -185,7 +187,17 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
     stdin: "pipe",
     stdout: "pipe",
     stderr: isClaude ? "inherit" : "pipe",
+    ...(opts.cwd ? { cwd: opts.cwd } : {}),
   });
+
+  // Kill the process if the abort signal fires
+  if (opts.signal) {
+    if (opts.signal.aborted) {
+      proc.kill();
+    } else {
+      opts.signal.addEventListener("abort", () => proc.kill(), { once: true }); // v8 ignore
+    }
+  }
 
   // Write prompt to stdin for both engines
   const stdin = proc.stdin as import("bun").FileSink;

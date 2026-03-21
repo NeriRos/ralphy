@@ -151,24 +151,16 @@ describe("FeedLine", () => {
     expect(lastFrame()!).toContain("raw input data");
   });
 
-  test("renders tool-end event with name and summary", () => {
+  test("renders tool-end event as empty", () => {
     const event: FeedEvent = { type: "tool-end", name: "Read", summary: "200 lines" };
     const { lastFrame } = render(<FeedLine event={event} />);
-    const frame = lastFrame()!;
-    expect(frame).toContain("Read");
-    expect(frame).toContain("200 lines");
+    // tool-end events are suppressed
+    expect(lastFrame()!).toBe("");
   });
 
-  test("renders tool-end event with name only", () => {
-    const event: FeedEvent = { type: "tool-end", name: "Bash" };
-    const { lastFrame } = render(<FeedLine event={event} />);
-    expect(lastFrame()!).toContain("Bash");
-  });
-
-  test("returns null for tool-end event without name", () => {
+  test("renders tool-end event without name as empty", () => {
     const event: FeedEvent = { type: "tool-end" };
     const { lastFrame } = render(<FeedLine event={event} />);
-    // When returning null from a component, ink renders empty
     expect(lastFrame()!).toBe("");
   });
 
