@@ -117,3 +117,46 @@ export const StateSchema = z.object({
 export type Usage = z.infer<typeof UsageSchema>;
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 export type State = z.infer<typeof StateSchema>;
+
+// --- Feed event types ---
+
+export type ToolInputSummary =
+  | { kind: "file"; name: string }
+  | { kind: "command"; text: string }
+  | { kind: "search"; pattern: string; path?: string }
+  | { kind: "url"; url: string }
+  | { kind: "prompt"; text: string }
+  | { kind: "edit" }
+  | { kind: "write" }
+  | { kind: "raw"; text: string };
+
+/**
+ * Structured output events emitted by engine stream formatters.
+ * Both Claude and Codex formatters produce these same event types,
+ * enabling shared rendering logic (Ink components or chalk strings).
+ */
+export type FeedEvent =
+  | { type: "session"; model: string; sessionId: string; version?: string; toolCount?: number }
+  | { type: "session-unknown"; sessionId: string }
+  | { type: "agent"; description: string }
+  | { type: "thinking"; preview?: string; totalLines?: number }
+  | { type: "text"; text: string }
+  | { type: "tool-start"; name: string; summary?: ToolInputSummary }
+  | { type: "tool-end"; name?: string; summary?: string }
+  | { type: "tool-result-preview"; lines: string[]; truncated?: number }
+  | { type: "turn-start" }
+  | { type: "turn-done"; inputTokens?: number; outputTokens?: number }
+  | {
+      type: "result";
+      cost: number;
+      timeMs: number;
+      turns: number;
+      inputTokens: number;
+      outputTokens: number;
+      cached: number;
+    }
+  | { type: "result-error"; message: string }
+  | { type: "error"; message: string }
+  | { type: "rate-limit"; message: string }
+  | { type: "interrupted"; turns: number; tools: number }
+  | { type: "raw"; text: string };
