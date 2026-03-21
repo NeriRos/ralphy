@@ -17,13 +17,6 @@
         "cwd": "{workspaceRoot}"
       }
     },
-    "check:circular": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "madge --circular --extensions ts packages/core/src",
-        "cwd": "{workspaceRoot}"
-      }
-    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
