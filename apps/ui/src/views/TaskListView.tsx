@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTasks } from "../hooks/useTasks";
 import { PhaseBadge } from "../components/PhaseBadge";
@@ -11,12 +11,13 @@ function formatCost(usd: number): string {
 export function TaskListView() {
   const { connected, baseUrl } = useSidecar();
   const { tasks, loading, refresh } = useTasks();
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const handleDelete = useCallback(
     async (taskName: string) => {
       if (!baseUrl) return;
-      if (!window.confirm(`Delete task "${taskName}"? This cannot be undone.`)) return;
       await fetch(`${baseUrl}/tasks/${taskName}/delete`, { method: "DELETE" });
+      setPendingDelete(null);
       refresh();
     },
     [baseUrl, refresh],
@@ -97,16 +98,40 @@ export function TaskListView() {
                     <StatusBadge status={task.status} />
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    <button
-                      className="danger"
-                      style={{ padding: "2px 8px", fontSize: 11 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(task.name);
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {pendingDelete === task.name ? (
+                      <span style={{ display: "flex", gap: 4 }}>
+                        <button
+                          className="danger"
+                          style={{ padding: "2px 8px", fontSize: 11 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(task.name);
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          style={{ padding: "2px 8px", fontSize: 11 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingDelete(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        className="danger"
+                        style={{ padding: "2px 8px", fontSize: 11 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete(task.name);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
