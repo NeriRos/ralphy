@@ -39,6 +39,12 @@ export function TaskDetailView() {
 
   const state = streamState ?? initialState;
 
+  // Use WS running state once known, otherwise fall back to HTTP-fetched isRunning
+  const effectiveIsRunning =
+    isRunning !== null
+      ? isRunning
+      : (initialState as Record<string, unknown> | null)?.isRunning === true;
+
   // Document editors
   const steering = useDocument(name, "STEERING.md");
   const plan = useDocument(name, "PLAN.md");
@@ -128,11 +134,11 @@ export function TaskDetailView() {
           >
             Steering
           </button>
-          {isRunning ? (
+          {effectiveIsRunning ? (
             <button className="danger" onClick={stopTask}>
               Stop
             </button>
-          ) : (
+          ) : state?.phase !== "done" ? (
             <button
               className="primary"
               onClick={() =>
@@ -147,7 +153,7 @@ export function TaskDetailView() {
             >
               {state?.totalIterations ? "Resume" : "Start"}
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -157,12 +163,12 @@ export function TaskDetailView() {
         <StatusBar
           state={state}
           progress={progress}
-          isRunning={isRunning}
+          isRunning={effectiveIsRunning}
           stopReason={stopReason}
         />
       )}
 
-      {!isRunning && !stopReason && (
+      {!effectiveIsRunning && !stopReason && state?.phase !== "done" && (
         <div
           style={{
             padding: "12px 20px",
@@ -208,11 +214,13 @@ export function TaskDetailView() {
               lineHeight: 1.7,
             }}
           >
-            {logEntries.length === 0 && !isRunning ? (
+            {logEntries.length === 0 && !effectiveIsRunning ? (
               <p style={{ color: "var(--text-dim)", textAlign: "center", paddingTop: 40 }}>
-                {state?.totalIterations
-                  ? `${state.totalIterations} iterations completed. Click Start to continue.`
-                  : "Click Start to begin the task loop."}
+                {state?.phase === "done"
+                  ? "Task completed."
+                  : state?.totalIterations
+                    ? `${state.totalIterations} iterations completed. Click Resume to continue.`
+                    : "Click Start to begin the task loop."}
               </p>
             ) : (
               logEntries.map((entry) => <FeedLine key={entry.id} entry={entry} />)
@@ -234,7 +242,7 @@ export function TaskDetailView() {
             )}
           </div>
 
-          <SteeringInput onSend={handleSendSteering} disabled={!isRunning} />
+          <SteeringInput onSend={handleSendSteering} disabled={!effectiveIsRunning} />
         </div>
 
         {rightPanel === "plan" && (

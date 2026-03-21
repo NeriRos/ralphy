@@ -95,7 +95,11 @@ export function TaskListView() {
                     {formatCost(task.usage.total_cost_usd)}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    <StatusBadge status={task.status} />
+                    {task.isRunning ? (
+                      <RunningIndicator />
+                    ) : (
+                      <StatusBadge status={task.status} />
+                    )}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {pendingDelete === task.name ? (
@@ -170,6 +174,33 @@ function ProgressBar({ checked, total }: { checked: number; total: number }) {
         {checked}/{total}
       </span>
     </div>
+  );
+}
+
+function RunningIndicator() {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 12,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        color: "var(--accent)",
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: "var(--accent)",
+          animation: "pulse 1.5s ease-in-out infinite",
+        }}
+      />
+      Running
+    </span>
   );
 }
 

@@ -5,6 +5,7 @@ import { taskRoutes } from "./routes/tasks";
 import { loopRoutes } from "./routes/loop";
 import { documentRoutes } from "./routes/documents";
 import { addStream, removeStream } from "./streams";
+import { isTaskRunning } from "./routes/loop";
 import type { SidecarContext } from "./types";
 
 // Use SIDECAR_PORT env var, or 0 to let the OS assign a free port
@@ -131,6 +132,10 @@ const server = Bun.serve<WsData>({
   websocket: {
     open(ws) {
       addStream(ws.data.taskName, ws);
+      // Send current running status so reconnecting clients restore state
+      if (isTaskRunning(ws.data.taskName)) {
+        ws.send(JSON.stringify({ type: "running", running: true }));
+      }
     },
     close(ws) {
       removeStream(ws.data.taskName, ws);

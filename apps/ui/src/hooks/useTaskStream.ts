@@ -20,7 +20,8 @@ type WsMessage =
   | { type: "progress"; progress: ProgressCount; items?: ProgressItem[] }
   | { type: "info"; text: string }
   | { type: "stopped"; reason: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "running"; running: boolean };
 
 export interface LogEntry {
   id: string;
@@ -36,7 +37,8 @@ export function useTaskStream(taskName: string | undefined) {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [progress, setProgress] = useState<ProgressCount | null>(null);
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
+  // null = unknown (haven't heard from server yet), true/false = known
+  const [isRunning, setIsRunning] = useState<boolean | null>(null);
   const [stopReason, setStopReason] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const idRef = useRef(0);
@@ -73,6 +75,9 @@ export function useTaskStream(taskName: string | undefined) {
         case "stopped":
           setStopReason(msg.reason);
           setIsRunning(false);
+          break;
+        case "running":
+          setIsRunning(msg.running);
           break;
         case "error":
           setLogEntries((prev) => [

@@ -1,10 +1,11 @@
 import { join } from "node:path";
 import { rmSync } from "node:fs";
 import { getStorage } from "@ralphy/context";
-import { readState, buildInitialState, writeState } from "@ralphy/core/state";
+import { readState, buildInitialState, writeState, ensureState } from "@ralphy/core/state";
 import { countProgress } from "@ralphy/core/progress";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { scaffoldTaskDocuments } from "@ralphy/core/templates";
+import { isTaskRunning } from "./loop";
 import type { SidecarContext } from "../types";
 
 interface RouteResult {
@@ -49,14 +50,13 @@ export async function taskRoutes(
       const entries = storage.list(ctx.tasksDir);
       const tasks = [];
       for (const name of entries) {
+        if (name.startsWith(".")) continue;
         const taskDir = join(ctx.tasksDir, name);
-        const stateFile = storage.read(join(taskDir, "state.json"));
-        if (stateFile === null) continue;
         try {
-          const state = readState(taskDir);
+          const state = ensureState(taskDir);
           const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
           const progress = progressContent !== null ? countProgress(progressContent) : null;
-          tasks.push({ ...state, progress });
+          tasks.push({ ...state, progress, isRunning: isTaskRunning(name) });
         } catch {
           // Skip invalid tasks
         }
@@ -68,10 +68,10 @@ export async function taskRoutes(
       if (!route.name) return { status: 400, body: { error: "Missing task name" } };
       const taskDir = join(ctx.tasksDir, route.name);
       try {
-        const state = readState(taskDir);
+        const state = ensureState(taskDir);
         const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
         const progress = progressContent !== null ? countProgress(progressContent) : null;
-        return { status: 200, body: { ...state, progress } };
+        return { status: 200, body: { ...state, progress, isRunning: isTaskRunning(route.name) } };
       } catch {
         return { status: 404, body: { error: "Task not found" } };
       }

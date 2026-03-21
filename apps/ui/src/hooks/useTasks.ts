@@ -4,6 +4,7 @@ import type { State } from "@ralphy/types";
 
 interface TaskWithProgress extends State {
   progress: { checked: number; unchecked: number; total: number } | null;
+  isRunning: boolean;
 }
 
 export function useTasks() {
@@ -26,13 +27,15 @@ export function useTasks() {
     }
   }, [baseUrl]);
 
+  const anyRunning = tasks.some((t) => t.isRunning);
+
   useEffect(() => {
     if (!connected) return;
     refresh();
-    // Poll every 5 seconds
-    const interval = setInterval(refresh, 5000);
+    // Poll faster when a task is running so cost/phase stay up to date
+    const interval = setInterval(refresh, anyRunning ? 2000 : 5000);
     return () => clearInterval(interval);
-  }, [connected, refresh]);
+  }, [connected, refresh, anyRunning]);
 
   return { tasks, loading, error, refresh };
 }

@@ -23,6 +23,10 @@ import type { FeedEvent, State } from "@ralphy/types";
 // Track running loops so we can stop them
 const runningLoops = new Map<string, { cancel: () => void }>();
 
+export function isTaskRunning(taskName: string): boolean {
+  return runningLoops.has(taskName);
+}
+
 // Track the current engine AbortController per task so steering can kill it
 const engineAbortControllers = new Map<string, AbortController>();
 
@@ -109,6 +113,10 @@ export async function loopRoutes(
       verbose: body.verbose ?? false,
       tasksDir: ctx.tasksDir,
     };
+
+    // Clear any leftover STOP signal from a previous run
+    const storage = getStorage();
+    storage.remove(join(taskDir, "STOP"));
 
     let cancelled = false;
     const cancel = () => {
