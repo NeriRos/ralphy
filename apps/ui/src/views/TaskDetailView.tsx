@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useSidecar } from "../context/SidecarContext";
 import { useTaskStream } from "../hooks/useTaskStream";
 import { useDocument } from "../hooks/useDocument";
@@ -14,7 +14,6 @@ import type { State } from "@ralphy/types";
 
 export function TaskDetailView() {
   const { name } = useParams<{ name: string }>();
-  const navigate = useNavigate();
   const { baseUrl } = useSidecar();
   const {
     state: streamState,
@@ -40,11 +39,12 @@ export function TaskDetailView() {
 
   const state = streamState ?? initialState;
 
-  // STEERING.md editor
+  // Document editors
   const steering = useDocument(name, "STEERING.md");
+  const plan = useDocument(name, "PLAN.md");
 
-  // Right panel tab: "progress" or "steering"
-  const [rightPanel, setRightPanel] = useState<"progress" | "steering" | null>(null);
+  // Right panel tab
+  const [rightPanel, setRightPanel] = useState<"progress" | "steering" | "plan" | null>(null);
 
   // Auto-scroll feed
   const feedRef = useRef<HTMLDivElement>(null);
@@ -85,13 +85,6 @@ export function TaskDetailView() {
     [name, baseUrl, steering, addLogEntry],
   );
 
-  const handleDelete = useCallback(async () => {
-    if (!name || !baseUrl) return;
-    if (!window.confirm(`Delete task "${name}"? This cannot be undone.`)) return;
-    await fetch(`${baseUrl}/tasks/${name}/delete`, { method: "DELETE" });
-    navigate("/");
-  }, [name, baseUrl, navigate]);
-
   if (!name) return null;
 
   return (
@@ -110,6 +103,15 @@ export function TaskDetailView() {
           )}
         </h1>
         <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setRightPanel(rightPanel === "plan" ? null : "plan")}
+            style={{
+              borderColor: rightPanel === "plan" ? "var(--accent)" : undefined,
+              color: rightPanel === "plan" ? "var(--accent)" : undefined,
+            }}
+          >
+            Plan
+          </button>
           <button
             onClick={() => setRightPanel(rightPanel === "progress" ? null : "progress")}
             style={{
@@ -133,25 +135,20 @@ export function TaskDetailView() {
               Stop
             </button>
           ) : (
-            <>
-              <button
-                className="primary"
-                onClick={() =>
-                  startTask({
-                    engine: state?.engine ?? "claude",
-                    model: state?.model ?? "sonnet",
-                    prompt: state?.prompt ?? "",
-                    maxIterations: Number(maxIterations) || 0,
-                    maxCostUsd: Number(maxCost) || 0,
-                  })
-                }
-              >
-                {state?.totalIterations ? "Resume" : "Start"}
-              </button>
-              <button className="danger" onClick={handleDelete}>
-                Delete
-              </button>
-            </>
+            <button
+              className="primary"
+              onClick={() =>
+                startTask({
+                  engine: state?.engine ?? "claude",
+                  model: state?.model ?? "sonnet",
+                  prompt: state?.prompt ?? "",
+                  maxIterations: Number(maxIterations) || 0,
+                  maxCostUsd: Number(maxCost) || 0,
+                })
+              }
+            >
+              {state?.totalIterations ? "Resume" : "Start"}
+            </button>
           )}
         </div>
       </div>
@@ -241,6 +238,24 @@ export function TaskDetailView() {
 
           <SteeringInput onSend={handleSendSteering} disabled={!isRunning} />
         </div>
+
+        {rightPanel === "plan" && (
+          <div
+            style={{
+              width: 360,
+              borderLeft: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <DocumentEditor
+              title="PLAN.md"
+              content={plan.content}
+              loading={plan.loading}
+              onSave={plan.save}
+            />
+          </div>
+        )}
 
         {rightPanel === "steering" && (
           <div

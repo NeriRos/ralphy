@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTasks } from "../hooks/useTasks";
 import { PhaseBadge } from "../components/PhaseBadge";
@@ -8,8 +9,18 @@ function formatCost(usd: number): string {
 }
 
 export function TaskListView() {
-  const { connected } = useSidecar();
-  const { tasks, loading } = useTasks();
+  const { connected, baseUrl } = useSidecar();
+  const { tasks, loading, refresh } = useTasks();
+
+  const handleDelete = useCallback(
+    async (taskName: string) => {
+      if (!baseUrl) return;
+      if (!window.confirm(`Delete task "${taskName}"? This cannot be undone.`)) return;
+      await fetch(`${baseUrl}/tasks/${taskName}/delete`, { method: "DELETE" });
+      refresh();
+    },
+    [baseUrl, refresh],
+  );
 
   if (!connected) {
     return (
@@ -52,6 +63,7 @@ export function TaskListView() {
                 <th style={{ textAlign: "right", padding: "8px 12px" }}>Iterations</th>
                 <th style={{ textAlign: "right", padding: "8px 12px" }}>Cost</th>
                 <th style={{ textAlign: "left", padding: "8px 12px" }}>Status</th>
+                <th style={{ padding: "8px 12px", width: 40 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +95,18 @@ export function TaskListView() {
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     <StatusBadge status={task.status} />
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <button
+                      className="danger"
+                      style={{ padding: "2px 8px", fontSize: 11 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(task.name);
+                      }}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
