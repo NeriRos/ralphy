@@ -33,6 +33,7 @@ describe("getDocumentNames", () => {
 
   test("includes known document names", () => {
     const names = getDocumentNames();
+    expect(names).toContain("spec.md");
     expect(names).toContain("STEERING.md");
     expect(names).toContain("RESEARCH.md");
   });
@@ -62,8 +63,9 @@ describe("getStatusDocuments", () => {
     }
   });
 
-  test("includes RESEARCH.md, PLAN.md, PROGRESS.md", () => {
+  test("includes spec.md, RESEARCH.md, PLAN.md, PROGRESS.md", () => {
     const names = getStatusDocuments().map((d) => d.name);
+    expect(names).toContain("spec.md");
     expect(names).toContain("RESEARCH.md");
     expect(names).toContain("PLAN.md");
     expect(names).toContain("PROGRESS.md");
@@ -93,6 +95,18 @@ describe("getPromptDocuments", () => {
     const docs = getPromptDocuments("research");
     const names = docs.map((d) => d.name);
     expect(names).not.toContain("MANUAL_TESTING.md");
+  });
+
+  test("returns spec.md for exec and review phases", () => {
+    const execDocs = getPromptDocuments("exec").map((d) => d.name);
+    expect(execDocs).toContain("spec.md");
+    const reviewDocs = getPromptDocuments("review").map((d) => d.name);
+    expect(reviewDocs).toContain("spec.md");
+  });
+
+  test("does not return spec.md for research phase", () => {
+    const docs = getPromptDocuments("research").map((d) => d.name);
+    expect(docs).not.toContain("spec.md");
   });
 
   test("does not return documents with promptInjection=null", () => {

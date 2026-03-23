@@ -31,19 +31,27 @@ afterEach(() => {
 });
 
 describe("inferPhaseFromFiles", () => {
-  test("returns research when no files exist", () =>
+  test("returns specify when no files exist", () =>
     withStorage(() => {
+      expect(inferPhaseFromFiles(tempDir)).toBe("specify");
+    }));
+
+  test("returns research when only spec.md exists", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       expect(inferPhaseFromFiles(tempDir)).toBe("research");
     }));
 
-  test("returns plan when only RESEARCH.md exists", () =>
+  test("returns plan when spec.md and RESEARCH.md exist", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       expect(inferPhaseFromFiles(tempDir)).toBe("plan");
     }));
 
   test("returns plan when PLAN.md exists but not PROGRESS.md", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
       expect(inferPhaseFromFiles(tempDir)).toBe("plan");
@@ -51,6 +59,7 @@ describe("inferPhaseFromFiles", () => {
 
   test("returns exec when PROGRESS.md has unchecked items", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
       writeFileSync(
@@ -63,6 +72,7 @@ describe("inferPhaseFromFiles", () => {
 
   test("returns done when all items are checked", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
       writeFileSync(
@@ -118,6 +128,20 @@ describe("recordPhaseTransition", () => {
 });
 
 describe("advancePhase", () => {
+  test("specify → research when spec.md exists", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
+      const state = makeState({ phase: "specify" });
+      const updated = advancePhase(state, tempDir);
+      expect(updated.phase).toBe("research");
+    }));
+
+  test("specify → throws when spec.md missing", () =>
+    withStorage(() => {
+      const state = makeState({ phase: "specify" });
+      expect(() => advancePhase(state, tempDir)).toThrow("spec.md");
+    }));
+
   test("research → plan when RESEARCH.md exists", () =>
     withStorage(() => {
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");

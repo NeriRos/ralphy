@@ -1,6 +1,7 @@
-const PHASES = ["research", "plan", "exec", "review", "done"];
+const PHASES = ["specify", "research", "plan", "exec", "review", "done"];
 
 const PHASE_COLORS: Record<string, string> = {
+  specify: "var(--magenta)",
   research: "var(--cyan)",
   plan: "var(--accent)",
   exec: "var(--warning)",

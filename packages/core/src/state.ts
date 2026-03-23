@@ -72,7 +72,11 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
  */
 function inferPhaseFromFiles(taskDir: string): string {
   const storage = getStorage();
-  if (storage.read(join(taskDir, "RESEARCH.md")) === null) return getFirstPhase().name;
+  const hasSpec = storage.read(join(taskDir, "spec.md")) !== null;
+  const hasResearch = storage.read(join(taskDir, "RESEARCH.md")) !== null;
+
+  if (!hasSpec && !hasResearch) return getFirstPhase().name;
+  if (!hasResearch) return "research";
 
   const plan = storage.read(join(taskDir, "PLAN.md"));
   const progress = storage.read(join(taskDir, "PROGRESS.md"));
@@ -107,6 +111,7 @@ export function ensureState(taskDir: string): State {
 
   // Check if this is an existing task that predates state tracking
   const hasFiles =
+    storage.read(join(taskDir, "spec.md")) !== null ||
     storage.read(join(taskDir, "RESEARCH.md")) !== null ||
     storage.read(join(taskDir, "PLAN.md")) !== null ||
     storage.read(join(taskDir, "PROGRESS.md")) !== null;

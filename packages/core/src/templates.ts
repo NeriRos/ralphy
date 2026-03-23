@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { execSync } from "node:child_process";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { getStorage } from "@ralphy/context";
 import { resolveScaffoldsDir, resolveTasksDir } from "@ralphy/content";
@@ -39,6 +40,26 @@ export function scaffoldTaskDocuments(taskDir: string): void {
     } else if (doc.fallbackContent) {
       storage.write(dest, doc.fallbackContent);
     }
+  }
+  ensureSpecKit(taskDir);
+}
+
+/**
+ * Ensure spec-kit is initialized inside the .ralph directory.
+ * Runs `specify init --here --ai claude --force` with cwd set to .ralph/.
+ * This keeps .specify/ and .claude/commands/ inside .ralph/ (already gitignored).
+ * No-op if `specify` CLI is not installed.
+ */
+function ensureSpecKit(taskDir: string): void {
+  // taskDir is .ralph/tasks/<name>/, so .ralph/ is two levels up
+  const ralphDir = dirname(dirname(taskDir));
+  try {
+    execSync("specify init --here --ai claude --force", {
+      stdio: "ignore",
+      cwd: ralphDir,
+    });
+  } catch {
+    // specify CLI not installed — skip silently
   }
 }
 

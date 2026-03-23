@@ -461,7 +461,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
                 text: [
                   `Interactive session complete. Context saved to STEERING.md for task '${name}'.`,
                   "",
-                  "The automated ralph loop will now run all phases (research → plan → exec → review) with this context.",
+                  "The automated ralph loop will now run all phases (specify → research → plan → exec → review) with this context.",
                   "",
                   "IMPORTANT: Tell the user to run /exit to end this session so the automated loop can continue.",
                   "You cannot exit on your own — the user must type /exit in the terminal.",

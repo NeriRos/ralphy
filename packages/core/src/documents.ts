@@ -21,6 +21,17 @@ export interface TaskDocument {
 
 const TASK_DOCUMENTS: TaskDocument[] = [
   {
+    name: "spec.md",
+    scaffold: null,
+    promptInjection: {
+      phases: ["exec", "review"],
+      header: "Specification (requirements to satisfy)",
+      filterHeaders: true,
+      maxLines: 50,
+    },
+    showInStatus: true,
+  },
+  {
     name: "RESEARCH.md",
     scaffold: null,
     promptInjection: null,

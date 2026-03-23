@@ -1,19 +1,22 @@
 ---
 name: research
 order: 1
-requires: []
+requires: [spec.md]
 next: plan
 autoAdvance: null
 loopBack: null
 terminal: false
-context: []
+context:
+  - type: file
+    file: spec.md
+    label: "Specification"
 ---
 
 # Task — Research Phase
 
-You are starting a new task. Your job is to deeply research the codebase to understand the current state, then produce a RESEARCH.md documenting your findings.
+You have a spec.md with the feature specification. Your job is to deeply research the codebase to understand the current state, then produce a RESEARCH.md documenting your findings.
 
-**Input: Task description (injected below)**
+**Input: `TASK_DIR/spec.md` (already exists)**
 **Output: `TASK_DIR/RESEARCH.md` (you create this)**
 
 ---
@@ -22,7 +25,8 @@ You are starting a new task. Your job is to deeply research the codebase to unde
 
 0a. Study `CLAUDE.md` for build commands, conventions, patterns, and gotchas. This is the operational source of truth.
 0b. Read `TASK_DIR/state.json` for task context: current phase, iteration count, history of previous runs, and any metadata.
-0c. Never assume something is missing without searching first — use grep/glob to confirm.
+0c. Read `TASK_DIR/spec.md` thoroughly — it contains the feature specification with functional requirements, success criteria, and key entities. Align your research with the spec's requirements.
+0d. Never assume something is missing without searching first — use grep/glob to confirm.
 
 {{MCP_TOOLS}}
 
@@ -32,11 +36,11 @@ You are starting a new task. Your job is to deeply research the codebase to unde
 
 ### 1. Understand the task
 
-Read the task description below. Identify:
+Read `TASK_DIR/spec.md` end to end. Identify:
 
-- What needs to change or be created
-- What existing code is likely affected
-- What areas of the codebase to investigate
+- What needs to change or be created (from functional requirements)
+- What existing code is likely affected (from key entities and scope)
+- What areas of the codebase to investigate (from success criteria and user scenarios)
 
 ### 2. Deep research
 

@@ -158,7 +158,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         try {
           const interactiveDone = storage.read(join(taskDir, "_interactive_done")) !== null;
           const isInteractivePhase =
-            opts.interactive && currentState.phase === "research" && !interactiveDone;
+            opts.interactive && currentState.phase === "specify" && !interactiveDone;
 
           // Set up abort controller for live steering
           const controller = new AbortController();

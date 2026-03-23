@@ -137,7 +137,7 @@ describe("ralph_list_tasks", () => {
 
     expect(data.tasks).toHaveLength(1);
     expect(data.tasks[0]!.name).toBe("my-task");
-    expect(data.tasks[0]!.phase).toBe("research");
+    expect(data.tasks[0]!.phase).toBe("specify");
   });
 
   test("returns multiple tasks", async () => {
@@ -218,7 +218,7 @@ describe("ralph_get_task", () => {
 
     expect(data.name).toBe("detail-task");
     expect(data.prompt).toBe("Test task detail-task");
-    expect(data.phase).toBe("research");
+    expect(data.phase).toBe("specify");
     expect(data.status).toBe("active");
     expect(data.progress).toEqual({ checked: 1, unchecked: 2, total: 3 });
     // Section 1 still has unchecked items, so it's the current section
@@ -322,7 +322,7 @@ describe("ralph_create_task", () => {
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as { created: string; phase: string };
     expect(data.created).toBe("new-task");
-    expect(data.phase).toBe("research");
+    expect(data.phase).toBe("specify");
 
     // Verify files exist on disk
     expect(existsSync(join(tempDir, "new-task", "state.json"))).toBe(true);
@@ -418,27 +418,26 @@ describe("ralph_run_task", () => {
 });
 
 describe("ralph_advance_phase", () => {
-  test("advances research to plan when RESEARCH.md exists", async () => {
+  test("advances specify to research when spec.md exists", async () => {
     const taskDir = createTask(tempDir, "adv-task");
-    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research\nDone.");
+    writeFileSync(join(taskDir, "spec.md"), "# Spec\nDone.");
     const handler = captureHandlers(tempDir)("ralph_advance_phase");
 
     const result = await handler({ name: "adv-task" });
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as { from: string; to: string };
-    expect(data.from).toBe("research");
-    expect(data.to).toBe("plan");
+    expect(data.from).toBe("specify");
+    expect(data.to).toBe("research");
   });
 
   test("uses setPhase when explicit phase param provided", async () => {
-    const taskDir = createTask(tempDir, "set-phase-task");
-    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research");
+    createTask(tempDir, "set-phase-task");
     const handler = captureHandlers(tempDir)("ralph_advance_phase");
 
     const result = await handler({ name: "set-phase-task", phase: "exec" });
     expect(result.isError).toBeUndefined();
     const data = parseResult(result) as { from: string; to: string };
-    expect(data.from).toBe("research");
+    expect(data.from).toBe("specify");
     expect(data.to).toBe("exec");
 
     // Verify state was written with the new phase
@@ -448,13 +447,13 @@ describe("ralph_advance_phase", () => {
   });
 
   test("returns error when prerequisites missing", async () => {
-    createTask(tempDir, "no-research-task");
-    // No RESEARCH.md — cannot advance from research
+    createTask(tempDir, "no-spec-task");
+    // No spec.md — cannot advance from specify
     const handler = captureHandlers(tempDir)("ralph_advance_phase");
 
-    const result = await handler({ name: "no-research-task" });
+    const result = await handler({ name: "no-spec-task" });
     expect(result.isError).toBe(true);
-    expect(result.content[0]!.text).toContain("RESEARCH.md");
+    expect(result.content[0]!.text).toContain("spec.md");
   });
 
   test("calls commitState on success", async () => {
@@ -462,7 +461,7 @@ describe("ralph_advance_phase", () => {
     (commitMock as ReturnType<typeof mock>).mockClear();
 
     const taskDir = createTask(tempDir, "commit-task");
-    writeFileSync(join(taskDir, "RESEARCH.md"), "# Research");
+    writeFileSync(join(taskDir, "spec.md"), "# Spec");
     const handler = captureHandlers(tempDir)("ralph_advance_phase");
 
     await handler({ name: "commit-task" });

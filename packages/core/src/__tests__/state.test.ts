@@ -32,7 +32,7 @@ describe("readState / writeState", () => {
       const read = readState(tempDir);
       expect(read.name).toBe("test");
       expect(read.prompt).toBe("do things");
-      expect(read.phase).toBe("research");
+      expect(read.phase).toBe("specify");
       expect(read.version).toBe("1");
     }));
 
@@ -91,7 +91,7 @@ describe("buildInitialState", () => {
     const state = buildInitialState({ name: "my-task", prompt: "convert to ts" });
     expect(state.name).toBe("my-task");
     expect(state.prompt).toBe("convert to ts");
-    expect(state.phase).toBe("research");
+    expect(state.phase).toBe("specify");
     expect(state.engine).toBe("claude");
     expect(state.model).toBe("opus");
     expect(state.status).toBe("active");
@@ -123,15 +123,23 @@ describe("buildInitialState", () => {
 });
 
 describe("migrateState", () => {
-  test("infers research phase when no files exist", () =>
+  test("infers specify phase when no files exist", () =>
     withStorage(() => {
       const state = migrateState(tempDir);
-      expect(state.phase).toBe("research");
+      expect(state.phase).toBe("specify");
       expect(existsSync(join(tempDir, "state.json"))).toBe(true);
     }));
 
-  test("infers plan phase when only RESEARCH.md exists", () =>
+  test("infers research phase when only spec.md exists", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
+      const state = migrateState(tempDir);
+      expect(state.phase).toBe("research");
+    }));
+
+  test("infers plan phase when spec.md and RESEARCH.md exist", () =>
+    withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       const state = migrateState(tempDir);
       expect(state.phase).toBe("plan");
@@ -139,6 +147,7 @@ describe("migrateState", () => {
 
   test("infers exec phase when PROGRESS.md has unchecked items", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
       writeFileSync(
@@ -152,6 +161,7 @@ describe("migrateState", () => {
 
   test("infers done phase when PROGRESS.md has no unchecked items", () =>
     withStorage(() => {
+      writeFileSync(join(tempDir, "spec.md"), "# Spec", "utf-8");
       writeFileSync(join(tempDir, "RESEARCH.md"), "# Research", "utf-8");
       writeFileSync(join(tempDir, "PLAN.md"), "# Plan", "utf-8");
       writeFileSync(
@@ -184,7 +194,7 @@ describe("ensureState", () => {
   test("initialises fresh when no files exist", () =>
     withStorage(() => {
       const state = ensureState(tempDir);
-      expect(state.phase).toBe("research");
+      expect(state.phase).toBe("specify");
       expect(existsSync(join(tempDir, "state.json"))).toBe(true);
     }));
 });

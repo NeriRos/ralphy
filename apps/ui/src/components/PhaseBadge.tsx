@@ -1,4 +1,5 @@
 const PHASE_COLORS: Record<string, string> = {
+  specify: "var(--magenta)",
   research: "var(--cyan)",
   plan: "var(--accent)",
   exec: "var(--warning)",
