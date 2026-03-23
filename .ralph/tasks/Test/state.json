@@ -1,0 +1,108 @@
+{
+  "version": "1",
+  "name": "test",
+  "prompt": "this is a test, do nothing",
+  "phase": "exec",
+  "phaseIteration": 1,
+  "totalIterations": 3,
+  "createdAt": "2026-03-23T13:21:02.783Z",
+  "lastModified": "2026-03-23T13:24:27.628Z",
+  "engine": "claude",
+  "model": "sonnet",
+  "status": "active",
+  "usage": {
+    "total_cost_usd": 0.42000000000000004,
+    "total_duration_ms": 169161,
+    "total_turns": 29,
+    "total_input_tokens": 1587,
+    "total_output_tokens": 6623,
+    "total_cache_read_input_tokens": 517978,
+    "total_cache_creation_input_tokens": 42455
+  },
+  "history": [
+    {
+      "timestamp": "2026-03-23T13:22:32.077Z",
+      "phase": "specify",
+      "iteration": 0,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "advance -> research"
+    },
+    {
+      "timestamp": "2026-03-23T13:22:35.320Z",
+      "startedAt": "2026-03-23T13:21:20.632Z",
+      "endedAt": "2026-03-23T13:22:35.320Z",
+      "phase": "research",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "success",
+      "usage": {
+        "cost_usd": 0.18,
+        "duration_ms": 70497,
+        "num_turns": 9,
+        "input_tokens": 1565,
+        "output_tokens": 3208,
+        "cache_read_input_tokens": 158191,
+        "cache_creation_input_tokens": 21455
+      }
+    },
+    {
+      "timestamp": "2026-03-23T13:23:17.167Z",
+      "phase": "research",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "advance -> plan"
+    },
+    {
+      "timestamp": "2026-03-23T13:23:19.832Z",
+      "startedAt": "2026-03-23T13:22:39.639Z",
+      "endedAt": "2026-03-23T13:23:19.832Z",
+      "phase": "plan",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "success",
+      "usage": {
+        "cost_usd": 0.1,
+        "duration_ms": 37094,
+        "num_turns": 8,
+        "input_tokens": 10,
+        "output_tokens": 1300,
+        "cache_read_input_tokens": 146681,
+        "cache_creation_input_tokens": 8480
+      }
+    },
+    {
+      "timestamp": "2026-03-23T13:24:23.159Z",
+      "phase": "plan",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "advance -> exec"
+    },
+    {
+      "timestamp": "2026-03-23T13:24:27.628Z",
+      "startedAt": "2026-03-23T13:23:22.987Z",
+      "endedAt": "2026-03-23T13:24:27.628Z",
+      "phase": "exec",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "sonnet",
+      "result": "success",
+      "usage": {
+        "cost_usd": 0.14,
+        "duration_ms": 61570,
+        "num_turns": 12,
+        "input_tokens": 12,
+        "output_tokens": 2115,
+        "cache_read_input_tokens": 213106,
+        "cache_creation_input_tokens": 12520
+      }
+    }
+  ],
+  "metadata": {
+    "branch": "spec-kit"
+  }
+}
