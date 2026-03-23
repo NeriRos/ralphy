@@ -3,6 +3,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export function registerPrompts(server: McpServer): void {
   // --- /ralph-create ---
+  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-create",
     {
@@ -47,6 +48,7 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-status ---
+  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-status",
     {
@@ -70,6 +72,7 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-run ---
+  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-run",
     {
@@ -93,6 +96,7 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-advance ---
+  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-advance",
     {
@@ -116,6 +120,7 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-steer ---
+  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-steer",
     {
