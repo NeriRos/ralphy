@@ -1,18 +1,29 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+// Extracted schemas to avoid TS2589 (excessively deep type instantiation)
+const createArgs = {
+  name: z.string().describe("Task name"),
+  prompt: z.string().describe("Task description"),
+};
+
+const nameArg = {
+  name: z.string().describe("Task name"),
+};
+
+const steerArgs = {
+  name: z.string().describe("Task name"),
+  guidance: z.string().describe("Steering guidance to add"),
+};
+
 export function registerPrompts(server: McpServer): void {
   // --- /ralph-create ---
-  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-create",
     {
       title: "Create Ralph Task",
       description: "Create a new ralph task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-        prompt: z.string().describe("Task description"),
-      },
+      argsSchema: createArgs,
     },
     async ({ name, prompt }) => ({
       messages: [
@@ -48,15 +59,12 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-status ---
-  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-status",
     {
       title: "Ralph Task Status",
       description: "Get detailed status of a specific task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
+      argsSchema: nameArg,
     },
     async ({ name }) => ({
       messages: [
@@ -72,15 +80,12 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-run ---
-  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-run",
     {
       title: "Run Ralph Task",
       description: "Run a ralph task in the background",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
+      argsSchema: nameArg,
     },
     async ({ name }) => ({
       messages: [
@@ -96,15 +101,12 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-advance ---
-  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-advance",
     {
       title: "Advance Ralph Task",
       description: "Advance a ralph task to its next phase",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
+      argsSchema: nameArg,
     },
     async ({ name }) => ({
       messages: [
@@ -120,16 +122,12 @@ export function registerPrompts(server: McpServer): void {
   );
 
   // --- /ralph-steer ---
-  // @ts-ignore - MCP SDK registerPrompt has excessively deep type inference with Zod
   server.registerPrompt(
     "ralph-steer",
     {
       title: "Steer Ralph Task",
       description: "Update STEERING.md with new guidance for a task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-        guidance: z.string().describe("Steering guidance to add"),
-      },
+      argsSchema: steerArgs,
     },
     async ({ name, guidance }) => ({
       messages: [

@@ -52,7 +52,7 @@ export function ProgressList({ items }: ProgressListProps) {
               <span
                 style={{
                   flexShrink: 0,
-                  width: 16,
+                  whiteSpace: "nowrap",
                   color: item.checked ? "var(--success)" : "var(--text-dim)",
                 }}
               >

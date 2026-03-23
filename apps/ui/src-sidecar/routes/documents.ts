@@ -2,7 +2,15 @@ import { join } from "node:path";
 import { getStorage } from "@ralphy/context";
 import type { SidecarContext } from "../types";
 
-const ALLOWED_DOCS = ["STEERING.md", "PROGRESS.md", "RESEARCH.md", "PLAN.md"];
+const ALLOWED_DOCS = [
+  "STEERING.md",
+  "PROGRESS.md",
+  "RESEARCH.md",
+  "PLAN.md",
+  "spec.md",
+  "LOG.jsonl",
+];
+const READ_ONLY_DOCS = new Set(["LOG.jsonl"]);
 
 interface RouteResult {
   status: number;
@@ -36,6 +44,9 @@ export async function documentRoutes(
   }
 
   if (req.method === "PUT") {
+    if (READ_ONLY_DOCS.has(fileName)) {
+      return { status: 403, body: { error: `${fileName} is read-only` } };
+    }
     const body = (await req.json()) as { content: string };
     if (typeof body.content !== "string") {
       return { status: 400, body: { error: "content is required" } };

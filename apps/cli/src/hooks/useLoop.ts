@@ -114,7 +114,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
       setState(currentState);
       setCurrentPhase(currentState.phase);
 
-      scaffoldTaskDocuments(taskDir);
+      scaffoldTaskDocuments(taskDir, opts.prompt);
 
       let iter = 0;
       const loopStartTime = Date.now();

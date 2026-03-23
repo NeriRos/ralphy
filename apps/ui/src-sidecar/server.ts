@@ -1,5 +1,5 @@
 import { join, dirname } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { taskRoutes } from "./routes/tasks";
 import { loopRoutes } from "./routes/loop";
@@ -132,6 +132,18 @@ const server = Bun.serve<WsData>({
   websocket: {
     open(ws) {
       addStream(ws.data.taskName, ws);
+      // Replay existing log entries so the feed persists across page reloads
+      const logFile = join(tasksDir, ws.data.taskName, "LOG.jsonl");
+      try {
+        if (existsSync(logFile)) {
+          const content = readFileSync(logFile, "utf-8");
+          for (const line of content.split("\n")) {
+            if (line) ws.send(line);
+          }
+        }
+      } catch {
+        // Non-fatal: if log read fails, just skip replay
+      }
       // Send current running status so reconnecting clients restore state
       if (isTaskRunning(ws.data.taskName)) {
         ws.send(JSON.stringify({ type: "running", running: true }));

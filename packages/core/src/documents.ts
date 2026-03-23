@@ -51,9 +51,7 @@ const TASK_DOCUMENTS: TaskDocument[] = [
   },
   {
     name: "STEERING.md",
-    scaffold: "STEERING",
-    fallbackContent:
-      "# Steering — User Guidance\n\n**Edit this file anytime to steer the task.**\n",
+    scaffold: null,
     promptInjection: {
       phases: "all",
       header: "User Steering (READ FIRST)",

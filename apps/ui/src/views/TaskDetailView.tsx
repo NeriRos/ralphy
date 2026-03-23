@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useSidecar } from "../context/SidecarContext";
 import { useTaskStream } from "../hooks/useTaskStream";
@@ -7,10 +7,10 @@ import { PhaseBadge } from "../components/PhaseBadge";
 import { PhaseStepper } from "../components/PhaseStepper";
 import { FeedLine } from "../components/FeedLine";
 import { StatusBar } from "../components/StatusBar";
-import { DocumentEditor } from "../components/DocumentEditor";
 import { ProgressList } from "../components/ProgressList";
 import { SteeringInput } from "../components/SteeringInput";
 import type { State } from "@ralphy/types";
+import type { PhaseName } from "../lib/phases";
 
 export function TaskDetailView() {
   const { name } = useParams<{ name: string }>();
@@ -48,9 +48,52 @@ export function TaskDetailView() {
   // Document editors
   const steering = useDocument(name, "STEERING.md");
   const plan = useDocument(name, "PLAN.md");
+  const spec = useDocument(name, "spec.md");
+  const research = useDocument(name, "RESEARCH.md");
 
-  // Right panel tab
-  const [rightPanel, setRightPanel] = useState<"progress" | "steering" | "plan" | null>(null);
+  // Right panel accordion — always visible, one doc expanded
+  const log = useDocument(name, "LOG.jsonl");
+
+  type DocKey = "spec" | "plan" | "research" | "progress" | "steering" | "log";
+  const [expandedDoc, setExpandedDoc] = useState<DocKey>("spec");
+
+  // Auto-follow: expand the document most relevant to the current phase
+  const autoTarget = useMemo((): DocKey => {
+    if (!state) return "spec";
+    const hasContent = (c: string | null) => c !== null && c.trim().length > 0;
+    switch (state.phase) {
+      case "specify":
+        return "spec";
+      case "research":
+        return hasContent(research.content) ? "research" : "spec";
+      case "plan":
+        return hasContent(plan.content) ? "plan" : "spec";
+      case "exec":
+        return progressItems.length > 0 ? "progress" : "plan";
+      case "review":
+      case "done":
+        return "progress";
+      default:
+        return "spec";
+    }
+  }, [state?.phase, research.content, plan.content, progressItems.length]);
+
+  const prevAutoTargetRef = useRef<DocKey | null>(null);
+  useEffect(() => {
+    if (autoTarget !== prevAutoTargetRef.current) {
+      prevAutoTargetRef.current = autoTarget;
+      setExpandedDoc(autoTarget);
+    }
+  }, [autoTarget]);
+
+  // Refresh log content when tab is expanded or periodically while running
+  useEffect(() => {
+    if (expandedDoc !== "log") return;
+    log.refresh();
+    if (!effectiveIsRunning) return;
+    const interval = setInterval(() => log.refresh(), 3000);
+    return () => clearInterval(interval);
+  }, [expandedDoc, effectiveIsRunning, log.refresh]);
 
   // Auto-scroll feed
   const feedRef = useRef<HTMLDivElement>(null);
@@ -107,33 +150,6 @@ export function TaskDetailView() {
           )}
         </h1>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setRightPanel(rightPanel === "plan" ? null : "plan")}
-            style={{
-              borderColor: rightPanel === "plan" ? "var(--accent)" : undefined,
-              color: rightPanel === "plan" ? "var(--accent)" : undefined,
-            }}
-          >
-            Plan
-          </button>
-          <button
-            onClick={() => setRightPanel(rightPanel === "progress" ? null : "progress")}
-            style={{
-              borderColor: rightPanel === "progress" ? "var(--accent)" : undefined,
-              color: rightPanel === "progress" ? "var(--accent)" : undefined,
-            }}
-          >
-            Progress
-          </button>
-          <button
-            onClick={() => setRightPanel(rightPanel === "steering" ? null : "steering")}
-            style={{
-              borderColor: rightPanel === "steering" ? "var(--accent)" : undefined,
-              color: rightPanel === "steering" ? "var(--accent)" : undefined,
-            }}
-          >
-            Steering
-          </button>
           {effectiveIsRunning ? (
             <button className="danger" onClick={stopTask}>
               Stop
@@ -157,7 +173,7 @@ export function TaskDetailView() {
         </div>
       </div>
 
-      {state && <PhaseStepper currentPhase={state.phase} />}
+      {state && <PhaseStepper currentPhase={state.phase as PhaseName} />}
 
       {state && (
         <StatusBar
@@ -245,66 +261,137 @@ export function TaskDetailView() {
           <SteeringInput onSend={handleSendSteering} disabled={!effectiveIsRunning} />
         </div>
 
-        {rightPanel === "plan" && (
-          <div
-            style={{
-              width: 360,
-              borderLeft: "1px solid var(--border)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <DocumentEditor
-              title="PLAN.md"
-              content={plan.content}
-              loading={plan.loading}
-              onSave={plan.save}
-            />
-          </div>
-        )}
+        <div
+          style={{
+            width: 360,
+            borderLeft: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Documents in fixed order — expanded one stays in place */}
+          <DocPanel
+            title="SPEC"
+            expanded={expandedDoc === "spec"}
+            content={spec.content}
+            loading={spec.loading}
+            placeholder="Feature specification — requirements, user stories, and success criteria. Created during the specify phase."
+            onExpand={() => setExpandedDoc("spec")}
+          />
 
-        {rightPanel === "steering" && (
-          <div
-            style={{
-              width: 360,
-              borderLeft: "1px solid var(--border)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <DocumentEditor
-              title="STEERING.md"
-              content={steering.content}
-              loading={steering.loading}
-              onSave={steering.save}
-            />
-          </div>
-        )}
+          <DocPanel
+            title="RESEARCH"
+            expanded={expandedDoc === "research"}
+            content={research.content}
+            loading={research.loading}
+            placeholder="Research notes — codebase analysis and technical findings. Populated during the research phase."
+            onExpand={() => setExpandedDoc("research")}
+          />
 
-        {rightPanel === "progress" && (
-          <div
-            style={{
-              width: 360,
-              borderLeft: "1px solid var(--border)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: "1px solid var(--border)",
-                background: "var(--bg-surface)",
-                fontWeight: 600,
-                fontSize: 12,
-              }}
-            >
-              PROGRESS.md
+          <DocPanel
+            title="PLAN"
+            expanded={expandedDoc === "plan"}
+            content={plan.content}
+            loading={plan.loading}
+            placeholder="Implementation plan — step-by-step tasks and architecture decisions. Created during the plan phase."
+            onExpand={() => setExpandedDoc("plan")}
+          />
+
+          {expandedDoc === "progress" ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={panelHeaderStyle}>PROGRESS</div>
+              <ProgressList items={progressItems} />
             </div>
-            <ProgressList items={progressItems} />
-          </div>
-        )}
+          ) : (
+            <CollapsedDocTitle title="PROGRESS" onClick={() => setExpandedDoc("progress")} />
+          )}
+
+          <DocPanel
+            title="STEERING"
+            expanded={expandedDoc === "steering"}
+            content={steering.content}
+            loading={steering.loading}
+            placeholder="Live guidance for the task. Use the input below to steer the running loop."
+            onExpand={() => setExpandedDoc("steering")}
+          />
+
+          <DocPanel
+            title="LOG"
+            expanded={expandedDoc === "log"}
+            content={log.content}
+            loading={log.loading}
+            placeholder="Iteration log — raw output from each loop iteration."
+            onExpand={() => setExpandedDoc("log")}
+          />
+        </div>
       </div>
     </>
+  );
+}
+
+const panelHeaderStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderBottom: "1px solid var(--border)",
+  background: "var(--bg-surface)",
+  fontWeight: 600,
+  fontSize: 12,
+};
+
+function DocPanel({
+  title,
+  expanded,
+  content,
+  loading,
+  placeholder,
+  onExpand,
+}: {
+  title: string;
+  expanded: boolean;
+  content: string | null;
+  loading: boolean;
+  placeholder: string;
+  onExpand: () => void;
+}) {
+  if (!expanded) {
+    return (
+      <div
+        onClick={onExpand}
+        style={{
+          padding: "8px 12px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-surface)",
+          fontWeight: 600,
+          fontSize: 12,
+          cursor: "pointer",
+          color: "var(--text-dim)",
+        }}
+      >
+        {title}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={panelHeaderStyle}>{title}</div>
+      {loading ? (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 12 }}>Loading...</div>
+      ) : content && content.trim().length > 0 ? (
+        <div
+          style={{
+            overflow: "auto",
+            flex: 1,
+            padding: "8px 12px",
+            fontSize: 12,
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {content}
+        </div>
+      ) : (
+        <div style={{ padding: 12, color: "var(--text-dim)", fontSize: 12 }}>{placeholder}</div>
+      )}
+    </div>
   );
 }

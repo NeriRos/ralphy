@@ -42,7 +42,7 @@ export async function taskRoutes(
           model: body.model ?? "sonnet",
         });
         writeState(taskDir, state);
-        scaffoldTaskDocuments(taskDir);
+        scaffoldTaskDocuments(taskDir, body.prompt);
 
         return { status: 201, body: state };
       }
