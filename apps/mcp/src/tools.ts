@@ -2,28 +2,77 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { advancePhase, setPhase } from "@ralphy/core/phases";
 import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
 import { commitState } from "@ralphy/core/git";
 import { scaffoldTaskDocuments } from "@ralphy/core/templates";
 import { getDocumentNames } from "@ralphy/core/documents";
-import { resolveChecklistDir, listChecklists } from "@ralphy/phases";
+import { resolveChecklistDir, listChecklists, getPhase, loadPhases } from "@ralphy/phases";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-import { getPhase } from "@ralphy/phases";
 
 const DOCUMENTS = getDocumentNames();
 
+/**
+ * Type-safe registerTool wrapper. The MCP SDK's registerTool triggers TS2589
+ * (excessively deep type instantiation) due to its dual Zod v3/v4 AnySchema union.
+ * This wrapper provides equivalent type safety using standard Zod v3 inference,
+ * while using `unknown` casts internally to break the deep inference chain.
+ */
+function safeTool<T extends Record<string, z.ZodTypeAny>>(
+  server: McpServer,
+  name: string,
+  config: { description: string; inputSchema: T },
+  cb: (args: { [K in keyof T]: z.infer<T[K]> }) => CallToolResult | Promise<CallToolResult>,
+): void {
+  // Double-cast via unknown to prevent TS from resolving McpServer.registerTool's deep generic types
+  type SimpleTool = { registerTool(n: string, c: unknown, cb: unknown): unknown };
+  (server as unknown as SimpleTool).registerTool(name, config, cb);
+}
+
+// Extracted schemas for tools with complex Zod types
+const listTasksSchema = {
+  includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase"),
+};
+
+const readDocumentSchema = {
+  name: z.string().describe("Task name"),
+  document: z.enum(DOCUMENTS as [string, ...string[]]).describe("Document to read"),
+};
+
+const createTaskSchema = {
+  name: z.string().describe("Task name (used as directory name)"),
+  prompt: z.string().describe("Task prompt/description"),
+  engine: z.string().optional().describe("Engine to use (default: claude)"),
+  model: z.string().optional().describe("Model to use (default: opus)"),
+};
+
+const runTaskSchema = {
+  name: z.string().describe("Task name"),
+  maxIterations: z.number().optional().describe("Maximum iterations to run"),
+  maxCostUsd: z.number().optional().describe("Stop when total cost exceeds this USD amount"),
+  maxRuntimeMinutes: z
+    .number()
+    .optional()
+    .describe("Stop after this many minutes of wall-clock time"),
+  engine: z.string().optional().describe("Engine override"),
+  model: z.string().optional().describe("Model override"),
+};
+
+const applyChecklistSchema = {
+  name: z.string().describe("Task name"),
+  checklists: z.array(z.string()).describe('Checklist names to append (e.g. ["static", "tests"])'),
+};
+
 export function registerTools(server: McpServer, tasksDir: string): void {
   // --- ralph_list_tasks ---
-  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_list_tasks",
     {
       description: "List all ralph tasks with their phase, status, and progress",
-      inputSchema: {
-        includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase"),
-      },
+      inputSchema: listTasksSchema,
     },
     async ({ includeCompleted }) => {
       return runWithContext(createDefaultContext(), () => {
@@ -84,7 +133,8 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_get_task ---
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_get_task",
     {
       description: "Get detailed information about a specific task",
@@ -148,15 +198,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_read_document ---
-  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_read_document",
     {
       description: "Read a document file from a task directory",
-      inputSchema: {
-        name: z.string().describe("Task name"),
-        document: z.enum(DOCUMENTS as [string, ...string[]]).describe("Document to read"),
-      },
+      inputSchema: readDocumentSchema,
     },
     async ({ name, document }) => {
       return runWithContext(createDefaultContext(), () => {
@@ -190,17 +237,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_create_task ---
-  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_create_task",
     {
       description: "Create a new ralph task with initial state and steering file",
-      inputSchema: {
-        name: z.string().describe("Task name (used as directory name)"),
-        prompt: z.string().describe("Task prompt/description"),
-        engine: z.string().optional().describe("Engine to use (default: claude)"),
-        model: z.string().optional().describe("Model to use (default: opus)"),
-      },
+      inputSchema: createTaskSchema,
     },
     async ({ name, prompt, engine, model }) => {
       return runWithContext(createDefaultContext(), () => {
@@ -222,7 +264,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
           });
           writeState(taskDir, state);
 
-          scaffoldTaskDocuments(taskDir);
+          scaffoldTaskDocuments(taskDir, prompt);
 
           return {
             content: [
@@ -248,22 +290,12 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_run_task ---
-  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_run_task",
     {
       description: "Start running a task in the background (spawns a detached subprocess)",
-      inputSchema: {
-        name: z.string().describe("Task name"),
-        maxIterations: z.number().optional().describe("Maximum iterations to run"),
-        maxCostUsd: z.number().optional().describe("Stop when total cost exceeds this USD amount"),
-        maxRuntimeMinutes: z
-          .number()
-          .optional()
-          .describe("Stop after this many minutes of wall-clock time"),
-        engine: z.string().optional().describe("Engine override"),
-        model: z.string().optional().describe("Model override"),
-      },
+      inputSchema: runTaskSchema,
     },
     async ({ name, maxIterations, maxCostUsd, maxRuntimeMinutes, engine, model }) => {
       return runWithContext(createDefaultContext(), () => {
@@ -314,7 +346,8 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_advance_phase ---
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_advance_phase",
     {
       description: "Advance a task to its next phase, or set a specific phase",
@@ -363,7 +396,8 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_update_steering ---
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_update_steering",
     {
       description: "Update the STEERING.md file for a task with new guidance",
@@ -406,7 +440,8 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_finish_interactive ---
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_finish_interactive",
     {
       description:
@@ -454,6 +489,11 @@ export function registerTools(server: McpServer, tasksDir: string): void {
 
           commitState(taskDir, `interactive: save session context for ${name}`);
 
+          const phaseNames = loadPhases()
+            .filter((p) => !p.terminal)
+            .map((p) => p.name)
+            .join(" → ");
+
           return {
             content: [
               {
@@ -461,7 +501,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
                 text: [
                   `Interactive session complete. Context saved to STEERING.md for task '${name}'.`,
                   "",
-                  "The automated ralph loop will now run all phases (research → plan → exec → review) with this context.",
+                  `The automated ralph loop will now run all phases (${phaseNames}) with this context.`,
                   "",
                   "IMPORTANT: Tell the user to run /exit to end this session so the automated loop can continue.",
                   "You cannot exit on your own — the user must type /exit in the terminal.",
@@ -485,7 +525,8 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_list_checklists ---
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_list_checklists",
     {
       description: "List available verification checklists with their contents",
@@ -520,18 +561,13 @@ export function registerTools(server: McpServer, tasksDir: string): void {
   );
 
   // --- ralph_apply_checklist ---
-  // @ts-ignore - MCP SDK registerTool has excessively deep type inference with Zod
-  server.registerTool(
+  safeTool(
+    server,
     "ralph_apply_checklist",
     {
       description:
         "Append verification checklists as new sections at the end of a task's PROGRESS.md",
-      inputSchema: {
-        name: z.string().describe("Task name"),
-        checklists: z
-          .array(z.string())
-          .describe('Checklist names to append (e.g. ["static", "tests"])'),
-      },
+      inputSchema: applyChecklistSchema,
     },
     async ({ name, checklists }) => {
       return runWithContext(createDefaultContext(), () => {

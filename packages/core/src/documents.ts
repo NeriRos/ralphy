@@ -21,6 +21,17 @@ export interface TaskDocument {
 
 const TASK_DOCUMENTS: TaskDocument[] = [
   {
+    name: "spec.md",
+    scaffold: null,
+    promptInjection: {
+      phases: ["exec", "review"],
+      header: "Specification (requirements to satisfy)",
+      filterHeaders: true,
+      maxLines: 50,
+    },
+    showInStatus: true,
+  },
+  {
     name: "RESEARCH.md",
     scaffold: null,
     promptInjection: null,
@@ -42,7 +53,7 @@ const TASK_DOCUMENTS: TaskDocument[] = [
     name: "STEERING.md",
     scaffold: "STEERING",
     fallbackContent:
-      "# Steering — User Guidance\n\n**Edit this file anytime to steer the task.**\n",
+      "# Steering — User Guidance\n\nThis file is for providing real-time guidance and constraints to the agent as iterations progress.\n\n**USER: Edit this file anytime** to steer the task. Changes take effect on the next iteration.\n\n---\n\n**Leave this file empty if no special guidance is needed.**\n",
     promptInjection: {
       phases: "all",
       header: "User Steering (READ FIRST)",

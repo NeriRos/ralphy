@@ -114,7 +114,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
       setState(currentState);
       setCurrentPhase(currentState.phase);
 
-      scaffoldTaskDocuments(taskDir);
+      scaffoldTaskDocuments(taskDir, opts.prompt);
 
       let iter = 0;
       const loopStartTime = Date.now();
@@ -158,7 +158,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         try {
           const interactiveDone = storage.read(join(taskDir, "_interactive_done")) !== null;
           const isInteractivePhase =
-            opts.interactive && currentState.phase === "research" && !interactiveDone;
+            opts.interactive && currentState.phase === "specify" && !interactiveDone;
 
           // Set up abort controller for live steering
           const controller = new AbortController();
@@ -224,6 +224,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               opts.model,
               engineResult.usage,
             );
+
+            // Stop immediately on rate limits or fatal engine errors
+            if (failure.shouldStop || engineResult.rateLimited) {
+              setStopReason("rateLimited");
+              break;
+            }
 
             if (result === lastResult) {
               consFailures++;

@@ -1,15 +1,7 @@
-const PHASES = ["research", "plan", "exec", "review", "done"];
+import { PHASES, PHASE_COLORS, type PhaseName } from "../lib/phases";
 
-const PHASE_COLORS: Record<string, string> = {
-  research: "var(--cyan)",
-  plan: "var(--accent)",
-  exec: "var(--warning)",
-  review: "var(--success)",
-  done: "var(--success)",
-};
-
-export function PhaseStepper({ currentPhase }: { currentPhase: string }) {
-  const currentIdx = PHASES.indexOf(currentPhase);
+export function PhaseStepper({ currentPhase }: { currentPhase: PhaseName }) {
+  const currentIdx = PHASES.indexOf(currentPhase as PhaseName);
 
   return (
     <div
@@ -25,7 +17,7 @@ export function PhaseStepper({ currentPhase }: { currentPhase: string }) {
       {PHASES.map((phase, i) => {
         const isActive = phase === currentPhase;
         const isPast = i < currentIdx;
-        const color = PHASE_COLORS[phase] ?? "var(--text-dim)";
+        const color = `var(--${PHASE_COLORS[phase]})`;
 
         return (
           <div key={phase} style={{ display: "flex", alignItems: "center" }}>

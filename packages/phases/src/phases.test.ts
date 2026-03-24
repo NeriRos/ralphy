@@ -123,8 +123,8 @@ describe("loadPhases", () => {
 
   test("loads the real lib/ phases", () => {
     const phases = loadPhases();
-    expect(phases.length).toBeGreaterThanOrEqual(5);
-    expect(phases[0]!.name).toBe("research");
+    expect(phases.length).toBeGreaterThanOrEqual(6);
+    expect(phases[0]!.name).toBe("specify");
     expect(phases[phases.length - 1]!.terminal).toBe(true);
   });
 });
@@ -224,12 +224,21 @@ describe("clearPhaseCache", () => {
 });
 
 describe("real phase files", () => {
+  test("specify phase has correct config", () => {
+    const phase = getPhase("specify");
+    expect(phase.order).toBe(0);
+    expect(phase.next).toBe("research");
+    expect(phase.terminal).toBe(false);
+    expect(phase.requires).toEqual([]);
+    expect(phase.prompt).toContain("Specify Phase");
+  });
+
   test("research phase has correct config", () => {
     const phase = getPhase("research");
     expect(phase.order).toBe(1);
     expect(phase.next).toBe("plan");
     expect(phase.terminal).toBe(false);
-    expect(phase.requires).toEqual([]);
+    expect(phase.requires).toEqual(["spec.md"]);
     expect(phase.prompt).toContain("Research Phase");
   });
 
@@ -239,6 +248,7 @@ describe("real phase files", () => {
     expect(phase.requires).toEqual(["RESEARCH.md"]);
     expect(phase.context).toEqual([
       { type: "file", file: "RESEARCH.md", label: "Research Findings" },
+      { type: "file", file: "spec.md", label: "Specification" },
     ]);
   });
 
@@ -251,12 +261,16 @@ describe("real phase files", () => {
     expect(phase.context).toEqual([{ type: "currentSection", label: "Current Section" }]);
   });
 
-  test("review phase has loopBack to exec", () => {
+  test("review phase has loopBack to exec and spec context", () => {
     const phase = getPhase("review");
     expect(phase.order).toBe(4);
     expect(phase.loopBack).toBe("exec");
     expect(phase.next).toBe("exec");
     expect(phase.autoAdvance).toBe("allChecked");
+    expect(phase.context).toEqual([
+      { type: "currentSection", label: "Current Section (to review)" },
+      { type: "file", file: "spec.md", label: "Specification (requirements to validate against)" },
+    ]);
   });
 
   test("done phase is terminal", () => {
@@ -265,11 +279,12 @@ describe("real phase files", () => {
     expect(phase.terminal).toBe(true);
   });
 
-  test("phase order is research → plan → exec → review → done", () => {
-    expect(getPhaseOrder()).toEqual(["research", "plan", "exec", "review", "done"]);
+  test("phase order is specify → research → plan → exec → review → done", () => {
+    expect(getPhaseOrder()).toEqual(["specify", "research", "plan", "exec", "review", "done"]);
   });
 
   test("full transition chain works", () => {
+    expect(getNextPhase("specify")).toBe("research");
     expect(getNextPhase("research")).toBe("plan");
     expect(getNextPhase("plan")).toBe("exec");
     expect(getNextPhase("exec")).toBe("review");

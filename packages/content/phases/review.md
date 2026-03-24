@@ -9,6 +9,9 @@ terminal: false
 context:
   - type: currentSection
     label: "Current Section (to review)"
+  - type: file
+    file: spec.md
+    label: "Specification (requirements to validate against)"
 ---
 
 # Task — Review Phase
@@ -51,7 +54,16 @@ For each implemented item in the current section:
 - **Integration** — Do tests verify the code works with existing code?
 - **No regressions** — Did existing tests pass? (`nx affected -t test`)
 
-### 3. Lint & Type Safety
+### 3. Spec Compliance Review
+
+Cross-reference the implementation against spec.md:
+
+- **Requirements coverage** — Does the implementation satisfy the functional requirements from spec.md?
+- **Success criteria** — Are the measurable success criteria from spec.md met?
+- **User scenarios** — Are all user scenarios from spec.md covered?
+- **No orphan requirements** — Are any spec.md requirements unaddressed?
+
+### 4. Lint & Type Safety
 
 Run checks:
 
@@ -64,7 +76,7 @@ If there are errors:
 - Document them as issues in PROGRESS.md (step 4)
 - Do NOT fix them here — the execution phase will fix them
 
-### 4. Document Issues
+### 5. Document Issues
 
 If you found **any problems**, add them to `PROGRESS.md` under the current section:
 
@@ -81,7 +93,7 @@ Example:
 
 Include enough detail that an implementation agent can fix the issue directly without re-reading the code.
 
-### 5. Decision
+### 6. Decision
 
 **If issues found:**
 

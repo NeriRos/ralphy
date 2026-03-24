@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { runWithContext, createDefaultContext, getStorage } from "@ralphy/context";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { countProgress, parseProgressItems } from "@ralphy/core/progress";
@@ -38,15 +39,28 @@ interface RouteResult {
   body: unknown;
 }
 
+// Track active log files per task so broadcast can append entries
+const taskLogFiles = new Map<string, string>();
+
 function broadcast(taskName: string, message: Record<string, unknown>) {
   const streams = getActiveStreams().get(taskName);
-  if (!streams) return;
-  const json = JSON.stringify(message);
-  for (const ws of streams) {
+  if (streams) {
+    const json = JSON.stringify(message);
+    for (const ws of streams) {
+      try {
+        ws.send(json);
+      } catch {
+        // Client disconnected
+      }
+    }
+  }
+  // Append to log file if active
+  const logFile = taskLogFiles.get(taskName);
+  if (logFile) {
     try {
-      ws.send(json);
+      appendFileSync(logFile, JSON.stringify(message) + "\n");
     } catch {
-      // Client disconnected
+      // Non-fatal: log write failure shouldn't break the loop
     }
   }
 }
@@ -131,6 +145,7 @@ export async function loopRoutes(
       })
       .finally(() => {
         runningLoops.delete(taskName);
+        taskLogFiles.delete(taskName);
       });
 
     return { status: 200, body: { started: true } };
@@ -148,6 +163,11 @@ async function runLoopAsync(
 ): Promise<void> {
   await runWithContext(createDefaultContext(), async () => {
     const storage = getStorage();
+
+    // Initialize log file for this run
+    const logFile = join(taskDir, "LOG.jsonl");
+    writeFileSync(logFile, "");
+    taskLogFiles.set(taskName, logFile);
 
     // Init or resume state
     let currentState: State;
@@ -169,7 +189,7 @@ async function runLoopAsync(
     }
 
     broadcast(taskName, { type: "state", state: currentState });
-    scaffoldTaskDocuments(taskDir);
+    scaffoldTaskDocuments(taskDir, opts.prompt);
 
     let iter = 0;
     const loopStartTime = Date.now();
@@ -276,6 +296,12 @@ async function runLoopAsync(
             opts.model,
             engineResult.usage,
           );
+
+          // Stop immediately on rate limits or fatal engine errors
+          if (failure.shouldStop || engineResult.rateLimited) {
+            broadcast(taskName, { type: "stopped", reason: "rateLimited" });
+            break;
+          }
 
           if (result === lastResult) {
             consFailures++;

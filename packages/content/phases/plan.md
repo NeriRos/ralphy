@@ -10,6 +10,9 @@ context:
   - type: file
     file: RESEARCH.md
     label: "Research Findings"
+  - type: file
+    file: spec.md
+    label: "Specification"
 ---
 
 # Task — Planning Phase
@@ -26,9 +29,10 @@ You have a RESEARCH.md with detailed codebase findings. Your job is to create an
 0a. Study `CLAUDE.md` for build commands, conventions, patterns, and gotchas. This is the operational source of truth.
 0b. Read `TASK_DIR/state.json` for task context: current phase, iteration count, history of previous runs, and any metadata.
 0c. Read `TASK_DIR/RESEARCH.md` thoroughly — it contains the codebase analysis, file details, callsites, and dependency graph.
-0d. You may do additional targeted searches if the research missed something, but most exploration should already be done.
-0e. If PLAN.md and PROGRESS.md already exist, you are refining them — review, identify issues, improve.
-0f. Phase iteration: {{PHASE_ITERATION}}. After committing, advance to execution (use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise `ralph advance --name "{{TASK_NAME}}"`).
+0d. Read `TASK_DIR/spec.md` — it contains the feature specification with functional requirements, success criteria, and key entities.
+0e. You may do additional targeted searches if the research missed something, but most exploration should already be done.
+0f. If PLAN.md and PROGRESS.md already exist, you are refining them — review, identify issues, improve.
+0g. Phase iteration: {{PHASE_ITERATION}}. After committing, advance to execution (use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise `ralph advance --name "{{TASK_NAME}}"`).
 
 {{MCP_TOOLS}}
 
@@ -62,6 +66,7 @@ Write `TASK_DIR/PLAN.md` with:
 - A brief summary of the task and approach
 - Key architectural decisions and trade-offs
 - Files that will be created or modified
+- Traceability: every functional requirement from spec.md mapped to implementation items
 - Risks or open questions
 
 ### 4. Create PROGRESS.md

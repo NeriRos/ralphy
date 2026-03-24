@@ -19,7 +19,7 @@ const runEngineMock = mock(
       opts.onFeedEvent({ type: "text", text: "Working..." });
       opts.onFeedEvent({ type: "turn-done" });
     }
-    return { exitCode: 0, usage: null, sessionId: null };
+    return { exitCode: 0, usage: null, sessionId: null, rateLimited: false };
   },
 );
 
@@ -161,6 +161,7 @@ describe("TaskLoop", () => {
       exitCode: 1,
       usage: null,
       sessionId: null,
+      rateLimited: false,
     }));
 
     await withStorage(async () => {
@@ -278,7 +279,7 @@ describe("TaskLoop", () => {
           truncated: 5,
         });
       }
-      return { exitCode: 0, usage: null, sessionId: null };
+      return { exitCode: 0, usage: null, sessionId: null, rateLimited: false };
     });
 
     await withStorage(async () => {
@@ -386,6 +387,7 @@ describe("TaskLoop", () => {
       exitCode: 0,
       usage: null,
       sessionId: null,
+      rateLimited: false,
     }));
 
     await withStorage(async () => {
@@ -433,6 +435,7 @@ describe("TaskLoop", () => {
         cache_creation_input_tokens: 50,
       },
       sessionId: null,
+      rateLimited: false,
     }));
 
     await withStorage(async () => {
@@ -500,8 +503,18 @@ describe("TaskLoop", () => {
   test("consecutive identical failures increment counter", async () => {
     // Return the same exit code twice to trigger consFailures++ (line 175)
     runEngineMock
-      .mockImplementationOnce(async () => ({ exitCode: 1, usage: null, sessionId: null }))
-      .mockImplementationOnce(async () => ({ exitCode: 1, usage: null, sessionId: null }));
+      .mockImplementationOnce(async () => ({
+        exitCode: 1,
+        usage: null,
+        sessionId: null,
+        rateLimited: false,
+      }))
+      .mockImplementationOnce(async () => ({
+        exitCode: 1,
+        usage: null,
+        sessionId: null,
+        rateLimited: false,
+      }));
 
     await withStorage(async () => {
       const taskDir = join(tempDir, "confail-task");
@@ -549,7 +562,7 @@ describe("TaskLoop", () => {
           opts.signal?.addEventListener("abort", () => resolve(), { once: true });
           setTimeout(resolve, 2000);
         });
-        return { exitCode: 0, usage: null, sessionId: "sess-abc123" };
+        return { exitCode: 0, usage: null, sessionId: "sess-abc123", rateLimited: false };
       },
     );
 
@@ -558,7 +571,7 @@ describe("TaskLoop", () => {
       async (opts: { onFeedEvent?: (e: unknown) => void; resumeSessionId?: string }) => {
         // Verify it's a resume call
         expect(opts.resumeSessionId).toBe("sess-abc123");
-        return { exitCode: 0, usage: null, sessionId: "sess-abc123" };
+        return { exitCode: 0, usage: null, sessionId: "sess-abc123", rateLimited: false };
       },
     );
 
@@ -745,8 +758,18 @@ describe("TaskLoop", () => {
   test("delay between iterations triggers sleep", async () => {
     // Two successful iterations with a small delay
     runEngineMock
-      .mockImplementationOnce(async () => ({ exitCode: 0, usage: null, sessionId: null }))
-      .mockImplementationOnce(async () => ({ exitCode: 0, usage: null, sessionId: null }));
+      .mockImplementationOnce(async () => ({
+        exitCode: 0,
+        usage: null,
+        sessionId: null,
+        rateLimited: false,
+      }))
+      .mockImplementationOnce(async () => ({
+        exitCode: 0,
+        usage: null,
+        sessionId: null,
+        rateLimited: false,
+      }));
 
     await withStorage(async () => {
       const taskDir = join(tempDir, "delay-task");

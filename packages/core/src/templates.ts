@@ -27,7 +27,7 @@ export function resolveTemplatePath(name: string): string {
  * Uses the document registry to determine which files need scaffolding.
  * Only copies files that do not already exist in the target.
  */
-export function scaffoldTaskDocuments(taskDir: string): void {
+export function scaffoldTaskDocuments(taskDir: string, prompt?: string): void {
   const storage = getStorage();
   for (const doc of getScaffoldDocuments()) {
     const dest = join(taskDir, doc.name);
@@ -38,6 +38,14 @@ export function scaffoldTaskDocuments(taskDir: string): void {
       storage.write(dest, tmpl);
     } else if (doc.fallbackContent) {
       storage.write(dest, doc.fallbackContent);
+    }
+  }
+
+  // Seed spec.md with the user prompt if it doesn't exist yet
+  if (prompt) {
+    const specPath = join(taskDir, "spec.md");
+    if (storage.read(specPath) === null) {
+      storage.write(specPath, `> ${prompt}\n`);
     }
   }
 }

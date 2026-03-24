@@ -1,13 +1,8 @@
-const PHASE_COLORS: Record<string, string> = {
-  research: "var(--cyan)",
-  plan: "var(--accent)",
-  exec: "var(--warning)",
-  review: "var(--success)",
-  done: "var(--success)",
-};
+import { PHASE_COLORS, type PhaseName } from "../lib/phases";
 
 export function PhaseBadge({ phase }: { phase: string }) {
-  const color = PHASE_COLORS[phase] ?? "var(--text-dim)";
+  const raw = PHASE_COLORS[phase as PhaseName];
+  const color = raw ? `var(--${raw})` : "var(--text-dim)";
   return (
     <span
       style={{

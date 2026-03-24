@@ -4,10 +4,19 @@ interface DocumentEditorProps {
   title: string;
   content: string | null;
   loading: boolean;
-  onSave: (content: string) => Promise<void>;
+  onSave?: (content: string) => Promise<void>;
+  placeholder?: string;
+  readOnly?: boolean;
 }
 
-export function DocumentEditor({ title, content, loading, onSave }: DocumentEditorProps) {
+export function DocumentEditor({
+  title,
+  content,
+  loading,
+  onSave,
+  placeholder,
+  readOnly,
+}: DocumentEditorProps) {
   const [value, setValue] = useState(content ?? "");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -20,6 +29,7 @@ export function DocumentEditor({ title, content, loading, onSave }: DocumentEdit
   }, [content]);
 
   const handleSave = async () => {
+    if (!onSave) return;
     setSaving(true);
     await onSave(value);
     setSaving(false);
@@ -27,7 +37,7 @@ export function DocumentEditor({ title, content, loading, onSave }: DocumentEdit
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div
         style={{
           display: "flex",
@@ -39,20 +49,25 @@ export function DocumentEditor({ title, content, loading, onSave }: DocumentEdit
         }}
       >
         <span style={{ fontWeight: 600, fontSize: 12 }}>{title}</span>
-        <button
-          onClick={handleSave}
-          disabled={!dirty || saving}
-          style={{ fontSize: 11, padding: "3px 8px" }}
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
+        {!readOnly && onSave && (
+          <button
+            onClick={handleSave}
+            disabled={!dirty || saving}
+            style={{ fontSize: 11, padding: "3px 8px" }}
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        )}
       </div>
       {loading ? (
         <div style={{ padding: 12, color: "var(--text-dim)" }}>Loading...</div>
       ) : (
         <textarea
           value={value}
+          placeholder={placeholder}
+          readOnly={readOnly}
           onChange={(e) => {
+            if (readOnly) return;
             setValue(e.target.value);
             setDirty(true);
           }}
@@ -64,6 +79,7 @@ export function DocumentEditor({ title, content, loading, onSave }: DocumentEdit
             padding: 12,
             fontSize: 12,
             lineHeight: 1.6,
+            ...(readOnly ? { opacity: 0.8, cursor: "default" } : {}),
           }}
         />
       )}

@@ -1,141 +1,80 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { GetPromptResult } from "@modelcontextprotocol/sdk/types.js";
+
+function textPrompt(text: string): GetPromptResult {
+  return {
+    messages: [{ role: "user", content: { type: "text", text } }],
+  };
+}
+
+// Wrapper to avoid TS2589: registerPrompt/prompt with Zod schemas triggers
+// excessively deep type instantiation in the MCP SDK's generic inference.
+function registerPrompt(
+  server: McpServer,
+  name: string,
+  description: string,
+  argsSchema: Record<string, z.ZodType>,
+  cb: (args: Record<string, string>) => Promise<GetPromptResult>,
+): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (server as any).prompt(name, description, argsSchema, cb);
+}
 
 export function registerPrompts(server: McpServer): void {
-  // --- /ralph-create ---
-  server.registerPrompt(
+  registerPrompt(
+    server,
     "ralph-create",
-    {
-      title: "Create Ralph Task",
-      description: "Create a new ralph task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-        prompt: z.string().describe("Task description"),
-      },
-    },
-    async ({ name, prompt }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: `Create a new ralph task named "${name}" with the following prompt:\n\n${prompt}`,
-          },
-        },
-      ],
-    }),
+    "Create a new ralph task",
+    { name: z.string().describe("Task name"), prompt: z.string().describe("Task description") },
+    async (args) =>
+      textPrompt(
+        `Create a new ralph task named "${args.name}" with the following prompt:\n\n${args.prompt}`,
+      ),
   );
 
-  // --- /ralph-list ---
-  server.registerPrompt(
-    "ralph-list",
-    {
-      title: "List Ralph Tasks",
-      description: "List all active ralph tasks with status",
-    },
-    async () => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: "List all ralph tasks and show their current phase, status, and progress.",
-          },
-        },
-      ],
-    }),
+  server.prompt("ralph-list", "List all active ralph tasks with status", async () =>
+    textPrompt("List all ralph tasks and show their current phase, status, and progress."),
   );
 
-  // --- /ralph-status ---
-  server.registerPrompt(
+  registerPrompt(
+    server,
     "ralph-status",
-    {
-      title: "Ralph Task Status",
-      description: "Get detailed status of a specific task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
-    },
-    async ({ name }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: `Get the detailed status of ralph task "${name}", including its phase, progress, and any steering guidance.`,
-          },
-        },
-      ],
-    }),
+    "Get detailed status of a specific task",
+    { name: z.string().describe("Task name") },
+    async (args) =>
+      textPrompt(
+        `Get the detailed status of ralph task "${args.name}", including its phase, progress, and any steering guidance.`,
+      ),
   );
 
-  // --- /ralph-run ---
-  server.registerPrompt(
+  registerPrompt(
+    server,
     "ralph-run",
-    {
-      title: "Run Ralph Task",
-      description: "Run a ralph task in the background",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
-    },
-    async ({ name }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: `Run ralph task "${name}" in the background.`,
-          },
-        },
-      ],
-    }),
+    "Run a ralph task in the background",
+    { name: z.string().describe("Task name") },
+    async (args) => textPrompt(`Run ralph task "${args.name}" in the background.`),
   );
 
-  // --- /ralph-advance ---
-  server.registerPrompt(
+  registerPrompt(
+    server,
     "ralph-advance",
-    {
-      title: "Advance Ralph Task",
-      description: "Advance a ralph task to its next phase",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-      },
-    },
-    async ({ name }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: `Advance ralph task "${name}" to its next phase.`,
-          },
-        },
-      ],
-    }),
+    "Advance a ralph task to its next phase",
+    { name: z.string().describe("Task name") },
+    async (args) => textPrompt(`Advance ralph task "${args.name}" to its next phase.`),
   );
 
-  // --- /ralph-steer ---
-  server.registerPrompt(
+  registerPrompt(
+    server,
     "ralph-steer",
+    "Update STEERING.md with new guidance for a task",
     {
-      title: "Steer Ralph Task",
-      description: "Update STEERING.md with new guidance for a task",
-      argsSchema: {
-        name: z.string().describe("Task name"),
-        guidance: z.string().describe("Steering guidance to add"),
-      },
+      name: z.string().describe("Task name"),
+      guidance: z.string().describe("Steering guidance to add"),
     },
-    async ({ name, guidance }) => ({
-      messages: [
-        {
-          role: "user" as const,
-          content: {
-            type: "text" as const,
-            text: `Update the STEERING.md for ralph task "${name}" with the following guidance:\n\n${guidance}`,
-          },
-        },
-      ],
-    }),
+    async (args) =>
+      textPrompt(
+        `Update the STEERING.md for ralph task "${args.name}" with the following guidance:\n\n${args.guidance}`,
+      ),
   );
 }
