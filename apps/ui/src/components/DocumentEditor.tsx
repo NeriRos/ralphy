@@ -9,7 +9,14 @@ interface DocumentEditorProps {
   readOnly?: boolean;
 }
 
-export function DocumentEditor({ title, content, loading, onSave, placeholder, readOnly }: DocumentEditorProps) {
+export function DocumentEditor({
+  title,
+  content,
+  loading,
+  onSave,
+  placeholder,
+  readOnly,
+}: DocumentEditorProps) {
   const [value, setValue] = useState(content ?? "");
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
