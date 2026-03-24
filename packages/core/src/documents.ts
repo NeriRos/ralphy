@@ -51,7 +51,9 @@ const TASK_DOCUMENTS: TaskDocument[] = [
   },
   {
     name: "STEERING.md",
-    scaffold: null,
+    scaffold: "STEERING",
+    fallbackContent:
+      "# Steering — User Guidance\n\nThis file is for providing real-time guidance and constraints to the agent as iterations progress.\n\n**USER: Edit this file anytime** to steer the task. Changes take effect on the next iteration.\n\n---\n\n**Leave this file empty if no special guidance is needed.**\n",
     promptInjection: {
       phases: "all",
       header: "User Steering (READ FIRST)",

@@ -68,9 +68,7 @@ function ensureSpecKit(taskDir: string): void {
       cwd: ralphDir,
     });
   } catch {
-    throw new Error(
-      "specify CLI is not installed. Install it with: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git",
-    );
+    // No-op: specify CLI is optional
   }
 }
 
