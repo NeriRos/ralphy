@@ -56,14 +56,12 @@ For each implemented item in the current section:
 
 ### 3. Spec Compliance Review
 
-If `.ralph/.claude/commands/speckit.checklist.md` exists, read it and follow its quality validation methodology to cross-reference the implementation against spec.md:
+Cross-reference the implementation against spec.md:
 
 - **Requirements coverage** — Does the implementation satisfy the functional requirements from spec.md?
 - **Success criteria** — Are the measurable success criteria from spec.md met?
 - **User scenarios** — Are all user scenarios from spec.md covered?
 - **No orphan requirements** — Are any spec.md requirements unaddressed?
-
-If the command file does not exist, manually verify the implementation against spec.md requirements.
 
 ### 4. Lint & Type Safety
 

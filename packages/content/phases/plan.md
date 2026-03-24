@@ -61,8 +61,6 @@ Compare the research findings against what the task requires. For each gap, note
 
 ### 3. Create PLAN.md
 
-Read the spec-kit plan command from `.ralph/.claude/commands/speckit.plan.md` if it exists, and follow its methodology for structured planning (Technical Context, Constitution Check, Complexity Tracking). If the command file does not exist, use the standard approach below.
-
 Write `TASK_DIR/PLAN.md` with:
 
 - A brief summary of the task and approach

@@ -11,7 +11,7 @@ context: []
 
 # Task — Specify Phase
 
-You are starting a new task. Your job is to create a feature specification using spec-kit's specify workflow.
+You are starting a new task. Your job is to create a feature specification.
 
 **Input: Task description (injected below)**
 **Output: `TASK_DIR/spec.md` (you create this)**
@@ -22,7 +22,6 @@ You are starting a new task. Your job is to create a feature specification using
 
 0a. Study `CLAUDE.md` for build commands, conventions, patterns, and gotchas. This is the operational source of truth.
 0b. Read `TASK_DIR/state.json` for task context: current phase, iteration count, history of previous runs, and any metadata.
-0c. Verify spec-kit is initialized — check that `.ralph/.claude/commands/speckit.specify.md` exists. If it does not, run `specify init --here --ai claude --force` from the `.ralph/` directory.
 
 {{MCP_TOOLS}}
 
@@ -30,42 +29,87 @@ You are starting a new task. Your job is to create a feature specification using
 
 ## Steps
 
-### 1. Load spec-kit specify command
+### 1. Parse the task description
 
-Read the spec-kit specify command from `.ralph/.claude/commands/speckit.specify.md`. This file contains the full specification workflow including branch creation, template structure, and quality validation.
+Extract from the task description:
 
-### 2. Execute the spec-kit specify workflow
+- **Actors** — who uses this feature?
+- **Actions** — what do they do?
+- **Data** — what entities are involved?
+- **Constraints** — any boundaries, limits, or rules?
 
-Follow all instructions in the spec-kit command file with these adaptations:
+If the description is empty or too vague to proceed, write `TASK_DIR/STOP` with a reason and stop.
 
-- Use the **task description** (injected below) as the `$ARGUMENTS` input
-- When the command references `{SCRIPT}`, run `.ralph/.specify/scripts/bash/create-new-feature.sh` from the project root
-- Pass `--json` and `--short-name` flags as specified in the command
-- Let the script create the branch and `specs/<branch>/spec.md` as normal
+### 2. Write `TASK_DIR/spec.md`
 
-### 3. Copy spec to task directory
+Create the spec using the template structure below. Replace all placeholders with concrete details derived from the task description.
 
-After the spec-kit workflow completes, copy the generated specification to `TASK_DIR/spec.md`. This ensures ralphy can track it as a task artifact alongside RESEARCH.md, PLAN.md, and PROGRESS.md.
+```markdown
+# Feature Specification: [FEATURE NAME]
 
-### 4. Quality validation
+**Created**: [DATE]
+**Status**: Draft
 
-Follow the spec-kit command's quality validation steps:
+## User Scenarios & Testing
 
-- Maximum 3 `[NEEDS CLARIFICATION]` markers
-- All functional requirements must be testable
-- Success criteria must be measurable and technology-agnostic
-- No implementation details in the specification
+### User Story 1 - [Brief Title] (Priority: P1)
 
-If clarification questions arise, present them to the user and wait for responses before finalizing.
+[Describe this user journey in plain language]
 
-### 5. Commit and advance
+**Why this priority**: [Explain the value and why it has this priority level]
+
+**Acceptance Scenarios**:
+
+1. **Given** [initial state], **When** [action], **Then** [expected outcome]
+
+---
+
+[Add more user stories as needed, each with an assigned priority]
+
+### Edge Cases
+
+- What happens when [boundary condition]?
+- How does system handle [error scenario]?
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST [specific capability]
+- **FR-002**: System MUST [specific capability]
+
+### Key Entities (include if feature involves data)
+
+- **[Entity 1]**: [What it represents, key attributes without implementation]
+
+## Success Criteria
+
+### Measurable Outcomes
+
+- **SC-001**: [Measurable, technology-agnostic metric]
+- **SC-002**: [Measurable, technology-agnostic metric]
+```
+
+### 3. Quality validation
+
+After writing the spec, validate:
+
+- **No implementation details** — no languages, frameworks, APIs, or code structure
+- **WHAT and WHY only** — focused on user value and business needs, not HOW
+- **Testable requirements** — every FR can be verified
+- **Measurable success criteria** — technology-agnostic, user-focused outcomes
+- **Maximum 3 `[NEEDS CLARIFICATION]` markers** — make informed guesses for everything else, documenting assumptions
+
+If `[NEEDS CLARIFICATION]` markers remain, present them to the user with suggested options and wait for responses before finalizing.
+
+### 4. Commit and advance
 
 ```
 git add TASK_DIR/spec.md
 git commit -m "specify: <task-name>"
 ```
 
-Then advance to the research phase so the next iteration starts correctly. Use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise fall back to:
+Then advance to the research phase. Use `mcp__ralph__ralph_advance_phase` MCP tool if available, otherwise fall back to:
 
 ```
 ralph advance --name "{{TASK_NAME}}"
@@ -77,7 +121,7 @@ ralph advance --name "{{TASK_NAME}}"
 
 ## Termination Signal
 
-If you hit a blocker (task description is ambiguous beyond resolution, critical information is missing, spec-kit is not installed), write `TASK_DIR/STOP` with a one-line reason.
+If you hit a blocker (task description is ambiguous beyond resolution, critical information is missing), write `TASK_DIR/STOP` with a one-line reason.
 
 ---
 
