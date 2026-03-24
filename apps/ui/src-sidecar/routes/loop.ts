@@ -297,6 +297,12 @@ async function runLoopAsync(
             engineResult.usage,
           );
 
+          // Stop immediately on rate limits or fatal engine errors
+          if (failure.shouldStop || engineResult.rateLimited) {
+            broadcast(taskName, { type: "stopped", reason: "rateLimited" });
+            break;
+          }
+
           if (result === lastResult) {
             consFailures++;
           } else {

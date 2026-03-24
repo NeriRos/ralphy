@@ -303,7 +303,20 @@ export function TaskDetailView() {
               <ProgressList items={progressItems} />
             </div>
           ) : (
-            <CollapsedDocTitle title="PROGRESS" onClick={() => setExpandedDoc("progress")} />
+            <div
+              onClick={() => setExpandedDoc("progress")}
+              style={{
+                padding: "8px 12px",
+                borderTop: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: "pointer",
+                color: "var(--text-dim)",
+              }}
+            >
+              PROGRESS
+            </div>
           )}
 
           <DocPanel

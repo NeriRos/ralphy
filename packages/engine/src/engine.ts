@@ -28,6 +28,8 @@ export interface EngineResult {
   usage: IterationUsage | null;
   /** Claude session ID, used for --resume on live steering. */
   sessionId: string | null;
+  /** True when the engine hit an API rate / usage limit. */
+  rateLimited: boolean;
 }
 
 /**
@@ -144,10 +146,10 @@ async function runInteractive(
     // Keep the file — the loop uses it to avoid re-entering interactive mode
     const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
     if (doneFile && existsSync(doneFile)) {
-      return { exitCode: 0, usage: null, sessionId: null };
+      return { exitCode: 0, usage: null, sessionId: null, rateLimited: false };
     }
 
-    return { exitCode, usage: null, sessionId: null };
+    return { exitCode, usage: null, sessionId: null, rateLimited: false };
   } finally {
     try {
       unlinkSync(promptFile);
@@ -247,6 +249,7 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const stdout = proc.stdout as ReadableStream<Uint8Array>;
   let usage: IterationUsage | null = null;
   let sessionId: string | null = null;
+  let detectedRateLimit = false;
 
   if (engine === "claude") {
     const claudeState = {
@@ -270,6 +273,10 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
       }
 
       for (const event of parseClaudeLine(line, claudeState)) {
+        // Detect rate-limit messages from Claude
+        if (event.type === "text" && isRateLimitText(event.text)) {
+          detectedRateLimit = true;
+        }
         emitEvent(event);
       }
       // Kill the process after the first result event — the agent is done.
@@ -312,5 +319,12 @@ export async function runEngine(opts: RunEngineOptions): Promise<EngineResult> {
   const wasIntentionalKill = (exitCode === 143 || exitCode === 137) && (usage !== null || aborted);
   const normalizedExitCode = wasIntentionalKill ? 0 : exitCode;
 
-  return { exitCode: normalizedExitCode, usage, sessionId };
+  return { exitCode: normalizedExitCode, usage, sessionId, rateLimited: detectedRateLimit };
+}
+
+/** Patterns that indicate the engine hit an API rate / usage limit. */
+const RATE_LIMIT_PATTERNS = [/you've hit your limit/i, /rate limit/i, /too many requests/i];
+
+function isRateLimitText(text: string): boolean {
+  return RATE_LIMIT_PATTERNS.some((re) => re.test(text));
 }

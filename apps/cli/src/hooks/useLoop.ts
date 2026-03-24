@@ -225,6 +225,12 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               engineResult.usage,
             );
 
+            // Stop immediately on rate limits or fatal engine errors
+            if (failure.shouldStop || engineResult.rateLimited) {
+              setStopReason("rateLimited");
+              break;
+            }
+
             if (result === lastResult) {
               consFailures++;
             } else {

@@ -74,5 +74,11 @@ export function StopMessage({
           {"\n"}Stopped: {consecutiveFailures} consecutive identical failures detected
         </Text>
       );
+    case "rateLimited":
+      return (
+        <Text color="red" bold>
+          {"\n"}Stopped: engine hit API rate/usage limit
+        </Text>
+      );
   }
 }

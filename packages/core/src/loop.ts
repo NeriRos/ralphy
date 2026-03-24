@@ -163,7 +163,8 @@ export type StopReason =
   | "noExecute"
   | "costCap"
   | "runtimeLimit"
-  | "consecutiveFailures";
+  | "consecutiveFailures"
+  | "rateLimited";
 
 /**
  * Determine whether the loop should continue.
