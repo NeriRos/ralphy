@@ -143,9 +143,9 @@ describe("checkStopCondition", () => {
 
   test("returns maxIterations when iteration cap reached", () => {
     const state = makeState();
-    expect(
-      checkStopCondition(state, 5, { ...baseOptions, maxIterations: 5 }, Date.now(), 0),
-    ).toBe("maxIterations");
+    expect(checkStopCondition(state, 5, { ...baseOptions, maxIterations: 5 }, Date.now(), 0)).toBe(
+      "maxIterations",
+    );
   });
 
   test("returns completed when state is not active", () => {
@@ -187,7 +187,14 @@ describe("updateStateIteration", () => {
     withStorage(() => {
       const state = makeState();
       writeState(tempDir, state);
-      const updated = updateStateIteration(tempDir, "ok", "2026-01-01T00:00:00Z", "claude", "opus", null);
+      const updated = updateStateIteration(
+        tempDir,
+        "ok",
+        "2026-01-01T00:00:00Z",
+        "claude",
+        "opus",
+        null,
+      );
       expect(updated.iteration).toBe(1);
       expect(updated.history).toHaveLength(1);
       expect(updated.history[0]!.result).toBe("ok");
@@ -207,7 +214,14 @@ describe("updateStateIteration", () => {
         cache_read_input_tokens: 10,
         cache_creation_input_tokens: 5,
       };
-      const updated = updateStateIteration(tempDir, "ok", "2026-01-01T00:00:00Z", "claude", "opus", usage);
+      const updated = updateStateIteration(
+        tempDir,
+        "ok",
+        "2026-01-01T00:00:00Z",
+        "claude",
+        "opus",
+        usage,
+      );
       expect(updated.usage.total_cost_usd).toBe(0.5);
       expect(updated.usage.total_input_tokens).toBe(100);
       expect(updated.history[0]!.usage).toBeDefined();

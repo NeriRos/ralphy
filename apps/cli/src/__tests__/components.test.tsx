@@ -331,12 +331,7 @@ describe("StopMessage", () => {
   test("renders rateLimited stop", () => {
     const state = makeState();
     const { lastFrame } = render(
-      <StopMessage
-        reason="rateLimited"
-        state={state}
-        stateDir={tempDir}
-        consecutiveFailures={0}
-      />,
+      <StopMessage reason="rateLimited" state={state} stateDir={tempDir} consecutiveFailures={0} />,
     );
     expect(lastFrame()!).toContain("rate/usage limit");
   });
