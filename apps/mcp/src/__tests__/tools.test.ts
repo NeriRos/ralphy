@@ -177,6 +177,28 @@ describe("ralph_list_changes", () => {
     expect(data.changes).toHaveLength(1);
     expect(data.changes[0]!.name).toBe("done-change");
   });
+
+  test("falls back to unknown status when state cannot be parsed", async () => {
+    const changeDir = join(tempDir, "broken-change");
+    mkdirSync(changeDir, { recursive: true });
+    writeFileSync(join(changeDir, ".ralph-state.json"), "{not-json");
+    const store = new StubChangeStore();
+    store.listChangesResult = ["broken-change"];
+    const handler = captureHandlers(tempDir, store)("ralph_list_changes");
+    const result = await handler({});
+    const data = parseResult(result) as { changes: { name: string; status: string }[] };
+    expect(data.changes).toHaveLength(1);
+    expect(data.changes[0]!.status).toBe("unknown");
+  });
+
+  test("returns error result when listChanges throws", async () => {
+    const store = new StubChangeStore();
+    store.listChanges = () => Promise.reject(new Error("listing failed"));
+    const handler = captureHandlers(tempDir, store)("ralph_list_changes");
+    const result = await handler({});
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error listing changes");
+  });
 });
 
 describe("ralph_get_change", () => {
@@ -240,6 +262,37 @@ describe("ralph_create_change", () => {
     const data = parseResult(result) as { started: boolean; pid: number };
     expect(data.started).toBe(true);
     expect(spawnMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("forwards all CLI flags when starting a background run", async () => {
+    spawnMock.mockClear();
+    const handler = captureHandlers(tempDir)("ralph_create_change");
+    await handler({
+      name: "full-run",
+      prompt: "Do",
+      run: true,
+      maxIterations: 2,
+      maxCostUsd: 1,
+      maxRuntimeMinutes: 5,
+      engine: "codex",
+      model: "gpt-5",
+    });
+    const args = spawnMock.mock.calls[0]![1] as string[];
+    expect(args).toContain("--max-iterations");
+    expect(args).toContain("--max-cost");
+    expect(args).toContain("--max-runtime");
+    expect(args).toContain("--codex");
+    expect(args).toContain("--model");
+  });
+
+  test("returns error when spawn throws", async () => {
+    spawnMock.mockImplementationOnce(() => {
+      throw new Error("spawn failed");
+    });
+    const handler = captureHandlers(tempDir)("ralph_create_change");
+    const result = await handler({ name: "fail-run", prompt: "p", run: true });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain("Error creating change");
   });
 });
 

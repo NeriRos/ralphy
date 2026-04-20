@@ -1,0 +1,13 @@
+{
+  "name": "@ralphy/phases",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/phases.ts"
+  },
+  "dependencies": {
+    "@ralphy/content": "workspace:*",
+    "@ralphy/types": "workspace:*"
+  }
+}

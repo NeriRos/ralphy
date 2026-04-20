@@ -48,6 +48,7 @@ export const HistoryEntrySchema = z.object({
   timestamp: z.string(),
   startedAt: z.string().optional(),
   endedAt: z.string().optional(),
+  phase: z.string().optional(),
   iteration: z.number(),
   engine: z.string(),
   model: z.string(),
@@ -59,6 +60,8 @@ export const StateSchema = z.object({
   version: z.literal("2"),
   name: z.string(),
   prompt: z.string(),
+  phase: z.string().default("specify"),
+  phaseIteration: z.number().default(0),
   iteration: z.number().default(0),
   status: z.enum(["active", "blocked", "completed"]).default("active"),
   stopReason: z.string().optional(),
@@ -76,6 +79,28 @@ export const StateSchema = z.object({
 export type Usage = z.infer<typeof UsageSchema>;
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 export type State = z.infer<typeof StateSchema>;
+
+// --- Phase config ---
+
+export const PhaseFrontmatterSchema = z.object({
+  name: z.string(),
+  order: z.number(),
+  requires: z.array(z.string()).default([]),
+  next: z.string().optional().nullable(),
+  autoAdvance: z.enum(["allChecked"]).optional().nullable(),
+  loopBack: z.string().optional().nullable(),
+  terminal: z.boolean().default(false),
+  context: z
+    .array(
+      z.object({
+        type: z.string(),
+        label: z.string(),
+      }),
+    )
+    .default([]),
+});
+
+export type PhaseConfig = z.infer<typeof PhaseFrontmatterSchema> & { prompt: string };
 
 // --- Feed event types ---
 

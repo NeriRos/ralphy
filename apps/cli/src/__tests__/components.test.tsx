@@ -214,11 +214,12 @@ describe("TaskList", () => {
       mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "prog-change", prompt: "Test" });
       writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
-      writeFileSync(join(stateDir, "PROGRESS.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
+      writeFileSync(join(stateDir, "tasks.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
 
       const { frames } = render(<TaskList statesDir={tempDir} />);
       const frame = findFrame(frames, "prog-change");
       expect(frame).toContain("prog-change");
+      expect(frame).toContain("2/3");
     }));
 
   test("renders table headers", () =>
@@ -325,6 +326,19 @@ describe("StopMessage", () => {
       />,
     );
     expect(lastFrame()!).toContain("5 consecutive identical failures");
+  });
+
+  test("renders rateLimited stop", () => {
+    const state = makeState();
+    const { lastFrame } = render(
+      <StopMessage
+        reason="rateLimited"
+        state={state}
+        stateDir={tempDir}
+        consecutiveFailures={0}
+      />,
+    );
+    expect(lastFrame()!).toContain("rate/usage limit");
   });
 });
 
