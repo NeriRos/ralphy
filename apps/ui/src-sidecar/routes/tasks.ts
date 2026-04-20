@@ -3,6 +3,7 @@ import { rmSync } from "node:fs";
 import { getStorage } from "@ralphy/context";
 import { buildInitialState, writeState, ensureState } from "@ralphy/core/state";
 import { isTaskRunning } from "./loop";
+import type { State } from "@ralphy/types";
 import type { SidecarContext } from "../types";
 
 interface RouteResult {
@@ -44,7 +45,7 @@ export async function taskRoutes(
       }
 
       const entries = storage.list(ctx.tasksDir);
-      const changes = [];
+      const changes: Array<State & { isRunning: boolean }> = [];
       for (const name of entries) {
         if (name.startsWith(".")) continue;
         const changeDir = join(ctx.tasksDir, name);
