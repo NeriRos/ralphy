@@ -1,21 +1,39 @@
 {
   "name": "@neriros/ralphy",
   "version": "2.5.0",
-  "description": "An iterative AI task execution framework. Orchestrates multi-phase autonomous work using Claude or Codex engines.",
+  "description": "Ralphy — Ralph-loop framework for autonomous AI coding agents (Claude Code, Codex). Iterative task execution with OpenSpec, an MCP server, and cost safeguards. Built on Bun + TypeScript.",
   "keywords": [
+    "ralphy",
+    "ralph",
+    "ralph-loop",
     "agent",
+    "agent-framework",
     "ai",
+    "ai-agent",
+    "autonomous-agent",
     "claude",
+    "claude-code",
+    "claude-cli",
+    "codex",
     "cli",
     "loop",
     "mcp",
-    "ralph",
-    "task-runner"
+    "mcp-server",
+    "model-context-protocol",
+    "openspec",
+    "task-runner",
+    "bun",
+    "typescript"
   ],
   "license": "MIT",
+  "author": "NeriRos",
+  "homepage": "https://github.com/NeriRos/ralphy#readme",
+  "bugs": {
+    "url": "https://github.com/NeriRos/ralphy/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/NeriRos/ralphy.git"
+    "url": "git+https://github.com/NeriRos/ralphy.git"
   },
   "bin": {
     "ralphy": "./dist/cli/index.js",

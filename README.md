@@ -1,6 +1,8 @@
-# Ralphy
+# Ralphy — Ralph-loop framework for AI coding agents
 
-An iterative AI task execution framework. Ralphy orchestrates multi-phase autonomous work using Claude or Codex engines, with built-in state management, progress tracking, and cost safeguards.
+Ralphy is an open-source **Ralph-loop framework** for running autonomous AI coding agents (Claude Code, Codex) against a task checklist until it's done. It pairs an iterative task-execution loop with [OpenSpec](https://github.com/Fission-AI/OpenSpec) change files, an MCP server, state management, and cost safeguards (max iterations, max cost, max runtime).
+
+> Keywords: ralph loop, claude code agent, codex agent, autonomous coding agent, MCP server, OpenSpec, task runner, AI agent framework, Bun, TypeScript.
 
 ## How It Works
 
