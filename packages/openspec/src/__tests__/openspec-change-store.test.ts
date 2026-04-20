@@ -11,6 +11,9 @@ let nextSpawnResult: SpawnResult = { status: 0, stdout: "", stderr: "" };
 
 mock.module("node:child_process", () => ({
   spawnSync: (command: string, args: string[]) => {
+    if (args.length === 1 && args[0] === "--version") {
+      return { status: 0, stdout: "1.0.0", stderr: "" };
+    }
     spawnCalls.push({ command, args });
     return { ...nextSpawnResult };
   },

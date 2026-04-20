@@ -1,7 +1,31 @@
 import { join } from "node:path";
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import type { ChangeStore, ValidationResult } from "@ralphy/change-store";
+
+let runnerCache: "bunx" | "npx" | null = null;
+
+function resolveRunner(): "bunx" | "npx" {
+  if (runnerCache) return runnerCache;
+  for (const candidate of ["bunx", "npx"] as const) {
+    const probe = spawnSync(candidate, ["--version"], { encoding: "utf-8" });
+    if (!probe.error) {
+      runnerCache = candidate;
+      return candidate;
+    }
+  }
+  throw new Error(
+    "ralph requires `bunx` or `npx` on PATH to run `openspec`. Install bun (https://bun.sh/) or Node.js and re-run.",
+  );
+}
+
+function runBunx(
+  args: string[],
+  options: Omit<NonNullable<Parameters<typeof spawnSync>[2]>, "encoding"> = {},
+): SpawnSyncReturns<string> {
+  const runner = resolveRunner();
+  return spawnSync(runner, args, { ...options, encoding: "utf-8" });
+}
 
 /**
  * OpenSpec-backed implementation of ChangeStore.
@@ -10,11 +34,9 @@ import type { ChangeStore, ValidationResult } from "@ralphy/change-store";
  */
 export class OpenSpecChangeStore implements ChangeStore {
   createChange(name: string, description: string): Promise<void> {
-    const result = spawnSync(
-      "bunx",
-      ["openspec", "new", "change", name, "--description", description],
-      { stdio: "inherit", encoding: "utf-8" },
-    );
+    const result = runBunx(["openspec", "new", "change", name, "--description", description], {
+      stdio: "inherit",
+    });
     if (result.status !== 0) {
       throw new Error(`openspec new change failed with exit code ${result.status ?? "unknown"}`);
     }
@@ -26,7 +48,7 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   listChanges(): Promise<string[]> {
-    const result = spawnSync("bunx", ["openspec", "list", "--json"], { encoding: "utf-8" });
+    const result = runBunx(["openspec", "list", "--json"]);
 
     if (result.stdout) {
       try {
@@ -91,9 +113,7 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   validateChange(name: string): Promise<ValidationResult> {
-    const result = spawnSync("bunx", ["openspec", "validate", name, "--json", "--no-interactive"], {
-      encoding: "utf-8",
-    });
+    const result = runBunx(["openspec", "validate", name, "--json", "--no-interactive"]);
 
     if (result.stdout) {
       try {
