@@ -30,6 +30,29 @@ mock.module("@ralphy/core/git", () => ({
 
 mock.module("@ralphy/openspec", () => ({
   archive: mock(async () => {}),
+  // Stub so `new OpenSpecChangeStore()` in App.tsx resolves during module load.
+  // Tests that need store behavior inject their own stub via props.
+  OpenSpecChangeStore: class {
+    async createChange(): Promise<void> {}
+    getChangeDirectory(): string {
+      return "";
+    }
+    async listChanges(): Promise<string[]> {
+      return [];
+    }
+    async readTaskList(): Promise<string> {
+      return "";
+    }
+    async writeTaskList(): Promise<void> {}
+    async appendSteering(): Promise<void> {}
+    async readSection(): Promise<string> {
+      return "";
+    }
+    async validateChange(): Promise<{ valid: boolean; warnings: string[]; errors: string[] }> {
+      return { valid: true, warnings: [], errors: [] };
+    }
+    async archiveChange(): Promise<void> {}
+  },
 }));
 
 // Import after mocking

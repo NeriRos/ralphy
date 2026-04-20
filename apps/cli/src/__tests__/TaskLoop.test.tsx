@@ -561,7 +561,7 @@ describe("TaskLoop", () => {
     });
   });
 
-  test("live steering kills engine, writes STEERING.md, and resumes session", async () => {
+  test("live steering kills engine, writes steering.md, and resumes session", async () => {
     let engineStartResolve: () => void;
     const engineStarted = new Promise<void>((r) => {
       engineStartResolve = r;
@@ -594,7 +594,7 @@ describe("TaskLoop", () => {
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "steer-live-task" });
       writeState(taskDir, state);
-      writeFileSync(join(taskDir, "STEERING.md"), "original\n", "utf-8");
+      writeFileSync(join(taskDir, "steering.md"), "original\n", "utf-8");
 
       // Use a wrapper to capture the steer function
       let steerFn: ((msg: string) => void) | null = null;
@@ -632,9 +632,9 @@ describe("TaskLoop", () => {
       // Wait for resume to complete
       await new Promise((r) => setTimeout(r, 500));
 
-      // Verify STEERING.md was appended
+      // Verify steering.md was appended
       const { readFileSync } = await import("node:fs");
-      const steeringContent = readFileSync(join(taskDir, "STEERING.md"), "utf-8");
+      const steeringContent = readFileSync(join(taskDir, "steering.md"), "utf-8");
       expect(steeringContent).toContain("original");
       expect(steeringContent).toContain("focus on tests");
 
