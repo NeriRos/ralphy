@@ -133,7 +133,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
 
   if (!loop.state) return null;
 
-  const changeDir = join(opts.changesDir, opts.name);
+  const stateDir = join(opts.statesDir, opts.name);
 
   return (
     <Box flexDirection="column">
@@ -186,7 +186,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
           <StopMessage
             reason={loop.stopReason}
             state={loop.state}
-            changeDir={changeDir}
+            stateDir={stateDir}
             maxIterations={opts.maxIterations}
             maxCostUsd={opts.maxCostUsd}
             maxRuntimeMinutes={opts.maxRuntimeMinutes}

@@ -10,25 +10,26 @@ import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { App } from "./components/App";
 
 /**
- * Resolve the .ralph/tasks directory by walking up from cwd.
- * Falls back to <cwd>/.ralph/tasks if not found.
+ * Find the project root by walking up from cwd looking for an openspec/ directory.
+ * Falls back to cwd if not found.
  */
-function resolveChangesDir(): string {
+function findProjectRoot(): string {
   let dir = process.cwd();
   while (dir !== "/") {
-    const candidate = join(dir, ".ralph", "tasks");
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(join(dir, "openspec"))) return dir;
     dir = resolve(dir, "..");
   }
-  return join(process.cwd(), ".ralph", "tasks");
+  return process.cwd();
 }
 
 try {
   const args = parseArgs(process.argv.slice(2));
-  const changesDir = resolveChangesDir();
+  const projectRoot = findProjectRoot();
+  const statesDir = join(projectRoot, ".ralph", "tasks");
+  const tasksDir = join(projectRoot, "openspec", "changes");
 
   if (args.mode === "init") {
-    mkdirSync(changesDir, { recursive: true });
+    mkdirSync(statesDir, { recursive: true });
     spawnSync("bunx", ["openspec", "init", "--tools", "none", "--force"], {
       stdio: "inherit",
       cwd: process.cwd(),
@@ -36,7 +37,7 @@ try {
   }
 
   runWithContext(createDefaultContext(), () => {
-    render(createElement(App, { args, changesDir }));
+    render(createElement(App, { args, statesDir, tasksDir }));
   });
 } catch (err) {
   process.stderr.write((err instanceof Error ? err.message : String(err)) + "\n");

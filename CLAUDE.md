@@ -8,15 +8,18 @@ Ralph loop framework.
 
 ## Change Layout
 
-Changes live under `.ralph/tasks/<change-name>/`. Key files:
+Change files are split across two directories:
 
-- `proposal.md` — description and `## Steering` section
-- `design.md` — technical design
-- `tasks.md` — checklist driving iteration
-- `specs/` — per-task specifications
-- `.ralph-state.json` — loop state (iteration count, status, cost, history)
+- `openspec/changes/<change-name>/` — task files managed by OpenSpec:
+  - `proposal.md` — description and `## Steering` section
+  - `design.md` — technical design
+  - `tasks.md` — checklist driving iteration
+  - `specs/` — per-task specifications
 
-There are no phases. The loop reads `tasks.md`, works on the first unchecked item, validates, and checks it off.
+- `.ralph/tasks/<change-name>/` — loop state only:
+  - `.ralph-state.json` — loop state (iteration count, status, cost, history)
+
+There are no phases. The loop reads `openspec/changes/<name>/tasks.md`, works on the first unchecked item, validates, and checks it off.
 
 ## Cost Warning
 

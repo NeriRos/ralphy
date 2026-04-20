@@ -11,7 +11,8 @@ import { OpenSpecChangeStore } from "@ralphy/openspec";
 
 export interface AppProps {
   args: ParsedArgs;
-  changesDir: string;
+  statesDir: string;
+  tasksDir: string;
 }
 
 function ExitAfterRender({ children }: { children: ReactNode }) {
@@ -31,23 +32,23 @@ function ErrorMessage({ message }: { message: string }) {
   return <Text color="red">{message}</Text>;
 }
 
-export function App({ args, changesDir }: AppProps) {
+export function App({ args, statesDir, tasksDir }: AppProps) {
   switch (args.mode) {
     case "list":
-      return <TaskList changesDir={changesDir} />;
+      return <TaskList statesDir={statesDir} />;
 
     case "status": {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for status mode" />;
       }
-      const changeDir = join(changesDir, args.name);
-      if (!existsSync(join(changeDir, ".ralph-state.json"))) {
+      const stateDir = join(statesDir, args.name);
+      if (!existsSync(join(stateDir, ".ralph-state.json"))) {
         return <ErrorMessage message={`Error: change '${args.name}' not found`} />;
       }
-      const state = readState(changeDir);
+      const state = readState(stateDir);
       return (
         <ExitAfterRender>
-          <TaskStatus state={state} changeDir={changeDir} />
+          <TaskStatus state={state} stateDir={stateDir} />
         </ExitAfterRender>
       );
     }
@@ -63,7 +64,8 @@ export function App({ args, changesDir }: AppProps) {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for task mode" />;
       }
-      mkdirSync(join(changesDir, args.name), { recursive: true });
+      mkdirSync(join(statesDir, args.name), { recursive: true });
+      mkdirSync(join(tasksDir, args.name), { recursive: true });
       return (
         <TaskLoop
           opts={{
@@ -78,7 +80,8 @@ export function App({ args, changesDir }: AppProps) {
             delay: args.delay,
             log: args.log,
             verbose: args.verbose,
-            changesDir,
+            statesDir,
+            tasksDir,
             changeStore: new OpenSpecChangeStore(),
           }}
         />

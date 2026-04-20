@@ -13,7 +13,7 @@ function countTaskItems(content: string): { checked: number; unchecked: number }
 }
 
 export interface TaskListProps {
-  changesDir: string;
+  statesDir: string;
 }
 
 interface TaskRow {
@@ -26,13 +26,13 @@ interface TaskRow {
   prompt: string;
 }
 
-function buildRows(changesDir: string): TaskRow[] {
+function buildRows(statesDir: string): TaskRow[] {
   const storage = getStorage();
-  const entries = storage.list(changesDir);
+  const entries = storage.list(statesDir);
   const rows: TaskRow[] = [];
 
   for (const entry of entries) {
-    const raw = storage.read(join(changesDir, entry, ".ralph-state.json"));
+    const raw = storage.read(join(statesDir, entry, ".ralph-state.json"));
     if (raw === null) continue;
 
     let state: Record<string, unknown>;
@@ -49,7 +49,7 @@ function buildRows(changesDir: string): TaskRow[] {
 
     let progress = "—";
     let progressStyled = true;
-    const tasksContent = storage.read(join(changesDir, entry, "tasks.md"));
+    const tasksContent = storage.read(join(statesDir, entry, "tasks.md"));
     if (tasksContent !== null) {
       const { checked, unchecked } = countTaskItems(tasksContent);
       const total = checked + unchecked;
@@ -76,14 +76,14 @@ function buildRows(changesDir: string): TaskRow[] {
   return rows;
 }
 
-export function TaskList({ changesDir }: TaskListProps) {
+export function TaskList({ statesDir }: TaskListProps) {
   const { exit } = useApp();
 
   useEffect(() => {
     exit();
   }, [exit]);
 
-  const rows = buildRows(changesDir);
+  const rows = buildRows(statesDir);
 
   if (rows.length === 0) {
     return (

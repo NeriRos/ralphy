@@ -79,10 +79,10 @@ function makeArgs(overrides: Partial<ParsedArgs> = {}): ParsedArgs {
 describe("App task mode", () => {
   test("task mode with valid name renders TaskLoop", async () => {
     await withStorage(async () => {
-      const changeDir = join(tempDir, "my-task");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "my-task");
+      mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "my-task" });
-      writeState(changeDir, state);
+      writeState(stateDir, state);
 
       const args = makeArgs({
         mode: "task",
@@ -91,7 +91,7 @@ describe("App task mode", () => {
         maxIterations: 1,
       });
 
-      const { frames } = render(<App args={args} changesDir={tempDir} />);
+      const { frames } = render(<App args={args} statesDir={tempDir} tasksDir={tempDir} />);
       await new Promise((r) => setTimeout(r, 500));
 
       const allText = frames.join("\n");

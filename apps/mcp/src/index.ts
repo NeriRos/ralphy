@@ -11,28 +11,30 @@ import { error } from "@ralphy/output";
 import { OpenSpecChangeStore } from "@ralphy/openspec";
 
 /**
- * Resolve the .ralph/tasks directory by walking up from a starting dir.
+ * Find the project root by walking up from startDir looking for an openspec/ directory.
+ * Falls back to startDir if not found.
  */
-function resolveChangesDir(startDir: string): string {
+function findProjectRoot(startDir: string): string {
   let dir = startDir;
   while (dir !== "/") {
-    const candidate = join(dir, ".ralph", "tasks");
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(join(dir, "openspec"))) return dir;
     dir = resolve(dir, "..");
   }
-  return join(startDir, ".ralph", "tasks");
+  return startDir;
 }
 
 async function main(): Promise<void> {
   // Accept optional --dir argument for project root
   const args = process.argv.slice(2);
-  let projectDir = process.cwd();
+  let startDir = process.cwd();
   const dirIdx = args.indexOf("--dir");
   if (dirIdx !== -1 && args[dirIdx + 1]) {
-    projectDir = resolve(args[dirIdx + 1]!);
+    startDir = resolve(args[dirIdx + 1]!);
   }
 
-  const changesDir = resolveChangesDir(projectDir);
+  const projectRoot = findProjectRoot(startDir);
+  const changesDir = join(projectRoot, ".ralph", "tasks");
+  const taskFilesDir = join(projectRoot, "openspec", "changes");
   const changeStore = new OpenSpecChangeStore();
 
   const server = new McpServer({
@@ -41,7 +43,7 @@ async function main(): Promise<void> {
   });
 
   runWithContext(createDefaultContext(), () => {
-    registerTools(server, changesDir, changeStore);
+    registerTools(server, changesDir, changeStore, taskFilesDir);
     registerPrompts(server);
   });
 

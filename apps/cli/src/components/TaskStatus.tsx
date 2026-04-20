@@ -5,7 +5,7 @@ import { getStorage } from "@ralphy/context";
 
 export interface TaskStatusProps {
   state: State;
-  changeDir: string;
+  stateDir: string;
 }
 
 const HEAVY_RULE = "============================================";
@@ -13,7 +13,7 @@ const LIGHT_RULE = "--------------------------------------------";
 
 const OPENSPEC_ARTIFACTS = ["proposal.md", "design.md", "tasks.md"];
 
-export function TaskStatus({ state, changeDir }: TaskStatusProps) {
+export function TaskStatus({ state, stateDir }: TaskStatusProps) {
   const storage = getStorage();
 
   const cost = Math.round(state.usage.total_cost_usd * 100) / 100;
@@ -21,7 +21,7 @@ export function TaskStatus({ state, changeDir }: TaskStatusProps) {
 
   const artifacts = OPENSPEC_ARTIFACTS.map((name) => ({
     name,
-    exists: storage.read(join(changeDir, name)) !== null,
+    exists: storage.read(join(stateDir, name)) !== null,
   }));
 
   const recent = state.history.slice(-10);

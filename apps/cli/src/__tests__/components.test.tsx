@@ -116,7 +116,7 @@ describe("TaskStatus", () => {
   test("renders task name and status", () =>
     withStorage(() => {
       const state = makeState();
-      const { lastFrame } = render(<TaskStatus state={state} changeDir={tempDir} />);
+      const { lastFrame } = render(<TaskStatus state={state} stateDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("test-task");
       expect(frame).toContain("active");
@@ -136,7 +136,7 @@ describe("TaskStatus", () => {
           total_cache_creation_input_tokens: 0,
         },
       };
-      const { lastFrame } = render(<TaskStatus state={state} changeDir={tempDir} />);
+      const { lastFrame } = render(<TaskStatus state={state} stateDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("$1.23");
       expect(frame).toContain("5.5s");
@@ -149,7 +149,7 @@ describe("TaskStatus", () => {
       const state = makeState();
       writeFileSync(join(tempDir, "proposal.md"), "proposal content", "utf-8");
       writeFileSync(join(tempDir, "tasks.md"), "tasks content", "utf-8");
-      const { lastFrame } = render(<TaskStatus state={state} changeDir={tempDir} />);
+      const { lastFrame } = render(<TaskStatus state={state} stateDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("[x] proposal.md");
       expect(frame).toContain("[x] tasks.md");
@@ -170,7 +170,7 @@ describe("TaskStatus", () => {
           },
         ],
       };
-      const { lastFrame } = render(<TaskStatus state={state} changeDir={tempDir} />);
+      const { lastFrame } = render(<TaskStatus state={state} stateDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("success");
     }));
@@ -180,18 +180,18 @@ describe("TaskList", () => {
   test("shows 'No incomplete tasks' when empty", () =>
     withStorage(() => {
       mkdirSync(tempDir, { recursive: true });
-      const { lastFrame } = render(<TaskList changesDir={tempDir} />);
+      const { lastFrame } = render(<TaskList statesDir={tempDir} />);
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
   test("renders change rows for active changes", () =>
     withStorage(() => {
-      const changeDir = join(tempDir, "my-change");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "my-change");
+      mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "my-change", prompt: "Build something" });
-      writeFileSync(join(changeDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
 
-      const { frames } = render(<TaskList changesDir={tempDir} />);
+      const { frames } = render(<TaskList statesDir={tempDir} />);
       const frame = findFrame(frames, "my-change");
       expect(frame).toContain("my-change");
       expect(frame).toContain("Build something");
@@ -199,36 +199,36 @@ describe("TaskList", () => {
 
   test("skips changes with status=completed", () =>
     withStorage(() => {
-      const changeDir = join(tempDir, "done-change");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "done-change");
+      mkdirSync(stateDir, { recursive: true });
       const state = { ...makeState({ name: "done-change" }), status: "completed" as const };
-      writeFileSync(join(changeDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
 
-      const { lastFrame } = render(<TaskList changesDir={tempDir} />);
+      const { lastFrame } = render(<TaskList statesDir={tempDir} />);
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
   test("shows progress counts when tasks.md exists", () =>
     withStorage(() => {
-      const changeDir = join(tempDir, "prog-change");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "prog-change");
+      mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "prog-change", prompt: "Test" });
-      writeFileSync(join(changeDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
-      writeFileSync(join(changeDir, "PROGRESS.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
+      writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(join(stateDir, "PROGRESS.md"), "- [x] One\n- [x] Two\n- [ ] Three\n", "utf-8");
 
-      const { frames } = render(<TaskList changesDir={tempDir} />);
+      const { frames } = render(<TaskList statesDir={tempDir} />);
       const frame = findFrame(frames, "prog-change");
       expect(frame).toContain("prog-change");
     }));
 
   test("renders table headers", () =>
     withStorage(() => {
-      const changeDir = join(tempDir, "header-change");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "header-change");
+      mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "header-change", prompt: "Test" });
-      writeFileSync(join(changeDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
 
-      const { lastFrame } = render(<TaskList changesDir={tempDir} />);
+      const { lastFrame } = render(<TaskList statesDir={tempDir} />);
       const frame = lastFrame()!;
       expect(frame).toContain("Name");
       expect(frame).toContain("Status");
@@ -256,7 +256,7 @@ describe("StopMessage", () => {
       <StopMessage
         reason="completed"
         state={state}
-        changeDir={tempDir}
+        stateDir={tempDir}
         consecutiveFailures={0}
       />,
     );
@@ -270,7 +270,7 @@ describe("StopMessage", () => {
       <StopMessage
         reason="maxIterations"
         state={state}
-        changeDir={tempDir}
+        stateDir={tempDir}
         maxIterations={10}
         consecutiveFailures={0}
       />,
@@ -295,7 +295,7 @@ describe("StopMessage", () => {
       <StopMessage
         reason="costCap"
         state={state}
-        changeDir={tempDir}
+        stateDir={tempDir}
         maxCostUsd={6}
         consecutiveFailures={0}
       />,
@@ -311,7 +311,7 @@ describe("StopMessage", () => {
       <StopMessage
         reason="runtimeLimit"
         state={state}
-        changeDir={tempDir}
+        stateDir={tempDir}
         maxRuntimeMinutes={30}
         consecutiveFailures={0}
       />,
@@ -325,7 +325,7 @@ describe("StopMessage", () => {
       <StopMessage
         reason="consecutiveFailures"
         state={state}
-        changeDir={tempDir}
+        stateDir={tempDir}
         consecutiveFailures={5}
       />,
     );
@@ -358,13 +358,13 @@ describe("App", () => {
   test("list mode renders TaskList", () =>
     withStorage(() => {
       mkdirSync(tempDir, { recursive: true });
-      const { lastFrame } = render(<App args={makeArgs({ mode: "list" })} changesDir={tempDir} />);
+      const { lastFrame } = render(<App args={makeArgs({ mode: "list" })} statesDir={tempDir} tasksDir={tempDir} />);
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
   test("status mode without name shows error", async () => {
     const { frames } = withStorage(() =>
-      render(<App args={makeArgs({ mode: "status" })} changesDir={tempDir} />),
+      render(<App args={makeArgs({ mode: "status" })} statesDir={tempDir} tasksDir={tempDir} />),
     );
     await tick();
     const frame = findFrame(frames, "--name is required");
@@ -375,7 +375,7 @@ describe("App", () => {
   test("status mode with missing change shows error", async () => {
     const { lastFrame } = withStorage(() =>
       render(
-        <App args={makeArgs({ mode: "status", name: "nonexistent" })} changesDir={tempDir} />,
+        <App args={makeArgs({ mode: "status", name: "nonexistent" })} statesDir={tempDir} tasksDir={tempDir} />,
       ),
     );
     expect(lastFrame()!).toContain("not found");
@@ -385,13 +385,13 @@ describe("App", () => {
 
   test("status mode renders TaskStatus for existing change", () =>
     withStorage(() => {
-      const changeDir = join(tempDir, "my-change");
-      mkdirSync(changeDir, { recursive: true });
+      const stateDir = join(tempDir, "my-change");
+      mkdirSync(stateDir, { recursive: true });
       const state = makeState({ name: "my-change" });
-      writeFileSync(join(changeDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
+      writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
 
       const { lastFrame } = render(
-        <App args={makeArgs({ mode: "status", name: "my-change" })} changesDir={tempDir} />,
+        <App args={makeArgs({ mode: "status", name: "my-change" })} statesDir={tempDir} tasksDir={tempDir} />,
       );
       const frame = lastFrame()!;
       expect(frame).toContain("my-change");
@@ -399,7 +399,7 @@ describe("App", () => {
 
   test("task mode without name shows error", async () => {
     const { frames } = withStorage(() =>
-      render(<App args={makeArgs({ mode: "task" })} changesDir={tempDir} />),
+      render(<App args={makeArgs({ mode: "task" })} statesDir={tempDir} tasksDir={tempDir} />),
     );
     await tick();
     const frame = findFrame(frames, "--name is required");

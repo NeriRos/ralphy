@@ -23,7 +23,8 @@ export interface LoopOptions {
   delay: number;
   log: boolean;
   verbose: boolean;
-  changesDir: string;
+  statesDir: string;
+  tasksDir: string;
   changeStore: LoopChangeStore;
 }
 
@@ -54,12 +55,12 @@ export function allTasksCompleted(tasksContent: string): boolean {
  * 1. Steering section from proposal.md (first 20 non-header lines)
  * 2. First unchecked section of tasks.md
  */
-export function buildTaskPrompt(state: State, changeDir: string): string {
+export function buildTaskPrompt(state: State, taskDir: string): string {
   const storage = getStorage();
   let prompt = "";
 
   // 1. Steering from steering.md
-  const steeringContent = storage.read(join(changeDir, "steering.md"));
+  const steeringContent = storage.read(join(taskDir, "steering.md"));
   if (steeringContent !== null) {
     const steeringLines = steeringContent
       .split("\n")
@@ -75,8 +76,8 @@ export function buildTaskPrompt(state: State, changeDir: string): string {
     }
   }
 
-  // 2. First unchecked section from tasks.md
-  const tasksContent = storage.read(join(changeDir, "tasks.md"));
+  // 2. First unchecked section from tasks.md, or initial prompt if no tasks yet
+  const tasksContent = storage.read(join(taskDir, "tasks.md"));
   if (tasksContent !== null) {
     const section = extractFirstUncheckedSection(tasksContent);
     if (section) {
@@ -84,6 +85,11 @@ export function buildTaskPrompt(state: State, changeDir: string): string {
       prompt += section + "\n\n";
       prompt += "---\n\n";
     }
+  } else if (state.prompt) {
+    prompt += "---\n\n## Initial Prompt\n\n";
+    prompt += state.prompt + "\n\n";
+    prompt += "---\n\n";
+    prompt += `**First action**: create \`${taskDir}/tasks.md\` with a checklist of all work items derived from the prompt above (use \`## Section\` headings with \`- [ ] task\` items). Then begin the first unchecked item.\n\n`;
   }
 
   // 3. Base context: change name and instructions
@@ -98,15 +104,15 @@ export function buildTaskPrompt(state: State, changeDir: string): string {
  * If found, reads the reason, removes the file, marks state as blocked.
  * Returns the reason string if stopped, null otherwise.
  */
-export function checkStopSignal(changeDir: string): string | null {
+export function checkStopSignal(taskDir: string, stateDir: string): string | null {
   const storage = getStorage();
-  const stopFile = join(changeDir, "STOP");
+  const stopFile = join(taskDir, "STOP");
   const reason = storage.read(stopFile);
   if (reason === null) return null;
 
   storage.remove(stopFile);
 
-  updateState(changeDir, (stateSnapshot) => ({
+  updateState(stateDir, (stateSnapshot) => ({
     ...stateSnapshot,
     status: "blocked",
     lastModified: new Date().toISOString(),
@@ -153,14 +159,14 @@ export function checkStopCondition(
  * Update state after a completed iteration.
  */
 export function updateStateIteration(
-  changeDir: string,
+  stateDir: string,
   result: string,
   startedAt: string,
   engine: string,
   model: string,
   usage: IterationUsage | null,
 ): State {
-  return updateState(changeDir, (stateSnapshot) => {
+  return updateState(stateDir, (stateSnapshot) => {
     const now = new Date().toISOString();
     const newState: State = {
       ...stateSnapshot,
@@ -216,9 +222,9 @@ export function updateStateIteration(
 /**
  * Append a steering message to steering.md (prepend-style, newest first).
  */
-export function appendSteeringMessage(changeDir: string, message: string): void {
+export function appendSteeringMessage(taskDir: string, message: string): void {
   const storage = getStorage();
-  const steeringPath = join(changeDir, "steering.md");
+  const steeringPath = join(taskDir, "steering.md");
   const existing = storage.read(steeringPath);
   const updated = existing ? `${message}\n\n${existing.trimStart()}` : `${message}\n`;
   storage.write(steeringPath, updated);

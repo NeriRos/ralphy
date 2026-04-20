@@ -27,6 +27,7 @@ export function registerTools(
   server: McpServer,
   changesDir: string,
   changeStore: ChangeStore,
+  taskFilesDir: string = changesDir,
 ): void {
   // --- ralph_list_changes ---
   safeTool(
@@ -101,8 +102,9 @@ export function registerTools(
           const changeDir = join(changesDir, name);
           const state = readState(changeDir);
 
-          const tasksContent = storage.read(join(changeDir, "tasks.md"));
-          const proposalContent = storage.read(join(changeDir, "proposal.md"));
+          const taskDir = join(taskFilesDir, name);
+          const tasksContent = storage.read(join(taskDir, "tasks.md"));
+          const proposalContent = storage.read(join(taskDir, "proposal.md"));
 
           const result = {
             name: state.name,
@@ -172,11 +174,21 @@ export function registerTools(
           }
 
           if (!run) {
+            const taskFilesPath = join(taskFilesDir, name);
             return {
               content: [
                 {
                   type: "text" as const,
-                  text: JSON.stringify({ created: name, changeDir }, null, 2),
+                  text: JSON.stringify(
+                    {
+                      created: name,
+                      stateDir: changeDir,
+                      taskFilesDir: taskFilesPath,
+                      note: "Write proposal.md, design.md, tasks.md, specs/ to taskFilesDir. State (.ralph-state.json) is managed automatically in stateDir.",
+                    },
+                    null,
+                    2,
+                  ),
                 },
               ],
             };
@@ -275,8 +287,8 @@ export function registerTools(
     async ({ name, reason }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
-          const changeDir = join(changesDir, name);
-          getStorage().write(join(changeDir, "STOP"), reason ?? "Stopped via MCP");
+          const taskDir = join(taskFilesDir, name);
+          getStorage().write(join(taskDir, "STOP"), reason ?? "Stopped via MCP");
 
           return {
             content: [{ type: "text" as const, text: `Stop signal written for change '${name}'` }],

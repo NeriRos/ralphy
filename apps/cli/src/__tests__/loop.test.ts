@@ -35,15 +35,11 @@ function makeState(overrides: Partial<BuildInitialStateOptions> = {}): State {
 }
 
 describe("buildTaskPrompt", () => {
-  test("includes steering content from proposal.md ## Steering section", () =>
+  test("includes steering content from steering.md", () =>
     withStorage(() => {
       const state = makeState();
       writeState(tempDir, state);
-      writeFileSync(
-        join(tempDir, "proposal.md"),
-        "# Proposal\n\n## Steering\n\nUse pattern X\nAvoid Y\n",
-        "utf-8",
-      );
+      writeFileSync(join(tempDir, "steering.md"), "Use pattern X\nAvoid Y\n", "utf-8");
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).toContain("User Steering");
@@ -51,20 +47,10 @@ describe("buildTaskPrompt", () => {
       expect(prompt).toContain("Avoid Y");
     }));
 
-  test("omits steering when proposal.md does not exist", () =>
+  test("omits steering when steering.md does not exist", () =>
     withStorage(() => {
       const state = makeState();
       writeState(tempDir, state);
-
-      const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).not.toContain("User Steering");
-    }));
-
-  test("omits steering when proposal.md has no Steering section", () =>
-    withStorage(() => {
-      const state = makeState();
-      writeState(tempDir, state);
-      writeFileSync(join(tempDir, "proposal.md"), "# Title\n## Why\nSome reason\n", "utf-8");
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).not.toContain("User Steering");
@@ -90,7 +76,7 @@ describe("buildTaskPrompt", () => {
       const state = makeState();
       writeState(tempDir, state);
       const lines = Array.from({ length: 30 }, (_, i) => `Guidance line ${i + 1}`);
-      writeFileSync(join(tempDir, "proposal.md"), `## Steering\n\n${lines.join("\n")}\n`, "utf-8");
+      writeFileSync(join(tempDir, "steering.md"), `${lines.join("\n")}\n`, "utf-8");
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).toContain("Guidance line 1");
@@ -177,7 +163,8 @@ function makeOpts(overrides: Partial<LoopOptions> = {}): LoopOptions {
     delay: 0,
     log: false,
     verbose: false,
-    changesDir: tempDir,
+    statesDir: tempDir,
+    tasksDir: tempDir,
     changeStore: stubChangeStore,
     ...overrides,
   };
@@ -267,7 +254,7 @@ describe("checkStopSignal", () => {
   test("returns null when no STOP file exists", () =>
     withStorage(() => {
       writeState(tempDir, makeState());
-      const result = checkStopSignal(tempDir);
+      const result = checkStopSignal(tempDir, tempDir);
       expect(result).toBeNull();
     }));
 
@@ -276,7 +263,7 @@ describe("checkStopSignal", () => {
       writeState(tempDir, makeState());
       writeFileSync(join(tempDir, "STOP"), "Blocked: need API key", "utf-8");
 
-      const result = checkStopSignal(tempDir);
+      const result = checkStopSignal(tempDir, tempDir);
       expect(result).toBe("Blocked: need API key");
 
       // File should be removed
@@ -289,7 +276,7 @@ describe("checkStopSignal", () => {
       writeState(tempDir, makeState());
       writeFileSync(join(tempDir, "STOP"), "reason", "utf-8");
 
-      checkStopSignal(tempDir);
+      checkStopSignal(tempDir, tempDir);
 
       const state = readState(tempDir);
       expect(state.status).toBe("blocked");

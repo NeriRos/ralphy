@@ -22,7 +22,7 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   getChangeDirectory(name: string): string {
-    return join(".ralph", "tasks", name);
+    return join("openspec", "changes", name);
   }
 
   listChanges(): Promise<string[]> {
@@ -42,8 +42,8 @@ export class OpenSpecChangeStore implements ChangeStore {
       }
     }
 
-    // Fallback: scan the .ralph/tasks directory
-    const changesDir = join(".ralph", "tasks");
+    // Fallback: scan the openspec/changes directory
+    const changesDir = join("openspec", "changes");
     if (!existsSync(changesDir)) return Promise.resolve([]);
     const names = readdirSync(changesDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
@@ -52,19 +52,19 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   readTaskList(name: string): Promise<string> {
-    const path = join(".ralph", "tasks", name, "tasks.md");
+    const path = join("openspec", "changes", name, "tasks.md");
     if (!existsSync(path)) return Promise.resolve("");
     return Promise.resolve(readFileSync(path, "utf-8"));
   }
 
   writeTaskList(name: string, content: string): Promise<void> {
-    const path = join(".ralph", "tasks", name, "tasks.md");
+    const path = join("openspec", "changes", name, "tasks.md");
     writeFileSync(path, content, "utf-8");
     return Promise.resolve();
   }
 
   appendSteering(name: string, message: string): Promise<void> {
-    const path = join(".ralph", "tasks", name, "steering.md");
+    const path = join("openspec", "changes", name, "steering.md");
     const existing = existsSync(path) ? readFileSync(path, "utf-8") : null;
     const updated = existing ? `${message}\n\n${existing.trimStart()}` : `${message}\n`;
     writeFileSync(path, updated, "utf-8");
@@ -72,7 +72,7 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   readSection(name: string, artifact: string, heading: string): Promise<string> {
-    const path = join(".ralph", "tasks", name, artifact);
+    const path = join("openspec", "changes", name, artifact);
     if (!existsSync(path)) return Promise.resolve("");
 
     const content = readFileSync(path, "utf-8");

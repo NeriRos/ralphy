@@ -108,7 +108,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -148,7 +149,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -187,7 +189,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -223,7 +226,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -258,7 +262,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -303,7 +308,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: true,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -335,7 +341,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -371,7 +378,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -412,7 +420,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -459,7 +468,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -490,7 +500,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -537,7 +548,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -600,7 +612,8 @@ describe("TaskLoop", () => {
           delay: 0,
           log: false,
           verbose: false,
-          changesDir: tempDir,
+          statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
         });
         steerFn = loop.steer;
@@ -743,7 +756,8 @@ describe("TaskLoop", () => {
         delay: 0,
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 
@@ -791,7 +805,8 @@ describe("TaskLoop", () => {
         delay: 0.01, // 10ms delay
         log: false,
         verbose: false,
-        changesDir: tempDir,
+        statesDir: tempDir,
+        tasksDir: tempDir,
         changeStore: stubChangeStore,
       };
 

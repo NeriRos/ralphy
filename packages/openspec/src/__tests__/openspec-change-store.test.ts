@@ -25,7 +25,7 @@ beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "openspec-store-test-"));
   originalCwd = process.cwd();
   process.chdir(tempDir);
-  mkdirSync(join(tempDir, ".ralph", "tasks", "sample-change"), { recursive: true });
+  mkdirSync(join(tempDir, "openspec", "changes", "sample-change"), { recursive: true });
   spawnCalls.length = 0;
   nextSpawnResult = { status: 0, stdout: "", stderr: "" };
 });
@@ -52,13 +52,13 @@ describe("OpenSpecChangeStore", () => {
   test("getChangeDirectory returns the expected path", () => {
     const store = new OpenSpecChangeStore();
     expect(store.getChangeDirectory("sample-change")).toBe(
-      join(".ralph", "tasks", "sample-change"),
+      join("openspec", "changes", "sample-change"),
     );
   });
 
   test("readTaskList reads tasks.md from the change directory", async () => {
     const store = new OpenSpecChangeStore();
-    const tasksPath = join(tempDir, ".ralph", "tasks", "sample-change", "tasks.md");
+    const tasksPath = join(tempDir, "openspec", "changes", "sample-change", "tasks.md");
     writeFileSync(tasksPath, "## Work\n- [ ] item one\n", "utf-8");
 
     const content = await store.readTaskList("sample-change");
@@ -75,7 +75,7 @@ describe("OpenSpecChangeStore", () => {
     const store = new OpenSpecChangeStore();
     await store.writeTaskList("sample-change", "## Work\n- [ ] new item\n");
 
-    const tasksPath = join(tempDir, ".ralph", "tasks", "sample-change", "tasks.md");
+    const tasksPath = join(tempDir, "openspec", "changes", "sample-change", "tasks.md");
     expect(existsSync(tasksPath)).toBe(true);
     expect(readFileSync(tasksPath, "utf-8")).toContain("new item");
   });
@@ -84,7 +84,7 @@ describe("OpenSpecChangeStore", () => {
     const store = new OpenSpecChangeStore();
     await store.appendSteering("sample-change", "Initial steering");
 
-    const steeringPath = join(tempDir, ".ralph", "tasks", "sample-change", "steering.md");
+    const steeringPath = join(tempDir, "openspec", "changes", "sample-change", "steering.md");
     expect(existsSync(steeringPath)).toBe(true);
     const content = readFileSync(steeringPath, "utf-8");
     expect(content).toContain("Initial steering");
@@ -92,7 +92,7 @@ describe("OpenSpecChangeStore", () => {
 
   test("appendSteering prepends to existing steering.md", async () => {
     const store = new OpenSpecChangeStore();
-    const steeringPath = join(tempDir, ".ralph", "tasks", "sample-change", "steering.md");
+    const steeringPath = join(tempDir, "openspec", "changes", "sample-change", "steering.md");
     writeFileSync(steeringPath, "Original note\n", "utf-8");
 
     await store.appendSteering("sample-change", "Follow-up note");

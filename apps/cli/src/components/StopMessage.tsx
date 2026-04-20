@@ -5,7 +5,7 @@ import type { StopReason } from "../loop";
 export interface StopMessageProps {
   reason: StopReason;
   state: State;
-  changeDir: string;
+  stateDir: string;
   maxIterations?: number;
   maxCostUsd?: number;
   maxRuntimeMinutes?: number;
@@ -15,7 +15,7 @@ export interface StopMessageProps {
 export function StopMessage({
   reason,
   state,
-  changeDir,
+  stateDir,
   maxIterations,
   maxCostUsd,
   maxRuntimeMinutes,
@@ -26,7 +26,7 @@ export function StopMessage({
       return (
         <Box flexDirection="column">
           <Text>{"\n"}All tasks completed — change archived.</Text>
-          <Text>See: {changeDir}/tasks.md</Text>
+          <Text>See: {stateDir}/tasks.md</Text>
         </Box>
       );
     }

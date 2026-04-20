@@ -81,21 +81,22 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
     };
 
     runWithContext(createDefaultContext(), async () => {
-      const changeDir = join(opts.changesDir, opts.name);
+      const stateDir = join(opts.statesDir, opts.name);
+      const tasksDir = join(opts.tasksDir, opts.name);
       const storage = getStorage();
 
       // Init or resume state
       let currentState: State;
-      const existingStateRaw = storage.read(join(changeDir, ".ralph-state.json"));
+      const existingStateRaw = storage.read(join(stateDir, ".ralph-state.json"));
       if (existingStateRaw !== null) {
-        currentState = readState(changeDir);
+        currentState = readState(stateDir);
         if (currentState.engine !== opts.engine || currentState.model !== opts.model) {
           currentState = {
             ...currentState,
             engine: opts.engine as State["engine"],
             model: opts.model,
           };
-          writeState(changeDir, currentState);
+          writeState(stateDir, currentState);
         }
       } else {
         currentState = buildInitialState({
@@ -104,7 +105,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           engine: opts.engine,
           model: opts.model,
         });
-        writeState(changeDir, currentState);
+        writeState(stateDir, currentState);
       }
 
       setIsResume(currentState.iteration > 0);
@@ -116,7 +117,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
       let lastResult = "";
 
       while (!cancelled) {
-        currentState = readState(changeDir);
+        currentState = readState(stateDir);
         setState(currentState);
 
         const stop = checkStopCondition(currentState, iter, opts, loopStartTime, consFailures);
@@ -126,7 +127,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         }
 
         // Check if all tasks are done
-        const tasksContent = storage.read(join(changeDir, "tasks.md"));
+        const tasksContent = storage.read(join(tasksDir, "tasks.md"));
         if (tasksContent !== null && allTasksCompleted(tasksContent)) {
           addInfo("All tasks completed — archiving change.");
           currentState = {
@@ -134,7 +135,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             status: "completed",
             lastModified: new Date().toISOString(),
           };
-          writeState(changeDir, currentState);
+          writeState(stateDir, currentState);
           setState(currentState);
           try {
             await opts.changeStore.archiveChange(opts.name);
@@ -153,7 +154,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         addIterationHeader(iter, time);
         addInfo(`Iteration ${iter} (total: ${currentState.iteration})`);
 
-        const prompt = buildTaskPrompt(currentState, changeDir);
+        const prompt = buildTaskPrompt(currentState, tasksDir);
 
         const iterStart = new Date().toISOString();
         try {
@@ -167,7 +168,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             model: opts.model,
             prompt,
             logFlag: opts.log,
-            taskDir: changeDir,
+            taskDir: tasksDir,
             interactive: false,
             onFeedEvent: addFeedEvent,
             signal: controller.signal,
@@ -178,7 +179,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             const steerMessage = pendingSteerRef.current;
             pendingSteerRef.current = null;
 
-            appendSteeringMessage(changeDir, steerMessage);
+            appendSteeringMessage(tasksDir, steerMessage);
             addInfo(`Live steering: ${steerMessage}`);
 
             // Resume the session with the steering message
@@ -196,7 +197,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
               model: opts.model,
               prompt: buildSteeringPrompt(steerMessage),
               logFlag: opts.log,
-              taskDir: changeDir,
+              taskDir: tasksDir,
               onFeedEvent: addResumeFeedEvent,
               signal: resumeController.signal,
               resumeSessionId: engineResult.sessionId,
@@ -214,7 +215,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
             const result = `failed:exit-${engineResult.exitCode}`;
             updateStateIteration(
-              changeDir,
+              stateDir,
               result,
               iterStart,
               opts.engine,
@@ -241,7 +242,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
           // Success
           currentState = updateStateIteration(
-            changeDir,
+            stateDir,
             "success",
             iterStart,
             opts.engine,
@@ -259,7 +260,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             // Push failures are non-fatal
           }
 
-          const stopSignal = checkStopSignal(changeDir);
+          const stopSignal = checkStopSignal(tasksDir, stateDir);
           if (stopSignal) {
             addInfo(`STOP signal: ${stopSignal.trim()}`);
             break;
@@ -281,13 +282,13 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         }
       }
 
-      currentState = ensureState(changeDir);
+      currentState = ensureState(stateDir);
       setState(currentState);
 
       addInfo(`Ralph loop finished after ${iter} iterations.`);
 
       if (iter > 0) {
-        commitTaskDir(changeDir, `change ${opts.name} finished`);
+        commitTaskDir(tasksDir, `change ${opts.name} finished`);
         try {
           gitPush();
         } catch {
