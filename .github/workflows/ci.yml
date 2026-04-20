@@ -152,3 +152,19 @@ jobs:
       - name: Build (affected)
         if: "!cancelled()"
         run: bun run build:ci
+
+  ci:
+    runs-on: ubuntu-latest
+    needs: [setup, static, test, build]
+    if: always()
+    steps:
+      - name: Aggregate CI status # local-ci: skip
+        run: |
+          if [[ "${{ needs.setup.result }}" != "success" || \
+                "${{ needs.static.result }}" != "success" || \
+                "${{ needs.test.result }}" != "success" || \
+                "${{ needs.build.result }}" != "success" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All jobs passed"
