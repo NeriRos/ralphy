@@ -5,8 +5,5 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
-  },
-  "devDependencies": {
-    "@fission-ai/openspec": "latest"
   }
 }
