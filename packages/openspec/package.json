@@ -1,0 +1,12 @@
+{
+  "name": "@ralphy/openspec",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "latest"
+  }
+}

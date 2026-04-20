@@ -58,5 +58,8 @@
     // Prevent import casing mismatches that break on case-sensitive file systems (Linux CI)
     "forceConsistentCasingInFileNames": true
   },
+  "paths": {
+    "@ralphy/openspec": ["./packages/openspec/src/index.ts"]
+  },
   "exclude": ["node_modules", "dist"]
 }
