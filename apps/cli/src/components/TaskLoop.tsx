@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { join } from "node:path";
-import { Box, Static, Text, useApp, useInput } from "ink";
+import { Box, Static, Text, useApp, useInput, useStdin } from "ink";
 import { TextInput } from "@inkjs/ui";
 import { Banner } from "./Banner";
 import { IterationHeader } from "./IterationHeader";
@@ -114,6 +114,7 @@ export function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
 export function TaskLoop({ opts }: TaskLoopProps) {
   const { exit } = useApp();
   const loop = useLoop(opts);
+  const { isRawModeSupported } = useStdin();
   const bannerItem = useRef<FeedItem>({ id: "__banner__", kind: "banner" });
 
   const feedItems: FeedItem[] = useMemo(
@@ -168,7 +169,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
             model={opts.model}
             isRunning
           />
-          <SteerInput onSubmit={loop.steer} />
+          {isRawModeSupported && <SteerInput onSubmit={loop.steer} />}
         </>
       )}
 
