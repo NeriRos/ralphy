@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ChangeStore } from "@ralphy/openspec";
+import type { ChangeStore } from "@ralphy/change-store";
 
 mock.module("@ralphy/core/git", () => ({
   commitState: mock(() => {}),

@@ -33,16 +33,10 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
-	@rm -rf "$(INSTALL_PATH)/phases"
-	@cp -r packages/content/phases "$(INSTALL_PATH)/phases"
-	@mkdir -p "$(INSTALL_PATH)/templates/checklists"
-	@for f in packages/content/checklists/*.md; do \
-		name=$$(basename "$$f"); \
-		if [ ! -f "$(INSTALL_PATH)/templates/checklists/$$name" ]; then \
-			cp "$$f" "$(INSTALL_PATH)/templates/checklists/$$name"; \
-		fi; \
-	done
-	@cp -r packages/content/scaffolds/* "$(INSTALL_PATH)/templates/"
+	@mkdir -p "$(INSTALL_PATH)/templates"
+	@if [ -f packages/content/base-prompt.md ]; then \
+		cp packages/content/base-prompt.md "$(INSTALL_PATH)/templates/base-prompt.md"; \
+	fi
 	@echo "  ✓ Copied assets"
 
 init-tasks:

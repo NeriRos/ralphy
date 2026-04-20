@@ -1,42 +1,23 @@
 {
   "version": "2",
   "name": "smoke-test",
-  "prompt": "do nothing this is a smoke test, just output a single line and stop",
-  "iteration": 1,
+  "prompt": "do nothing this is a smoke test, just do through the phases",
+  "iteration": 0,
   "status": "active",
-  "createdAt": "2026-04-20T11:30:04.535Z",
-  "lastModified": "2026-04-20T11:30:34.670Z",
+  "createdAt": "2026-04-20T11:32:30.667Z",
+  "lastModified": "2026-04-20T11:32:30.667Z",
   "engine": "claude",
   "model": "haiku",
   "usage": {
-    "total_cost_usd": 0.06,
-    "total_duration_ms": 22583,
-    "total_turns": 5,
-    "total_input_tokens": 37,
-    "total_output_tokens": 1324,
-    "total_cache_read_input_tokens": 434484,
-    "total_cache_creation_input_tokens": 11223
+    "total_cost_usd": 0,
+    "total_duration_ms": 0,
+    "total_turns": 0,
+    "total_input_tokens": 0,
+    "total_output_tokens": 0,
+    "total_cache_read_input_tokens": 0,
+    "total_cache_creation_input_tokens": 0
   },
-  "history": [
-    {
-      "timestamp": "2026-04-20T11:30:34.670Z",
-      "startedAt": "2026-04-20T11:30:04.566Z",
-      "endedAt": "2026-04-20T11:30:34.670Z",
-      "iteration": 1,
-      "engine": "claude",
-      "model": "haiku",
-      "result": "success",
-      "usage": {
-        "cost_usd": 0.06,
-        "duration_ms": 22583,
-        "num_turns": 5,
-        "input_tokens": 37,
-        "output_tokens": 1324,
-        "cache_read_input_tokens": 434484,
-        "cache_creation_input_tokens": 11223
-      }
-    }
-  ],
+  "history": [],
   "metadata": {
     "branch": "claude/simplify-paths-openspec-zaudu"
   }

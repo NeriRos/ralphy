@@ -5,7 +5,7 @@ import { getStorage } from "@ralphy/context";
 
 /**
  * Minimal change-store operations required by the loop.
- * Satisfied structurally by ChangeStore from @ralphy/openspec.
+ * Satisfied structurally by ChangeStore from @ralphy/change-store.
  */
 export interface LoopChangeStore {
   archiveChange(name: string): Promise<void>;

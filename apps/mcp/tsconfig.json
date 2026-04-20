@@ -9,6 +9,12 @@
       "path": "../../packages/types"
     },
     {
+      "path": "../../packages/change-store"
+    },
+    {
+      "path": "../../packages/openspec"
+    },
+    {
       "path": "../../packages/output"
     },
     {

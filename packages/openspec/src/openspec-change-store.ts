@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import type { ChangeStore, ValidationResult } from "./change-store";
+import type { ChangeStore, ValidationResult } from "@ralphy/change-store";
 
 /**
  * OpenSpec-backed implementation of ChangeStore.

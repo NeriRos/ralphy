@@ -1,5 +1,5 @@
 {
-  "name": "@ralphy/openspec",
+  "name": "@ralphy/change-store",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@ralphy/change-store": "workspace:*"
+    "@ralphy/types": "workspace:*"
   }
 }

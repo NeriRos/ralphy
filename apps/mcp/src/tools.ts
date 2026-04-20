@@ -5,7 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-import type { ChangeStore } from "@ralphy/openspec";
+import type { ChangeStore } from "@ralphy/change-store";
 
 /**
  * Type-safe registerTool wrapper. The MCP SDK's registerTool triggers TS2589

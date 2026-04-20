@@ -62,7 +62,9 @@
 
     "paths": {
       "@ralphy/openspec": ["./packages/openspec/src/index.ts"],
-      "@ralphy/openspec/*": ["./packages/openspec/src/*"]
+      "@ralphy/openspec/*": ["./packages/openspec/src/*"],
+      "@ralphy/change-store": ["./packages/change-store/src/index.ts"],
+      "@ralphy/change-store/*": ["./packages/change-store/src/*"]
     }
   },
   "exclude": ["node_modules", "dist"]

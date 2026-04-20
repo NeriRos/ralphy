@@ -1,0 +1,42 @@
+{
+  "name": "change-store",
+  "sourceRoot": "packages/change-store/src",
+  "tags": ["scope:shared"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint --config .oxlintrc.json packages/change-store/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "fmt:check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxfmt --check packages/change-store/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -b packages/change-store/tsconfig.json",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test packages/change-store/src",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test:coverage": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test --coverage src",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}
