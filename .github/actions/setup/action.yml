@@ -1,0 +1,47 @@
+name: Setup
+description: Bun + Node + caches + dependencies, with optional nx-shas
+
+inputs:
+  nx-shas:
+    description: Set Nx base/head SHAs for affected commands
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: "22"
+
+    - uses: oven-sh/setup-bun@v2
+
+    - name: Cache Bun install store
+      uses: actions/cache@v5
+      with:
+        path: ~/.bun/install/cache
+        key: bun-store-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-store-${{ runner.os }}-
+
+    - name: Restore node_modules
+      uses: actions/cache/restore@v5
+      with:
+        path: node_modules
+        key: node-modules-${{ hashFiles('bun.lock') }}
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Cache Nx
+      uses: actions/cache@v5
+      with:
+        path: .nx/cache
+        key: nx-${{ runner.os }}-${{ github.sha }}
+        restore-keys: |
+          nx-${{ runner.os }}-${{ github.ref_name }}-
+          nx-${{ runner.os }}-
+
+    - name: Set Nx SHAs
+      if: inputs.nx-shas == 'true'
+      uses: nrwl/nx-set-shas@v5

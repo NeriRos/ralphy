@@ -10,6 +10,7 @@ const SidecarCtx = createContext<SidecarContextValue>({
   connected: false,
 });
 
+// hooks-ignore
 export function useSidecar() {
   return useContext(SidecarCtx);
 }

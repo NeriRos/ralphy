@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
 import type { StopReason } from "../loop";
 
-export interface StopMessageProps {
+interface StopMessageProps {
   reason: StopReason;
   state: State;
   stateDir: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSidecar } from "../context/SidecarContext";
+import { useSidecar } from "../context/Sidecar.context";
 
 export function useDocument(taskName: string | undefined, docName: string) {
   const { baseUrl } = useSidecar();

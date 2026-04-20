@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
 
-export interface BannerProps {
+interface BannerProps {
   state: State;
   mode: string;
   isResume?: boolean;

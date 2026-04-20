@@ -108,7 +108,7 @@ export function advancePhase(state: State, taskDir: string): State {
       }
     }
     const nextName = getNextPhase(current);
-    if (!nextName) throw new Error(`No next phase after ${current}`);
+    if (!nextName) throw new Error("No next phase after current phase");
     return recordPhaseTransition(
       state,
       current,
@@ -120,7 +120,7 @@ export function advancePhase(state: State, taskDir: string): State {
   // Resolve the target phase
   const nextName = getNextPhase(current);
   if (!nextName) {
-    throw new Error(`No next phase after ${current}`);
+    throw new Error("No next phase after current phase");
   }
 
   const nextConfig = getPhase(nextName);
@@ -128,7 +128,7 @@ export function advancePhase(state: State, taskDir: string): State {
   // Validate requires for the target phase
   for (const file of nextConfig.requires) {
     if (storage.read(join(taskDir, file)) === null) {
-      throw new Error(`Cannot advance to ${nextName} — ${file} does not exist yet`);
+      throw new Error("Cannot advance phase: required file does not exist yet");
     }
   }
 

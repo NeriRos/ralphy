@@ -144,7 +144,7 @@ describe("getPhase", () => {
     const dir = makeTempDir();
     writePhase(dir, "a.md", "name: alpha\norder: 1");
 
-    expect(() => getPhase("nope", dir)).toThrow("Unknown phase: nope");
+    expect(() => getPhase("nope", dir)).toThrow("Unknown phase");
   });
 });
 
@@ -191,7 +191,7 @@ describe("getNextPhase", () => {
     const dir = makeTempDir();
     writePhase(dir, "a.md", "name: a\norder: 1");
 
-    expect(() => getNextPhase("nope", dir)).toThrow("Unknown phase: nope");
+    expect(() => getNextPhase("nope", dir)).toThrow("Unknown current phase");
   });
 });
 

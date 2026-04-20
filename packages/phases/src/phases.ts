@@ -36,7 +36,7 @@ export function loadPhases(dir: string = contentPhasesDir()): PhaseConfig[] {
 export function getPhase(name: string, dir?: string): PhaseConfig {
   const phases = loadPhases(dir);
   const phase = phases.find((p) => p.name === name);
-  if (!phase) throw new Error(`Unknown phase: ${name}`);
+  if (!phase) throw new Error("Unknown phase");
   return phase;
 }
 
@@ -54,7 +54,7 @@ export function getPhaseOrder(dir?: string): string[] {
 export function getNextPhase(current: string, dir?: string): string | null {
   const phases = loadPhases(dir);
   const phase = phases.find((p) => p.name === current);
-  if (!phase) throw new Error(`Unknown phase: ${current}`);
+  if (!phase) throw new Error("Unknown current phase");
 
   if (phase.next) {
     return phase.next;

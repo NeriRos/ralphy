@@ -105,7 +105,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
     if (expectModelFlag) {
       if (!VALID_MODELS.has(arg)) {
-        throw new Error(`Invalid model '${arg}'. Valid models: ${[...VALID_MODELS].join(", ")}`);
+        throw new Error("Invalid model");
       }
       result.model = arg;
       expectModelFlag = false;
@@ -228,7 +228,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         if (VALID_MODES.has(arg)) {
           result.mode = arg as Mode;
         } else {
-          throw new Error(`Unknown argument '${arg}'\n\nRun 'ralph --help' for usage information.`);
+          throw new Error("Unknown argument. Run 'ralph --help' for usage information.");
         }
         break;
     }

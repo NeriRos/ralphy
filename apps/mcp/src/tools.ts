@@ -1,30 +1,28 @@
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+type ToolRegistrar = {
+  registerTool(name: string, config: unknown, callback: unknown): unknown;
+};
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import type { ChangeStore } from "@ralphy/change-store";
 
-/**
- * Type-safe registerTool wrapper. The MCP SDK's registerTool triggers TS2589
- * (excessively deep type instantiation) due to its dual Zod v3/v4 AnySchema union.
- * This wrapper provides equivalent type safety using standard Zod v3 inference,
- * while using `unknown` casts internally to break the deep inference chain.
- */
+// Narrow structural interface avoids TS2589 deep inference from the MCP SDK's
+// dual Zod v3/v4 schema union in registerTool's signature.
 function safeTool<T extends Record<string, z.ZodTypeAny>>(
-  server: McpServer,
+  server: ToolRegistrar,
   name: string,
   config: { description: string; inputSchema: T },
   callback: (args: { [K in keyof T]: z.infer<T[K]> }) => CallToolResult | Promise<CallToolResult>,
 ): void {
-  type SimpleTool = { registerTool(n: string, c: unknown, cb: unknown): unknown };
-  (server as unknown as SimpleTool).registerTool(name, config, callback);
+  server.registerTool(name, config, callback);
 }
 
 export function registerTools(
-  server: McpServer,
+  server: ToolRegistrar,
   changesDir: string,
   changeStore: ChangeStore,
   taskFilesDir: string = changesDir,

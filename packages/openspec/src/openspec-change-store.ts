@@ -38,7 +38,7 @@ export class OpenSpecChangeStore implements ChangeStore {
       stdio: "inherit",
     });
     if (result.status !== 0) {
-      throw new Error(`openspec new change failed with exit code ${result.status ?? "unknown"}`);
+      throw new Error("openspec new change failed");
     }
     return Promise.resolve();
   }
@@ -145,7 +145,7 @@ export class OpenSpecChangeStore implements ChangeStore {
       encoding: "utf-8",
     });
     if (result.status !== 0) {
-      throw new Error(`openspec archive failed with exit code ${result.status ?? "unknown"}`);
+      throw new Error("openspec archive failed");
     }
     return Promise.resolve();
   }

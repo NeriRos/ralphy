@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "@inkjs/ui";
 
-export interface StatusBarProps {
+interface StatusBarProps {
   iteration: number;
   costUsd: number;
   startedAt: number;

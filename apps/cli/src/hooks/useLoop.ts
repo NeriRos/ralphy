@@ -24,7 +24,7 @@ export type LogEntry =
   | { id: string; kind: "info"; text: string }
   | { id: string; kind: "feed"; event: FeedEvent };
 
-export interface UseLoopResult {
+interface UseLoopResult {
   state: State | null;
   iteration: number;
   consecutiveFailures: number;

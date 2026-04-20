@@ -8,7 +8,6 @@
     "@ralphy/context": "workspace:*",
     "@ralphy/core": "workspace:*",
     "@ralphy/openspec": "workspace:*",
-    "@ralphy/output": "workspace:*",
-    "@ralphy/types": "workspace:*"
+    "@ralphy/output": "workspace:*"
   }
 }

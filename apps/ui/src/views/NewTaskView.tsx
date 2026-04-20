@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useSidecar } from "../context/SidecarContext";
+import { useSidecar } from "../context/Sidecar.context";
 
 export function NewTaskView() {
   const { baseUrl } = useSidecar();

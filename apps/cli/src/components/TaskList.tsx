@@ -12,7 +12,7 @@ function countTaskItems(content: string): { checked: number; unchecked: number }
   return { checked, unchecked };
 }
 
-export interface TaskListProps {
+interface TaskListProps {
   statesDir: string;
 }
 
