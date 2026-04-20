@@ -12,7 +12,7 @@ const STATE_FILE = ".ralph-state.json";
 export function readState(changeDir: string): State {
   const filePath = join(changeDir, STATE_FILE);
   const raw = getStorage().read(filePath);
-  if (raw === null) throw new Error(`.ralph-state.json not found in ${changeDir}`);
+  if (raw === null) throw new Error(".ralph-state.json not found");
   return StateSchema.parse(JSON.parse(raw));
 }
 

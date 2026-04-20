@@ -10,6 +10,13 @@ function textPrompt(text: string): GetPromptResult {
 
 // Wrapper to avoid TS2589: registerPrompt/prompt with Zod schemas triggers
 // excessively deep type instantiation in the MCP SDK's generic inference.
+type PromptFn = (
+  name: string,
+  description: string,
+  argsSchema: Record<string, z.ZodType>,
+  cb: (args: Record<string, string>) => Promise<GetPromptResult>,
+) => void;
+
 function registerPrompt(
   server: McpServer,
   name: string,
@@ -17,8 +24,7 @@ function registerPrompt(
   argsSchema: Record<string, z.ZodType>,
   cb: (args: Record<string, string>) => Promise<GetPromptResult>,
 ): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (server as any).prompt(name, description, argsSchema, cb);
+  (server.prompt as PromptFn)(name, description, argsSchema, cb);
 }
 
 export function registerPrompts(server: McpServer): void {

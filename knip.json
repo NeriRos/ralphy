@@ -1,4 +1,52 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreDependencies": ["bun-types", "@secretlint/secretlint-rule-preset-recommend"]
+  "ignoreDependencies": [
+    "bun-types",
+    "@secretlint/secretlint-rule-preset-recommend",
+    "ink-testing-library",
+    "@fission-ai/openspec",
+    "@nx/js",
+    "@total-typescript/ts-reset"
+  ],
+  "ignore": ["reset.d.ts"],
+  "workspaces": {
+    "apps/cli": {
+      "entry": ["src/index.ts", "src/__tests__/**/*.{ts,tsx}"]
+    },
+    "apps/mcp": {
+      "entry": ["src/index.ts", "src/__tests__/**/*.ts"]
+    },
+    "apps/ui": {
+      "entry": [
+        "src/main.tsx",
+        "src-sidecar/server.ts",
+        "src/components/**/*.tsx",
+        "src/lib/**/*.ts"
+      ]
+    },
+    "packages/content": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/context": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": ["src/**/*.ts!"]
+    },
+    "packages/engine": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/openspec": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/output": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/phases": {
+      "entry": ["src/**/*.ts"]
+    },
+    "packages/types": {
+      "entry": ["src/**/*.ts"]
+    }
+  }
 }

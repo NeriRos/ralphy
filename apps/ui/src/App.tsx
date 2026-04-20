@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import { SidecarProvider } from "./context/SidecarContext";
+import { SidecarProvider } from "./context/Sidecar.context";
 import { TaskListView } from "./views/TaskListView";
 import { TaskDetailView } from "./views/TaskDetailView";
 import { NewTaskView } from "./views/NewTaskView";

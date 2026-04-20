@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTasks } from "../hooks/useTasks";
-import { useSidecar } from "../context/SidecarContext";
+import { useSidecar } from "../context/Sidecar.context";
 
 function formatCost(usd: number): string {
   return `$${(Math.round(usd * 100) / 100).toFixed(2)}`;

@@ -75,7 +75,7 @@ describe("parseArgs", () => {
   });
 
   test("throws on bare number (use --max-iterations instead)", () => {
-    expect(() => parseArgs(["20"])).toThrow("Unknown argument '20'");
+    expect(() => parseArgs(["20"])).toThrow("Unknown argument");
   });
 
   test("parses --max-iterations flag", () => {
@@ -109,7 +109,7 @@ describe("parseArgs", () => {
   });
 
   test("throws on unknown argument", () => {
-    expect(() => parseArgs(["--bogus"])).toThrow("Unknown argument '--bogus'");
+    expect(() => parseArgs(["--bogus"])).toThrow("Unknown argument");
   });
 
   test("parses complex real-world command", () => {

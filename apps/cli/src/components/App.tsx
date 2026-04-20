@@ -9,7 +9,7 @@ import { TaskStatus } from "./TaskStatus";
 import { TaskLoop } from "./TaskLoop";
 import { OpenSpecChangeStore } from "@ralphy/openspec";
 
-export interface AppProps {
+interface AppProps {
   args: ParsedArgs;
   statesDir: string;
   tasksDir: string;

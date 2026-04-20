@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSidecar } from "../context/SidecarContext";
+import { useSidecar } from "../context/Sidecar.context";
 import type { State } from "@ralphy/types";
 
 interface TaskWithProgress extends State {
@@ -16,7 +16,7 @@ export function useTasks() {
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`${baseUrl}/tasks`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error("HTTP request failed");
       const data = await res.json();
       setTasks(data);
       setError(null);

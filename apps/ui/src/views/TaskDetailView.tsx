@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useSidecar } from "../context/SidecarContext";
+import { useSidecar } from "../context/Sidecar.context";
 import { useTaskStream } from "../hooks/useTaskStream";
 import { useDocument } from "../hooks/useDocument";
 import { FeedLine } from "../components/FeedLine";
