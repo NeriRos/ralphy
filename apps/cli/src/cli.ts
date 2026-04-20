@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { log } from "@ralphy/output";
 import type { Engine, Mode } from "@ralphy/types";
 
@@ -61,7 +60,7 @@ export function printHelp(): void {
   log(HELP_TEXT);
 }
 
-export function parseArgs(argv: string[]): ParsedArgs {
+export async function parseArgs(argv: string[]): Promise<ParsedArgs> {
   const result: ParsedArgs = {
     mode: "task",
     name: "",
@@ -122,7 +121,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
       continue;
     }
     if (expectPromptFile) {
-      result.prompt = readFileSync(arg, "utf-8");
+      result.prompt = await Bun.file(arg).text();
       expectPromptFile = false;
       continue;
     }

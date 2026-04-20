@@ -1,33 +1,46 @@
-import { execSync } from "node:child_process";
 import { join } from "node:path";
+
+function runGit(args: string[]): { exitCode: number | null; stdout: string; stderr: string } {
+  const proc = Bun.spawnSync({
+    cmd: ["git", ...args],
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const decoder = new TextDecoder();
+  return {
+    exitCode: proc.exitCode,
+    stdout: proc.stdout ? decoder.decode(proc.stdout) : "",
+    stderr: proc.stderr ? decoder.decode(proc.stderr) : "",
+  };
+}
 
 /**
  * Get the current git branch name.
  */
 export function getCurrentBranch(): string {
-  try {
-    return execSync("git branch --show-current", { encoding: "utf-8" }).trim();
-  } catch {
-    return "main";
-  }
+  const result = runGit(["branch", "--show-current"]);
+  if (result.exitCode !== 0) return "main";
+  return result.stdout.trim() || "main";
 }
 
 /**
  * Stage files for commit.
  */
 export function gitAdd(files: string[]): void {
-  execSync(`git add ${files.map((f) => `"${f}"`).join(" ")}`, {
-    stdio: "pipe",
-  });
+  const result = runGit(["add", ...files]);
+  if (result.exitCode !== 0) {
+    throw new Error("git add failed", { cause: { stderr: result.stderr.trim() } });
+  }
 }
 
 /**
  * Create a git commit with the given message.
  */
 export function gitCommit(message: string): void {
-  execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
-    stdio: "pipe",
-  });
+  const result = runGit(["commit", "-m", message]);
+  if (result.exitCode !== 0) {
+    throw new Error("git commit failed", { cause: { stderr: result.stderr.trim() } });
+  }
 }
 
 /**
@@ -39,19 +52,10 @@ export function gitCommit(message: string): void {
  */
 export function gitPush(): void {
   const branch = getCurrentBranch();
-  try {
-    execSync("git push", { stdio: "pipe" });
-  } catch {
-    try {
-      execSync(`git push -u origin ${branch}`, { stdio: "pipe" });
-    } catch {
-      try {
-        execSync(`git push --set-upstream origin ${branch}`, { stdio: "pipe" });
-      } catch {
-        // No remote configured — skip push
-      }
-    }
-  }
+  if (runGit(["push"]).exitCode === 0) return;
+  if (runGit(["push", "-u", "origin", branch]).exitCode === 0) return;
+  runGit(["push", "--set-upstream", "origin", branch]);
+  // If all fail, silently skip (no remote configured)
 }
 
 /**

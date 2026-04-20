@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { getStorage } from "@ralphy/context";
 import { buildInitialState, writeState, ensureState } from "@ralphy/core/state";
 import { isTaskRunning } from "./loop";
@@ -75,7 +75,7 @@ export async function taskRoutes(
       if (!route.name) return { status: 400, body: { error: "Missing change name" } };
       const changeDir = join(ctx.tasksDir, route.name);
       try {
-        rmSync(changeDir, { recursive: true, force: true });
+        await rm(changeDir, { recursive: true, force: true });
         return { status: 200, body: { deleted: true } };
       } catch {
         return { status: 500, body: { error: "Failed to delete change" } };

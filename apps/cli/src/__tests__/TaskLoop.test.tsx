@@ -633,8 +633,7 @@ describe("TaskLoop", () => {
       await new Promise((r) => setTimeout(r, 500));
 
       // Verify steering.md was appended
-      const { readFileSync } = await import("node:fs");
-      const steeringContent = readFileSync(join(taskDir, "steering.md"), "utf-8");
+      const steeringContent = await Bun.file(join(taskDir, "steering.md")).text();
       expect(steeringContent).toContain("original");
       expect(steeringContent).toContain("focus on tests");
 

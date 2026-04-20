@@ -14,26 +14,26 @@
 
 Found across the codebase (via `Grep` on each literal):
 
-| Current file           | Code that writes/reads it                                                                                        |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `spec.md`              | `packages/core/src/documents.ts:24`, `templates.ts:46-49`, phase `requires:` in `research.md`, phase context lists |
-| `RESEARCH.md`          | `documents.ts:35`, phase `requires:` in `plan.md`, phase context                                                   |
-| `PLAN.md`              | `documents.ts:41`, phase `requires:` in `exec.md`, scaffolds                                                       |
-| `PROGRESS.md`          | `documents.ts:47`, `loop.ts:80`, `phases.ts:32,80-146`, `tools.ts:97,152,584`                                      |
-| `STEERING.md`          | `documents.ts:53`, `loop.ts:262-266`, scaffolds, many phase prompts                                                |
-| `MANUAL_TESTING.md`    | `documents.ts:66`, scaffolds                                                                                       |
-| `INTERACTIVE.md`       | `documents.ts:77`, `tools.ts:485`                                                                                  |
-| `STOP`                 | `loop.ts:142`, referenced in every phase prompt                                                                    |
-| `state.json`           | `state.ts:8`                                                                                                        |
-| `_interactive_done`    | `tools.ts:488` (signal file)                                                                                        |
+| Current file        | Code that writes/reads it                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `spec.md`           | `packages/core/src/documents.ts:24`, `templates.ts:46-49`, phase `requires:` in `research.md`, phase context lists |
+| `RESEARCH.md`       | `documents.ts:35`, phase `requires:` in `plan.md`, phase context                                                   |
+| `PLAN.md`           | `documents.ts:41`, phase `requires:` in `exec.md`, scaffolds                                                       |
+| `PROGRESS.md`       | `documents.ts:47`, `loop.ts:80`, `phases.ts:32,80-146`, `tools.ts:97,152,584`                                      |
+| `STEERING.md`       | `documents.ts:53`, `loop.ts:262-266`, scaffolds, many phase prompts                                                |
+| `MANUAL_TESTING.md` | `documents.ts:66`, scaffolds                                                                                       |
+| `INTERACTIVE.md`    | `documents.ts:77`, `tools.ts:485`                                                                                  |
+| `STOP`              | `loop.ts:142`, referenced in every phase prompt                                                                    |
+| `state.json`        | `state.ts:8`                                                                                                       |
+| `_interactive_done` | `tools.ts:488` (signal file)                                                                                       |
 
 ### 1.2 Dynamic paths (constructed per-task)
 
-| Source                              | Shape                                             |
-| ----------------------------------- | ------------------------------------------------- |
-| `apps/cli/src/index.ts:16-24`       | walks up from cwd to find `.ralph/tasks/`         |
-| `packages/core/src/init.ts:12`      | creates `.ralph/tasks/` and `.ralph/.gitignore`   |
-| `packages/content/src/content.ts`   | resolves `packageRoot/{scaffolds,tasks,phases,checklists}` |
+| Source                              | Shape                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| `apps/cli/src/index.ts:16-24`       | walks up from cwd to find `.ralph/tasks/`                                       |
+| `packages/core/src/init.ts:12`      | creates `.ralph/tasks/` and `.ralph/.gitignore`                                 |
+| `packages/content/src/content.ts`   | resolves `packageRoot/{scaffolds,tasks,phases,checklists}`                      |
 | `packages/core/src/templates.ts:30` | `scaffoldTaskDocuments(taskDir, prompt)` writes scaffolded files into each task |
 
 ### 1.3 Phase + scaffold assets to delete
@@ -81,14 +81,14 @@ Ralphy stops creating `.ralph/tasks/<name>/`. The only ralphy-owned file inside 
 
 OpenSpec's native flow maps to a **single looping step** — no `research / plan / exec / review` distinction on our side:
 
-| Ralphy old                 | OpenSpec replacement                                                                                  |
-| -------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `specify` writes `spec.md` | `openspec init` (once per repo) + ralphy scaffolds `proposal.md` + `specs/<cap>/spec.md` stub         |
-| `research` writes RESEARCH | folded into `proposal.md` "Why" + `design.md` "Technical Approach" in one iteration                   |
-| `plan` writes PLAN + PROGRESS | folded into `design.md` + `tasks.md` in one iteration                                               |
-| `exec` implements sections | iterates through unchecked `tasks.md` items, one section per iteration, as before                     |
-| `review` loops back if issues | replaced by per-iteration `openspec validate <change>` — failures re-run the exec iteration         |
-| `done`                     | `openspec archive <change>` on exit                                                                   |
+| Ralphy old                    | OpenSpec replacement                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `specify` writes `spec.md`    | `openspec init` (once per repo) + ralphy scaffolds `proposal.md` + `specs/<cap>/spec.md` stub |
+| `research` writes RESEARCH    | folded into `proposal.md` "Why" + `design.md` "Technical Approach" in one iteration           |
+| `plan` writes PLAN + PROGRESS | folded into `design.md` + `tasks.md` in one iteration                                         |
+| `exec` implements sections    | iterates through unchecked `tasks.md` items, one section per iteration, as before             |
+| `review` loops back if issues | replaced by per-iteration `openspec validate <change>` — failures re-run the exec iteration   |
+| `done`                        | `openspec archive <change>` on exit                                                           |
 
 ### 2.3 Replacement for "STOP" and "STEERING"
 
@@ -127,7 +127,7 @@ const StateSchema = z.object({
   version: z.literal("2"),
   name: z.string(),
   prompt: z.string(),
-  iteration: z.number().default(0),         // replaces phaseIteration + totalIterations
+  iteration: z.number().default(0), // replaces phaseIteration + totalIterations
   status: z.enum(["active", "blocked", "completed"]).default("active"),
   stopReason: z.string().optional(),
   createdAt: z.string(),
@@ -162,6 +162,7 @@ Terminal signal = `status !== "active"`.
 Remove: `advance`, `set-phase`, `--phase`, `--no-execute`.
 
 Keep / rename:
+
 - `ralph task --name <change-name> --prompt "..."` — creates the change via `initChange`, then loops.
 - `ralph task --name <change-name>` (resume)
 - `ralph list` — wraps `openspec list --changes` + our iteration counts.
@@ -174,6 +175,7 @@ Flags `--max-iterations`, `--max-cost`, `--max-runtime`, `--max-failures`, `--cl
 ### Step 5 — Delete phase assets
 
 Remove:
+
 - `packages/phases/` (entire package, references in `tsconfig.base.json`, `nx.json`, workspace package.json).
 - `packages/content/phases/` (6 files).
 - `packages/content/scaffolds/` (4 files).
@@ -183,6 +185,7 @@ Remove:
 ### Step 6 — Slim MCP server
 
 Replace the 9 existing tools with 5:
+
 - `ralph_list_changes` (was list_tasks)
 - `ralph_get_change` (was get_task) — returns status, iteration, unchecked task count
 - `ralph_create_change` (was create_task + run_task merged)
@@ -212,6 +215,7 @@ Injections stay minimal: Steering section + Current Work section.
 ### Step 9 — Migration shim (optional, ask user)
 
 Two options:
+
 - **(a) Clean break**: existing `.ralph/tasks/` is ignored. Users re-create their tasks as OpenSpec changes.
 - **(b) One-shot migrator**: `ralph migrate` command translates each `.ralph/tasks/<name>/` into `openspec/changes/<name>/` (spec.md→proposal.md, PLAN.md→design.md, PROGRESS.md→tasks.md), archives STEERING/MANUAL_TESTING into appropriate sections.
 
@@ -225,12 +229,12 @@ Default to (a) given the "full replacement" directive; flag for your decision be
 | ------------------- | ------------: | ------------: |
 | `packages/types`    |             1 |             0 |
 | `packages/core`     |             2 |             5 |
-| `packages/phases`   |             0 |     entire pkg |
+| `packages/phases`   |             0 |    entire pkg |
 | `packages/content`  |             2 |           ~13 |
-| `packages/openspec` |     new (~5) |             0 |
-| `apps/cli`          |         2–3 |             0 |
+| `packages/openspec` |      new (~5) |             0 |
+| `apps/cli`          |           2–3 |             0 |
 | `apps/mcp`          |             2 |             0 |
-| `specs/`            |             0 |     entire dir |
+| `specs/`            |             0 |    entire dir |
 | Docs                |             2 |             0 |
 
 Expected net: **~20 files deleted, ~15 modified, ~5 added**.
@@ -264,6 +268,7 @@ Please tick one per question before I start implementing:
 ## 6. What happens after approval
 
 Once you approve:
+
 1. I execute Steps 1–8 in order, one commit per step, running `bunx nx affected -t lint,typecheck,test,build` between each.
 2. Step 9 only if you picked option (b) in Q4.
 3. Push to `claude/simplify-paths-openspec-ZAuDU`. No PR unless you ask.

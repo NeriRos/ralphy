@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { resolve, join } from "node:path";
-import { existsSync } from "node:fs";
+import { exists } from "node:fs/promises";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -14,10 +14,10 @@ import { OpenSpecChangeStore } from "@ralphy/openspec";
  * Find the project root by walking up from startDir looking for an openspec/ directory.
  * Falls back to startDir if not found.
  */
-function findProjectRoot(startDir: string): string {
+async function findProjectRoot(startDir: string): Promise<string> {
   let dir = startDir;
   while (dir !== "/") {
-    if (existsSync(join(dir, "openspec"))) return dir;
+    if (await exists(join(dir, "openspec"))) return dir;
     dir = resolve(dir, "..");
   }
   return startDir;
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
     startDir = resolve(args[dirIdx + 1]!);
   }
 
-  const projectRoot = findProjectRoot(startDir);
+  const projectRoot = await findProjectRoot(startDir);
   const changesDir = join(projectRoot, ".ralph", "tasks");
   const taskFilesDir = join(projectRoot, "openspec", "changes");
   const changeStore = new OpenSpecChangeStore();

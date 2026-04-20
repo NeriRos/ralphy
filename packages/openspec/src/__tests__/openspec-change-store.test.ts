@@ -1,23 +1,30 @@
-import { describe, expect, test, beforeEach, afterEach, mock } from "bun:test";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { ChangeStore } from "@ralphy/change-store";
 
-type SpawnResult = { status: number; stdout: string; stderr: string };
+type SpawnResult = { exitCode: number; stdout: string; stderr: string };
 
-const spawnCalls: { command: string; args: string[] }[] = [];
-let nextSpawnResult: SpawnResult = { status: 0, stdout: "", stderr: "" };
+const spawnCalls: { cmd: string[] }[] = [];
+let nextSpawnResult: SpawnResult = { exitCode: 0, stdout: "", stderr: "" };
+const encoder = new TextEncoder();
 
-mock.module("node:child_process", () => ({
-  spawnSync: (command: string, args: string[]) => {
-    if (args.length === 1 && args[0] === "--version") {
-      return { status: 0, stdout: "1.0.0", stderr: "" };
-    }
-    spawnCalls.push({ command, args });
-    return { ...nextSpawnResult };
+// Patch Bun.spawnSync so the store's shell-outs are observable in tests.
+Object.assign(Bun, {
+  spawnSync: (options: { cmd: string[] }) => {
+    spawnCalls.push({ cmd: options.cmd });
+    return {
+      exitCode: nextSpawnResult.exitCode,
+      success: nextSpawnResult.exitCode === 0,
+      stdout: encoder.encode(nextSpawnResult.stdout),
+      stderr: encoder.encode(nextSpawnResult.stderr),
+      pid: 0,
+      signalCode: null,
+      resourceUsage: undefined,
+    };
   },
-}));
+});
 
 const { OpenSpecChangeStore } = await import("../openspec-change-store");
 
@@ -30,7 +37,7 @@ beforeEach(() => {
   process.chdir(tempDir);
   mkdirSync(join(tempDir, "openspec", "changes", "sample-change"), { recursive: true });
   spawnCalls.length = 0;
-  nextSpawnResult = { status: 0, stdout: "", stderr: "" };
+  nextSpawnResult = { exitCode: 0, stdout: "", stderr: "" };
 });
 
 afterEach(() => {
@@ -106,28 +113,28 @@ describe("OpenSpecChangeStore", () => {
     expect(updated.indexOf("Follow-up note")).toBeLessThan(updated.indexOf("Original note"));
   });
 
-  test("createChange invokes `bunx openspec new change`", async () => {
+  test("createChange invokes the openspec bin with Node", async () => {
     const store = new OpenSpecChangeStore();
     await store.createChange("my-change", "A new change");
 
     expect(spawnCalls.length).toBe(1);
-    const call = spawnCalls[0]!;
-    expect(call.command).toBe("bunx");
-    expect(call.args).toContain("openspec");
-    expect(call.args).toContain("new");
-    expect(call.args).toContain("change");
-    expect(call.args).toContain("my-change");
+    const cmd = spawnCalls[0]!.cmd;
+    expect(cmd[0]).toBe(process.execPath);
+    expect(cmd[1]).toMatch(/openspec\.js$/);
+    expect(cmd).toContain("new");
+    expect(cmd).toContain("change");
+    expect(cmd).toContain("my-change");
   });
 
-  test("createChange throws when spawn exits non-zero", () => {
-    nextSpawnResult = { status: 1, stdout: "", stderr: "boom" };
+  test("createChange throws when spawn exits non-zero", async () => {
+    nextSpawnResult = { exitCode: 1, stdout: "", stderr: "boom" };
     const store = new OpenSpecChangeStore();
-    expect(() => store.createChange("bad-change", "desc")).toThrow();
+    await expect(store.createChange("bad-change", "desc")).rejects.toThrow();
   });
 
   test("validateChange parses JSON output into a ValidationResult", async () => {
     nextSpawnResult = {
-      status: 0,
+      exitCode: 0,
       stdout: JSON.stringify({ valid: true, warnings: ["minor"], errors: [] }),
       stderr: "",
     };
@@ -139,21 +146,21 @@ describe("OpenSpecChangeStore", () => {
     expect(result.errors).toEqual([]);
   });
 
-  test("archiveChange invokes `bunx openspec archive`", async () => {
+  test("archiveChange invokes the openspec bin with Node", async () => {
     const store = new OpenSpecChangeStore();
     await store.archiveChange("sample-change");
 
     expect(spawnCalls.length).toBe(1);
-    const call = spawnCalls[0]!;
-    expect(call.command).toBe("bunx");
-    expect(call.args).toContain("openspec");
-    expect(call.args).toContain("archive");
-    expect(call.args).toContain("sample-change");
+    const cmd = spawnCalls[0]!.cmd;
+    expect(cmd[0]).toBe(process.execPath);
+    expect(cmd[1]).toMatch(/openspec\.js$/);
+    expect(cmd).toContain("archive");
+    expect(cmd).toContain("sample-change");
   });
 
-  test("archiveChange throws when spawn exits non-zero", () => {
-    nextSpawnResult = { status: 2, stdout: "", stderr: "error" };
+  test("archiveChange throws when spawn exits non-zero", async () => {
+    nextSpawnResult = { exitCode: 2, stdout: "", stderr: "error" };
     const store = new OpenSpecChangeStore();
-    expect(() => store.archiveChange("sample-change")).toThrow();
+    await expect(store.archiveChange("sample-change")).rejects.toThrow();
   });
 });

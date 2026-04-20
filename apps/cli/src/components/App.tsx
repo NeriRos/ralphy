@@ -1,9 +1,9 @@
 import { useEffect, type ReactNode } from "react";
 import { join } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
 import { Text, useApp } from "ink";
 import type { ParsedArgs } from "../cli";
 import { readState } from "@ralphy/core/state";
+import { getStorage } from "@ralphy/context";
 import { TaskList } from "./TaskList";
 import { TaskStatus } from "./TaskStatus";
 import { TaskLoop } from "./TaskLoop";
@@ -42,7 +42,7 @@ export function App({ args, statesDir, tasksDir }: AppProps) {
         return <ErrorMessage message="Error: --name is required for status mode" />;
       }
       const stateDir = join(statesDir, args.name);
-      if (!existsSync(join(stateDir, ".ralph-state.json"))) {
+      if (getStorage().read(join(stateDir, ".ralph-state.json")) === null) {
         return <ErrorMessage message={`Error: change '${args.name}' not found`} />;
       }
       const state = readState(stateDir);
@@ -64,8 +64,8 @@ export function App({ args, statesDir, tasksDir }: AppProps) {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for task mode" />;
       }
-      mkdirSync(join(statesDir, args.name), { recursive: true });
-      mkdirSync(join(tasksDir, args.name), { recursive: true });
+      // Directory creation is handled up front in index.ts / the sidecar; the
+      // storage provider will create parents lazily on first write as well.
       return (
         <TaskLoop
           opts={{

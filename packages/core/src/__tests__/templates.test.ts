@@ -58,8 +58,8 @@ afterEach(() => {
 
 describe("scaffoldTaskDocuments", () => {
   test("copies scaffold templates to task directory", () =>
-    withStorage(() => {
-      scaffoldTaskDocuments(tempDir);
+    withStorage(async () => {
+      await scaffoldTaskDocuments(tempDir);
       // STEERING.md should be scaffolded (it has scaffold: "STEERING")
       expect(existsSync(join(tempDir, "STEERING.md"))).toBe(true);
       const content = readFileSync(join(tempDir, "STEERING.md"), "utf-8");
@@ -67,14 +67,14 @@ describe("scaffoldTaskDocuments", () => {
     }));
 
   test("does not overwrite existing files", () =>
-    withStorage(() => {
+    withStorage(async () => {
       writeFileSync(join(tempDir, "STEERING.md"), "custom content", "utf-8");
-      scaffoldTaskDocuments(tempDir);
+      await scaffoldTaskDocuments(tempDir);
       const content = readFileSync(join(tempDir, "STEERING.md"), "utf-8");
       expect(content).toBe("custom content");
     }));
 
-  test("uses fallbackContent when template file is missing", () => {
+  test("uses fallbackContent when template file is missing", async () => {
     // Create a storage provider that returns null for scaffold template reads
     // but delegates everything else to the real filesystem
     const realCtx = createDefaultContext();
@@ -96,8 +96,8 @@ describe("scaffoldTaskDocuments", () => {
       },
     };
 
-    runWithContext({ storage: stubStorage }, () => {
-      scaffoldTaskDocuments(tempDir);
+    await runWithContext({ storage: stubStorage }, async () => {
+      await scaffoldTaskDocuments(tempDir);
       // STEERING.md has fallbackContent defined, so it should use that
       expect(existsSync(join(tempDir, "STEERING.md"))).toBe(true);
       const content = readFileSync(join(tempDir, "STEERING.md"), "utf-8");
@@ -108,8 +108,8 @@ describe("scaffoldTaskDocuments", () => {
 
 describe("scaffoldTasksDir", () => {
   test("copies files from content/tasks/ to target directory", () =>
-    withStorage(() => {
-      scaffoldTasksDir(tempDir);
+    withStorage(async () => {
+      await scaffoldTasksDir(tempDir);
       // The tasks dir has a .gitignore
       const tasksDir = resolveTasksDir();
       if (existsSync(tasksDir)) {
@@ -122,18 +122,18 @@ describe("scaffoldTasksDir", () => {
     }));
 
   test("does not overwrite existing files", () =>
-    withStorage(() => {
+    withStorage(async () => {
       writeFileSync(join(tempDir, ".gitignore"), "custom", "utf-8");
-      scaffoldTasksDir(tempDir);
+      await scaffoldTasksDir(tempDir);
       const content = readFileSync(join(tempDir, ".gitignore"), "utf-8");
       expect(content).toBe("custom");
     }));
 
   test("handles missing template directory gracefully", () =>
-    withStorage(() => {
+    withStorage(async () => {
       // Create a temp dir that doesn't have the expected template subdirs
       const nonExistentDir = join(tempDir, "nonexistent");
-      // scaffoldTasksDir checks existsSync and returns early
-      expect(() => scaffoldTasksDir(nonExistentDir)).not.toThrow();
+      // scaffoldTasksDir catches readdir failure and returns early
+      await expect(scaffoldTasksDir(nonExistentDir)).resolves.toBeUndefined();
     }));
 });
