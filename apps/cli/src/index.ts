@@ -12,7 +12,7 @@ import { resolve, join, dirname } from "node:path";
 import { exists, mkdir } from "node:fs/promises";
 import { render } from "ink";
 import { createElement } from "react";
-import { parseArgs } from "./cli";
+import { parseArgs, printHelp, type ParsedArgs } from "./cli";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { App } from "./components/App";
 
@@ -29,8 +29,16 @@ async function findProjectRoot(): Promise<string> {
   return process.cwd();
 }
 
+let args: ParsedArgs;
 try {
-  const args = await parseArgs(process.argv.slice(2));
+  args = await parseArgs(process.argv.slice(2));
+} catch (err) {
+  process.stderr.write((err instanceof Error ? err.message : String(err)) + "\n\n");
+  printHelp();
+  process.exit(1);
+}
+
+try {
   const projectRoot = await findProjectRoot();
   const statesDir = join(projectRoot, ".ralph", "tasks");
   const tasksDir = join(projectRoot, "openspec", "changes");
