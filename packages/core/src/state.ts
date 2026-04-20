@@ -1,52 +1,50 @@
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { StateSchema, type State } from "@ralphy/types";
-import { getFirstPhase } from "@ralphy/phases";
 import { getStorage } from "@ralphy/context";
 import { formatTaskName } from "./format";
 
-const STATE_FILE = "state.json";
+const STATE_FILE = ".ralph-state.json";
 
 /**
- * Read and parse state.json from a task directory.
+ * Read and parse .ralph-state.json from a change directory.
  */
-export function readState(taskDir: string): State {
-  const filePath = join(taskDir, STATE_FILE);
+export function readState(changeDir: string): State {
+  const filePath = join(changeDir, STATE_FILE);
   const raw = getStorage().read(filePath);
-  if (raw === null) throw new Error(`state.json not found in ${taskDir}`);
+  if (raw === null) throw new Error(`.ralph-state.json not found in ${changeDir}`);
   return StateSchema.parse(JSON.parse(raw));
 }
 
 /**
- * Write state.json to a task directory.
+ * Write .ralph-state.json to a change directory.
  */
-export function writeState(taskDir: string, state: State): void {
-  const filePath = join(taskDir, STATE_FILE);
+export function writeState(changeDir: string, state: State): void {
+  const filePath = join(changeDir, STATE_FILE);
   getStorage().write(filePath, JSON.stringify(state, null, 2) + "\n");
 }
 
 /**
  * Read state, apply an updater function, and write back.
  */
-export function updateState(taskDir: string, updater: (state: State) => State): State {
-  const state = readState(taskDir);
+export function updateState(changeDir: string, updater: (state: State) => State): State {
+  const state = readState(changeDir);
   const updated = updater(state);
-  writeState(taskDir, updated);
+  writeState(changeDir, updated);
   return updated;
 }
 
-export interface BuildInitialStateOpts {
+export interface BuildInitialStateOptions {
   name: string;
   prompt: string;
   engine?: string;
   model?: string;
-  phase?: string;
 }
 
 /**
  * Build a fresh State object with sensible defaults.
  */
-export function buildInitialState(opts: BuildInitialStateOpts): State {
+export function buildInitialState(options: BuildInitialStateOptions): State {
   const now = new Date().toISOString();
   let branch = "main";
   try {
@@ -56,11 +54,11 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
   }
 
   return StateSchema.parse({
-    name: formatTaskName(opts.name),
-    prompt: opts.prompt,
-    phase: opts.phase ?? getFirstPhase().name,
-    engine: opts.engine ?? "claude",
-    model: opts.model ?? "opus",
+    version: "2",
+    name: formatTaskName(options.name),
+    prompt: options.prompt,
+    engine: options.engine ?? "claude",
+    model: options.model ?? "opus",
     createdAt: now,
     lastModified: now,
     metadata: { branch },
@@ -68,61 +66,18 @@ export function buildInitialState(opts: BuildInitialStateOpts): State {
 }
 
 /**
- * Simple phase inference for legacy migration (avoids circular dep with phases.ts).
+ * Ensure .ralph-state.json exists in a change directory. Idempotent.
+ * If missing, initialises a fresh state.
  */
-function inferPhaseFromFiles(taskDir: string): string {
-  const storage = getStorage();
-  const hasSpec = storage.read(join(taskDir, "spec.md")) !== null;
-  const hasResearch = storage.read(join(taskDir, "RESEARCH.md")) !== null;
-
-  if (!hasSpec && !hasResearch) return getFirstPhase().name;
-  if (!hasResearch) return "research";
-
-  const plan = storage.read(join(taskDir, "PLAN.md"));
-  const progress = storage.read(join(taskDir, "PROGRESS.md"));
-  if (plan === null || progress === null) return "plan";
-
-  const unchecked = (progress.match(/^- \[ \]/gm) ?? []).length;
-  return unchecked === 0 ? "done" : "exec";
-}
-
-/**
- * Create state.json for a task directory that existed before state tracking.
- * Infers the phase from which files are present.
- */
-export function migrateState(taskDir: string): State {
-  const phase = inferPhaseFromFiles(taskDir);
-  const name = taskDir.split("/").pop() ?? "unknown";
-  const state = buildInitialState({ name, prompt: "", phase });
-  writeState(taskDir, state);
-  return state;
-}
-
-/**
- * Ensure state.json exists in a task directory. Idempotent.
- * If missing, migrates from existing files or initialises fresh.
- */
-export function ensureState(taskDir: string): State {
-  const filePath = join(taskDir, STATE_FILE);
+export function ensureState(changeDir: string): State {
+  const filePath = join(changeDir, STATE_FILE);
   const storage = getStorage();
   if (storage.read(filePath) !== null) {
-    return readState(taskDir);
+    return readState(changeDir);
   }
 
-  // Check if this is an existing task that predates state tracking
-  const hasFiles =
-    storage.read(join(taskDir, "spec.md")) !== null ||
-    storage.read(join(taskDir, "RESEARCH.md")) !== null ||
-    storage.read(join(taskDir, "PLAN.md")) !== null ||
-    storage.read(join(taskDir, "PROGRESS.md")) !== null;
-
-  if (hasFiles) {
-    return migrateState(taskDir);
-  }
-
-  // Brand-new task — caller should provide proper opts via buildInitialState
-  const name = taskDir.split("/").pop() ?? "unknown";
+  const name = changeDir.split("/").pop() ?? "unknown";
   const state = buildInitialState({ name, prompt: "" });
-  writeState(taskDir, state);
+  writeState(changeDir, state);
   return state;
 }

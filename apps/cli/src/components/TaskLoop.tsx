@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { join } from "node:path";
-import { Box, Static, Text, useApp, useInput } from "ink";
+import { Box, Static, Text, useApp, useInput, useStdin } from "ink";
 import { TextInput } from "@inkjs/ui";
 import { Banner } from "./Banner";
 import { IterationHeader } from "./IterationHeader";
@@ -114,6 +114,7 @@ export function SteerInput({ onSubmit }: { onSubmit: (msg: string) => void }) {
 export function TaskLoop({ opts }: TaskLoopProps) {
   const { exit } = useApp();
   const loop = useLoop(opts);
+  const { isRawModeSupported } = useStdin();
   const bannerItem = useRef<FeedItem>({ id: "__banner__", kind: "banner" });
 
   const feedItems: FeedItem[] = useMemo(
@@ -132,7 +133,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
 
   if (!loop.state) return null;
 
-  const taskDir = join(opts.tasksDir, opts.name);
+  const stateDir = join(opts.statesDir, opts.name);
 
   return (
     <Box flexDirection="column">
@@ -145,8 +146,6 @@ export function TaskLoop({ opts }: TaskLoopProps) {
                 state={loop.state!}
                 mode="task"
                 isResume={loop.isResume}
-                noExecute={opts.noExecute}
-                interactive={opts.interactive}
                 maxIterations={opts.maxIterations}
                 maxCostUsd={opts.maxCostUsd}
                 maxRuntimeMinutes={opts.maxRuntimeMinutes}
@@ -163,25 +162,21 @@ export function TaskLoop({ opts }: TaskLoopProps) {
       {loop.isRunning && (
         <>
           <StatusBar
-            phase={loop.currentPhase}
             iteration={loop.iteration}
-            progress={loop.progress}
             costUsd={loop.state.usage.total_cost_usd}
             startedAt={loop.startedAt}
             engine={opts.engine}
             model={opts.model}
             isRunning
           />
-          <SteerInput onSubmit={loop.steer} />
+          {isRawModeSupported && <SteerInput onSubmit={loop.steer} />}
         </>
       )}
 
       {loop.stopReason && (
         <>
           <StatusBar
-            phase={loop.currentPhase}
             iteration={loop.iteration}
-            progress={loop.progress}
             costUsd={loop.state.usage.total_cost_usd}
             startedAt={loop.startedAt}
             engine={opts.engine}
@@ -191,8 +186,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
           <StopMessage
             reason={loop.stopReason}
             state={loop.state}
-            taskDir={taskDir}
-            progress={loop.progress}
+            stateDir={stateDir}
             maxIterations={opts.maxIterations}
             maxCostUsd={opts.maxCostUsd}
             maxRuntimeMinutes={opts.maxRuntimeMinutes}

@@ -63,12 +63,11 @@ export function StatusBar({ state, progress, isRunning, stopReason }: StatusBarP
       }}
     >
       <span>
-        <strong style={{ color: "var(--text)" }}>Phase:</strong> {state.phase}
-        {state.phaseIteration > 0 && ` (iter ${state.phaseIteration})`}
+        <strong style={{ color: "var(--text)" }}>Status:</strong> {state.status}
       </span>
 
       <span>
-        <strong style={{ color: "var(--text)" }}>Total:</strong> {state.totalIterations} iterations
+        <strong style={{ color: "var(--text)" }}>Total:</strong> {state.iteration} iterations
       </span>
 
       {pct !== null && (

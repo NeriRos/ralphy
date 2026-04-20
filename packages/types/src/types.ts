@@ -15,43 +15,8 @@ export interface StorageProvider {
 
 // --- Type aliases ---
 
-export type Phase = string;
 export type Engine = "claude" | "codex";
-export type Mode = "task" | "list" | "status" | "advance" | "set-phase" | "init";
-
-// --- Phase config types ---
-
-export const ContextEntrySchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("file"),
-    file: z.string(),
-    label: z.string(),
-  }),
-  z.object({
-    type: z.literal("currentSection"),
-    label: z.string(),
-  }),
-]);
-
-export type ContextEntry = z.infer<typeof ContextEntrySchema>;
-
-export const PhaseFrontmatterSchema = z.object({
-  name: z.string(),
-  order: z.number(),
-  requires: z.array(z.string()).default([]),
-  next: z.string().nullable().default(null),
-  autoAdvance: z.enum(["allChecked"]).nullable().default(null),
-  loopBack: z.string().nullable().default(null),
-  terminal: z.boolean().default(false),
-  context: z.array(ContextEntrySchema).default([]),
-});
-
-export type PhaseFrontmatter = z.infer<typeof PhaseFrontmatterSchema>;
-
-export interface PhaseConfig extends PhaseFrontmatter {
-  /** The markdown body (prompt content) after the frontmatter. */
-  prompt: string;
-}
+export type Mode = "task" | "list" | "status" | "init";
 
 // --- Iteration usage (per-run stats) ---
 
@@ -83,7 +48,7 @@ export const HistoryEntrySchema = z.object({
   timestamp: z.string(),
   startedAt: z.string().optional(),
   endedAt: z.string().optional(),
-  phase: z.string(),
+  phase: z.string().optional(),
   iteration: z.number(),
   engine: z.string(),
   model: z.string(),
@@ -92,24 +57,21 @@ export const HistoryEntrySchema = z.object({
 });
 
 export const StateSchema = z.object({
-  version: z.string().default("1"),
+  version: z.literal("2"),
   name: z.string(),
   prompt: z.string(),
-  phase: z.string(),
+  phase: z.string().default("specify"),
   phaseIteration: z.number().default(0),
-  totalIterations: z.number().default(0),
+  iteration: z.number().default(0),
+  status: z.enum(["active", "blocked", "completed"]).default("active"),
+  stopReason: z.string().optional(),
   createdAt: z.string(),
   lastModified: z.string(),
-  engine: z.string().default("claude"),
+  engine: z.enum(["claude", "codex"]).default("claude"),
   model: z.string().default("opus"),
-  status: z.string().default("active"),
   usage: UsageSchema.default({}),
   history: z.array(HistoryEntrySchema).default([]),
-  metadata: z
-    .object({
-      branch: z.string().optional(),
-    })
-    .default({}),
+  metadata: z.object({ branch: z.string().optional() }).default({}),
 });
 
 // --- Inferred types ---
@@ -117,6 +79,35 @@ export const StateSchema = z.object({
 export type Usage = z.infer<typeof UsageSchema>;
 export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
 export type State = z.infer<typeof StateSchema>;
+
+// --- Phase config ---
+
+export const PhaseFrontmatterSchema = z.object({
+  name: z.string(),
+  order: z.number(),
+  requires: z.array(z.string()).default([]),
+  next: z.string().nullable().default(null),
+  autoAdvance: z.enum(["allChecked"]).nullable().default(null),
+  loopBack: z.string().nullable().default(null),
+  terminal: z.boolean().default(false),
+  context: z
+    .array(
+      z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("file"),
+          file: z.string(),
+          label: z.string(),
+        }),
+        z.object({
+          type: z.literal("currentSection"),
+          label: z.string(),
+        }),
+      ]),
+    )
+    .default([]),
+});
+
+export type PhaseConfig = z.infer<typeof PhaseFrontmatterSchema> & { prompt: string };
 
 // --- Feed event types ---
 

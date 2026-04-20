@@ -13,15 +13,12 @@ export interface ParsedArgs {
   maxCostUsd: number;
   maxRuntimeMinutes: number;
   maxConsecutiveFailures: number;
-  phase: string;
-  noExecute: boolean;
-  interactive: boolean;
   delay: number;
   log: boolean;
   verbose: boolean;
 }
 
-const VALID_MODES = new Set<string>(["task", "list", "status", "advance", "set-phase", "init"]);
+const VALID_MODES = new Set<string>(["task", "list", "status", "init"]);
 
 const VALID_MODELS = new Set<string>(["haiku", "sonnet", "opus"]);
 
@@ -29,23 +26,18 @@ const HELP_TEXT = [
   "Usage: ralph <command> [options]",
   "",
   "Commands:",
-  "  task                    Run a task (default)",
-  "  list                    List incomplete tasks",
-  "  status                  Show detailed task status",
-  "  advance                 Advance task to next phase",
-  "  set-phase               Set task to a specific phase",
-  "  init                    Initialize ralph in current directory",
+  "  task                    Run or resume a task",
+  "  list                    List active changes",
+  "  status                  Show detailed change status",
+  "  init                    Initialize OpenSpec in current directory",
   "",
   "Options:",
-  "  --name <name>           Task name (required for most commands)",
+  "  --name <name>           Change name (required for most commands)",
   "  --prompt <text>         Task description",
   "  --prompt-file <path>    Read prompt from file",
   "  --model <model>         Set model (haiku|sonnet|opus)",
   "  --claude [model]        Use Claude engine (haiku|sonnet|opus, default: opus)",
   "  --codex                 Use Codex engine",
-  "  --phase <phase>         Target phase (for set-phase)",
-  "  --no-execute            Stop after specify + research + plan",
-  "  --interactive           Run specify interactively, then continue automated",
   "  --delay <seconds>       Seconds between iterations",
   "  --max-iterations <n>    Stop after N iterations (0 = unlimited)",
   "  --max-cost <n>          Stop when total cost exceeds $N (0 = no limit)",
@@ -59,10 +51,10 @@ const HELP_TEXT = [
   "Examples:",
   '  ralph task --name my-feature --prompt "Add dark mode"',
   "  ralph task --name my-feature --claude sonnet --max-iterations 10",
+  "  ralph task --name my-feature",
   "  ralph list",
   "  ralph status --name my-feature",
-  "  ralph advance --name my-feature",
-  "  ralph set-phase --name my-feature --phase exec",
+  "  ralph init",
 ].join("\n");
 
 export function printHelp(): void {
@@ -81,9 +73,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
     maxCostUsd: 0,
     maxRuntimeMinutes: 0,
     maxConsecutiveFailures: 5,
-    phase: "",
-    noExecute: false,
-    interactive: false,
     delay: 0,
     log: false,
     verbose: false,
@@ -94,7 +83,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
   let expectName = false;
   let expectPrompt = false;
   let expectPromptFile = false;
-  let expectPhase = false;
   let expectDelay = false;
   let expectMaxCost = false;
   let expectMaxRuntime = false;
@@ -136,11 +124,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (expectPromptFile) {
       result.prompt = readFileSync(arg, "utf-8");
       expectPromptFile = false;
-      continue;
-    }
-    if (expectPhase) {
-      result.phase = arg;
-      expectPhase = false;
       continue;
     }
     if (expectDelay) {
@@ -210,15 +193,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
         break;
       case "--prompt-file":
         expectPromptFile = true;
-        break;
-      case "--phase":
-        expectPhase = true;
-        break;
-      case "--no-execute":
-        result.noExecute = true;
-        break;
-      case "--interactive":
-        result.interactive = true;
         break;
       case "--delay":
         expectDelay = true;

@@ -12,7 +12,6 @@ describe("parseArgs", () => {
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("opus");
     expect(result.maxIterations).toBe(0);
-    expect(result.noExecute).toBe(false);
     expect(result.log).toBe(false);
     expect(result.engineSet).toBe(false);
   });
@@ -20,8 +19,7 @@ describe("parseArgs", () => {
   test("parses mode as first positional argument", () => {
     expect(parseArgs(["list"]).mode).toBe("list");
     expect(parseArgs(["status"]).mode).toBe("status");
-    expect(parseArgs(["advance"]).mode).toBe("advance");
-    expect(parseArgs(["set-phase"]).mode).toBe("set-phase");
+    expect(parseArgs(["init"]).mode).toBe("init");
   });
 
   test("parses --name flag", () => {
@@ -85,11 +83,6 @@ describe("parseArgs", () => {
     expect(result.maxIterations).toBe(20);
   });
 
-  test("parses --no-execute", () => {
-    const result = parseArgs(["--no-execute"]);
-    expect(result.noExecute).toBe(true);
-  });
-
   test("parses --log", () => {
     const result = parseArgs(["--log"]);
     expect(result.log).toBe(true);
@@ -98,12 +91,6 @@ describe("parseArgs", () => {
   test("parses --delay with value", () => {
     const result = parseArgs(["--delay", "5"]);
     expect(result.delay).toBe(5);
-  });
-
-  test("parses --phase for set-phase mode", () => {
-    const result = parseArgs(["set-phase", "--name", "my-task", "--phase", "plan"]);
-    expect(result.mode).toBe("set-phase");
-    expect(result.phase).toBe("plan");
   });
 
   test("parses --unlimited as maxIterations 0", () => {
@@ -136,7 +123,6 @@ describe("parseArgs", () => {
       "Add dark/light mode toggle",
       "--claude",
       "sonnet",
-      "--no-execute",
       "--log",
     ]);
     expect(result.mode).toBe("task");
@@ -145,7 +131,6 @@ describe("parseArgs", () => {
     expect(result.prompt).toBe("Add dark/light mode toggle");
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("sonnet");
-    expect(result.noExecute).toBe(true);
     expect(result.log).toBe(true);
   });
 
@@ -195,11 +180,6 @@ describe("parseArgs", () => {
   test("parses --max-failures flag", () => {
     const result = parseArgs(["--max-failures", "3"]);
     expect(result.maxConsecutiveFailures).toBe(3);
-  });
-
-  test("parses --interactive flag", () => {
-    const result = parseArgs(["--interactive"]);
-    expect(result.interactive).toBe(true);
   });
 
   test("parses --verbose flag", () => {

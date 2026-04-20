@@ -6,9 +6,24 @@ Ralph loop framework.
 
 - Package Manager: bun - USE ONLY `bun` and `bun run` and `bunx` to run commands.
 
+## Change Layout
+
+Change files are split across two directories:
+
+- `openspec/changes/<change-name>/` — task files managed by OpenSpec:
+  - `proposal.md` — description and `## Steering` section
+  - `design.md` — technical design
+  - `tasks.md` — checklist driving iteration
+  - `specs/` — per-task specifications
+
+- `.ralph/tasks/<change-name>/` — loop state only:
+  - `.ralph-state.json` — loop state (iteration count, status, cost, history)
+
+There are no phases. The loop reads `openspec/changes/<name>/tasks.md`, works on the first unchecked item, validates, and checks it off.
+
 ## Cost Warning
 
-Long-running tasks with unlimited iterations can burn significant API usage. Use safeguards:
+Long-running changes with unlimited iterations can burn significant API usage. Use safeguards:
 
 - `--max-iterations N` — stop after N iterations (e.g. `ralph task --name foo --max-iterations 10`)
 - `--max-cost N` — stop when total cost exceeds $N

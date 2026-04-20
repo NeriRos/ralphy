@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "@inkjs/ui";
-import type { ProgressCount } from "@ralphy/core/progress";
 
 export interface StatusBarProps {
-  phase: string;
   iteration: number;
-  progress: ProgressCount | null;
   costUsd: number;
   startedAt: number;
   engine: string;
@@ -29,9 +26,7 @@ function Sep() {
 }
 
 export function StatusBar({
-  phase,
   iteration,
-  progress,
   costUsd,
   startedAt,
   engine,
@@ -55,21 +50,8 @@ export function StatusBar({
         <Text> </Text>
         {isRunning ? <Spinner label="" /> : <Text color="green">✓</Text>}
         <Text> </Text>
-        <Text bold color="cyan">
-          {phase}
-        </Text>
-        <Sep />
         <Text>iter </Text>
         <Text bold>{iteration}</Text>
-        {progress && (
-          <>
-            <Sep />
-            <Text color={progress.unchecked === 0 ? "green" : "yellow"}>
-              {progress.checked}/{progress.total}
-            </Text>
-            <Text dimColor> done</Text>
-          </>
-        )}
         {costUsd > 0 && (
           <>
             <Sep />

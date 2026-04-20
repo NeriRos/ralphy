@@ -1,11 +1,19 @@
 import { useEffect } from "react";
 import { join } from "node:path";
 import { Box, Text, useApp } from "ink";
-import { countProgress } from "@ralphy/core/progress";
 import { getStorage } from "@ralphy/context";
 
+/**
+ * Count checked and unchecked task items in a markdown file.
+ */
+function countTaskItems(content: string): { checked: number; unchecked: number } {
+  const checked = (content.match(/^- \[x\]/gm) ?? []).length;
+  const unchecked = (content.match(/^- \[ \]/gm) ?? []).length;
+  return { checked, unchecked };
+}
+
 export interface TaskListProps {
-  tasksDir: string;
+  statesDir: string;
 }
 
 interface TaskRow {
@@ -18,13 +26,13 @@ interface TaskRow {
   prompt: string;
 }
 
-function buildRows(tasksDir: string): TaskRow[] {
+function buildRows(statesDir: string): TaskRow[] {
   const storage = getStorage();
-  const entries = storage.list(tasksDir);
+  const entries = storage.list(statesDir);
   const rows: TaskRow[] = [];
 
   for (const entry of entries) {
-    const raw = storage.read(join(tasksDir, entry, "state.json"));
+    const raw = storage.read(join(statesDir, entry, ".ralph-state.json"));
     if (raw === null) continue;
 
     let state: Record<string, unknown>;
@@ -34,16 +42,16 @@ function buildRows(tasksDir: string): TaskRow[] {
       continue;
     }
 
-    if (state.phase === "done") continue;
+    if (String(state.status ?? "") === "completed") continue;
 
     const promptRaw = String(state.prompt ?? "");
     const firstLine = promptRaw.split("\n").find((l) => l.trim() !== "") ?? "";
 
     let progress = "—";
     let progressStyled = true;
-    const progressContent = storage.read(join(tasksDir, entry, "PROGRESS.md"));
-    if (progressContent !== null) {
-      const { checked, unchecked } = countProgress(progressContent);
+    const tasksContent = storage.read(join(statesDir, entry, "tasks.md"));
+    if (tasksContent !== null) {
+      const { checked, unchecked } = countTaskItems(tasksContent);
       const total = checked + unchecked;
       if (total > 0) {
         progress = `${checked}/${total}`;
@@ -53,9 +61,9 @@ function buildRows(tasksDir: string): TaskRow[] {
 
     rows.push({
       name: String(state.name ?? entry),
-      phase: String(state.phase ?? "unknown"),
+      phase: String(state.status ?? "active"),
       status: String(state.status ?? "unknown"),
-      iters: String(state.totalIterations ?? 0),
+      iters: String(state.iteration ?? 0),
       progress,
       progressStyled,
       prompt: firstLine
@@ -68,14 +76,14 @@ function buildRows(tasksDir: string): TaskRow[] {
   return rows;
 }
 
-export function TaskList({ tasksDir }: TaskListProps) {
+export function TaskList({ statesDir }: TaskListProps) {
   const { exit } = useApp();
 
   useEffect(() => {
     exit();
   }, [exit]);
 
-  const rows = buildRows(tasksDir);
+  const rows = buildRows(statesDir);
 
   if (rows.length === 0) {
     return (

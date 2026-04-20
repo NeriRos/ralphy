@@ -7,7 +7,7 @@ import { rmSync } from "node:fs";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { buildInitialState, writeState } from "@ralphy/core/state";
 import type { State } from "@ralphy/types";
-import type { BuildInitialStateOpts } from "@ralphy/core/state";
+import type { BuildInitialStateOptions } from "@ralphy/core/state";
 import type { EngineResult } from "@ralphy/engine/engine";
 
 // Mock the engine module to avoid spawning real processes
@@ -75,7 +75,11 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
+const stubChangeStore = {
+  archiveChange: (_name: string) => Promise.resolve(),
+};
+
+function makeState(overrides: Partial<BuildInitialStateOptions> = {}): State {
   return buildInitialState({
     name: "test-task",
     prompt: "Test prompt text",
@@ -100,12 +104,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -140,12 +145,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -179,12 +185,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -202,8 +209,7 @@ describe("TaskLoop", () => {
       // Create a state that has already run some iterations
       const state = {
         ...makeState({ name: "resume-task" }),
-        totalIterations: 3,
-        phaseIteration: 3,
+        iteration: 3,
       };
       writeState(taskDir, state);
 
@@ -216,12 +222,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -238,8 +245,7 @@ describe("TaskLoop", () => {
       mkdirSync(taskDir, { recursive: true });
       const state = {
         ...makeState({ name: "done-task" }),
-        phase: "done",
-        status: "completed",
+        status: "completed" as const,
       };
       writeState(taskDir, state);
 
@@ -252,12 +258,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -297,12 +304,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: true,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -329,12 +337,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -365,12 +374,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -406,12 +416,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -453,12 +464,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -484,12 +496,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -531,12 +544,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -547,7 +561,7 @@ describe("TaskLoop", () => {
     });
   });
 
-  test("live steering kills engine, writes STEERING.md, and resumes session", async () => {
+  test("live steering kills engine, writes steering.md, and resumes session", async () => {
     let engineStartResolve: () => void;
     const engineStarted = new Promise<void>((r) => {
       engineStartResolve = r;
@@ -580,7 +594,7 @@ describe("TaskLoop", () => {
       mkdirSync(taskDir, { recursive: true });
       const state = makeState({ name: "steer-live-task" });
       writeState(taskDir, state);
-      writeFileSync(join(taskDir, "STEERING.md"), "original\n", "utf-8");
+      writeFileSync(join(taskDir, "steering.md"), "original\n", "utf-8");
 
       // Use a wrapper to capture the steer function
       let steerFn: ((msg: string) => void) | null = null;
@@ -595,12 +609,12 @@ describe("TaskLoop", () => {
           maxCostUsd: 0,
           maxRuntimeMinutes: 0,
           maxConsecutiveFailures: 5,
-          noExecute: false,
-          interactive: false,
           delay: 0,
           log: false,
           verbose: false,
+          statesDir: tempDir,
           tasksDir: tempDir,
+          changeStore: stubChangeStore,
         });
         steerFn = loop.steer;
         return null;
@@ -618,9 +632,9 @@ describe("TaskLoop", () => {
       // Wait for resume to complete
       await new Promise((r) => setTimeout(r, 500));
 
-      // Verify STEERING.md was appended
+      // Verify steering.md was appended
       const { readFileSync } = await import("node:fs");
-      const steeringContent = readFileSync(join(taskDir, "STEERING.md"), "utf-8");
+      const steeringContent = readFileSync(join(taskDir, "steering.md"), "utf-8");
       expect(steeringContent).toContain("original");
       expect(steeringContent).toContain("focus on tests");
 
@@ -738,12 +752,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0,
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);
@@ -786,12 +801,13 @@ describe("TaskLoop", () => {
         maxCostUsd: 0,
         maxRuntimeMinutes: 0,
         maxConsecutiveFailures: 5,
-        noExecute: false,
-        interactive: false,
+
         delay: 0.01, // 10ms delay
         log: false,
         verbose: false,
+        statesDir: tempDir,
         tasksDir: tempDir,
+        changeStore: stubChangeStore,
       };
 
       const { frames } = render(<TaskLoop opts={opts} />);

@@ -1,36 +1,43 @@
 #!/usr/bin/env bun
 
 import { resolve, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { render } from "ink";
 import { createElement } from "react";
 import { parseArgs } from "./cli";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
-import { scaffoldTasksDir } from "@ralphy/core/templates";
-import { initRalphFromTasksDir } from "@ralphy/core/init";
 import { App } from "./components/App";
 
 /**
- * Resolve the .ralph/tasks directory by walking up from cwd.
+ * Find the project root by walking up from cwd looking for an openspec/ directory.
+ * Falls back to cwd if not found.
  */
-function resolveTasksDir(): string {
+function findProjectRoot(): string {
   let dir = process.cwd();
   while (dir !== "/") {
-    const candidate = join(dir, ".ralph", "tasks");
-    if (existsSync(candidate)) return candidate;
+    if (existsSync(join(dir, "openspec"))) return dir;
     dir = resolve(dir, "..");
   }
-  return join(process.cwd(), ".ralph", "tasks");
+  return process.cwd();
 }
 
 try {
   const args = parseArgs(process.argv.slice(2));
-  const tasksDir = resolveTasksDir();
+  const projectRoot = findProjectRoot();
+  const statesDir = join(projectRoot, ".ralph", "tasks");
+  const tasksDir = join(projectRoot, "openspec", "changes");
+
+  if (args.mode === "init") {
+    mkdirSync(statesDir, { recursive: true });
+    spawnSync("bunx", ["openspec", "init", "--tools", "none", "--force"], {
+      stdio: "inherit",
+      cwd: process.cwd(),
+    });
+  }
 
   runWithContext(createDefaultContext(), () => {
-    initRalphFromTasksDir(tasksDir);
-    scaffoldTasksDir(tasksDir);
-    render(createElement(App, { args, tasksDir }));
+    render(createElement(App, { args, statesDir, tasksDir }));
   });
 } catch (err) {
   process.stderr.write((err instanceof Error ? err.message : String(err)) + "\n");

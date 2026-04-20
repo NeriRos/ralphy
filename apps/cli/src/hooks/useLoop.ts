@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { join } from "node:path";
 import type { State } from "@ralphy/types";
-import type { ProgressCount } from "@ralphy/core/progress";
 import type { FeedEvent } from "@ralphy/engine/feed-events";
-import { readState, writeState, buildInitialState } from "@ralphy/core/state";
-import { extractCurrentSection, countProgress } from "@ralphy/core/progress";
-import { scaffoldTaskDocuments } from "@ralphy/core/templates";
+import { readState, writeState, buildInitialState, ensureState } from "@ralphy/core/state";
 import { runEngine, handleEngineFailure } from "@ralphy/engine/engine";
-import { autoTransitionAfterIteration } from "@ralphy/core/phases";
 import { gitPush, commitTaskDir } from "@ralphy/core/git";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
 import {
@@ -18,6 +14,7 @@ import {
   appendSteeringMessage,
   buildSteeringPrompt,
   mergeUsage,
+  allTasksCompleted,
   type StopReason,
   type LoopOptions,
 } from "../loop";
@@ -32,8 +29,6 @@ export interface UseLoopResult {
   iteration: number;
   consecutiveFailures: number;
   logLines: LogEntry[];
-  currentPhase: string;
-  progress: ProgressCount | null;
   stopReason: StopReason | null;
   isRunning: boolean;
   isResume: boolean;
@@ -51,8 +46,6 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
   const [iteration, setIteration] = useState(0);
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
   const [logLines, setLogLines] = useState<LogEntry[]>([]);
-  const [currentPhase, setCurrentPhase] = useState("");
-  const [progress, setProgress] = useState<ProgressCount | null>(null);
   const [stopReason, setStopReason] = useState<StopReason | null>(null);
   const [isRunning, setIsRunning] = useState(true);
   const [isResume, setIsResume] = useState(false);
@@ -88,17 +81,22 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
     };
 
     runWithContext(createDefaultContext(), async () => {
-      const taskDir = join(opts.tasksDir, opts.name);
+      const stateDir = join(opts.statesDir, opts.name);
+      const tasksDir = join(opts.tasksDir, opts.name);
       const storage = getStorage();
 
       // Init or resume state
       let currentState: State;
-      const existingState = storage.read(join(taskDir, "state.json"));
-      if (existingState !== null) {
-        currentState = readState(taskDir);
+      const existingStateRaw = storage.read(join(stateDir, ".ralph-state.json"));
+      if (existingStateRaw !== null) {
+        currentState = readState(stateDir);
         if (currentState.engine !== opts.engine || currentState.model !== opts.model) {
-          currentState = { ...currentState, engine: opts.engine, model: opts.model };
-          writeState(taskDir, currentState);
+          currentState = {
+            ...currentState,
+            engine: opts.engine as State["engine"],
+            model: opts.model,
+          };
+          writeState(stateDir, currentState);
         }
       } else {
         currentState = buildInitialState({
@@ -107,14 +105,11 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           engine: opts.engine,
           model: opts.model,
         });
-        writeState(taskDir, currentState);
+        writeState(stateDir, currentState);
       }
 
-      setIsResume(currentState.totalIterations > 0);
+      setIsResume(currentState.iteration > 0);
       setState(currentState);
-      setCurrentPhase(currentState.phase);
-
-      scaffoldTaskDocuments(taskDir, opts.prompt);
 
       let iter = 0;
       const loopStartTime = Date.now();
@@ -122,13 +117,33 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
       let lastResult = "";
 
       while (!cancelled) {
-        currentState = readState(taskDir);
+        currentState = readState(stateDir);
         setState(currentState);
-        setCurrentPhase(currentState.phase);
 
         const stop = checkStopCondition(currentState, iter, opts, loopStartTime, consFailures);
         if (stop !== null) {
           setStopReason(stop);
+          break;
+        }
+
+        // Check if all tasks are done
+        const tasksContent = storage.read(join(tasksDir, "tasks.md"));
+        if (tasksContent !== null && allTasksCompleted(tasksContent)) {
+          addInfo("All tasks completed — archiving change.");
+          currentState = {
+            ...currentState,
+            status: "completed",
+            lastModified: new Date().toISOString(),
+          };
+          writeState(stateDir, currentState);
+          setState(currentState);
+          try {
+            await opts.changeStore.archiveChange(opts.name);
+            addInfo("Change archived.");
+          } catch (err) {
+            addInfo(`Archive warning: ${err}`);
+          }
+          setStopReason("completed");
           break;
         }
 
@@ -137,41 +152,24 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
         const time = new Date().toLocaleTimeString("en-US", { hour12: false });
         addIterationHeader(iter, time);
-        addInfo(`Phase: ${currentState.phase} (iteration ${currentState.phaseIteration})`);
+        addInfo(`Iteration ${iter} (total: ${currentState.iteration})`);
 
-        const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-        if (progressContent !== null) {
-          const section = extractCurrentSection(progressContent);
-          if (section) {
-            const firstLine = section.split("\n")[0];
-            addInfo(`Section: ${firstLine}`);
-          }
-          const p = countProgress(progressContent);
-          setProgress(p);
-          addInfo(`Progress: ${p.checked} done / ${p.unchecked} remaining`);
-        }
-
-        const phaseBeforeEngine = currentState.phase;
-        const prompt = buildTaskPrompt(currentState, taskDir);
+        const prompt = buildTaskPrompt(currentState, tasksDir);
 
         const iterStart = new Date().toISOString();
         try {
-          const interactiveDone = storage.read(join(taskDir, "_interactive_done")) !== null;
-          const isInteractivePhase =
-            opts.interactive && currentState.phase === "specify" && !interactiveDone;
-
           // Set up abort controller for live steering
           const controller = new AbortController();
           steerControllerRef.current = controller;
           pendingSteerRef.current = null;
 
           let engineResult = await runEngine({
-            engine: opts.engine,
+            engine: opts.engine as import("@ralphy/types").Engine,
             model: opts.model,
             prompt,
             logFlag: opts.log,
-            taskDir,
-            interactive: isInteractivePhase,
+            taskDir: tasksDir,
+            interactive: false,
             onFeedEvent: addFeedEvent,
             signal: controller.signal,
           });
@@ -181,7 +179,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             const steerMessage = pendingSteerRef.current;
             pendingSteerRef.current = null;
 
-            appendSteeringMessage(taskDir, steerMessage);
+            appendSteeringMessage(tasksDir, steerMessage);
             addInfo(`Live steering: ${steerMessage}`);
 
             // Resume the session with the steering message
@@ -195,11 +193,11 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
             };
 
             const resumeResult = await runEngine({
-              engine: opts.engine,
+              engine: opts.engine as import("@ralphy/types").Engine,
               model: opts.model,
               prompt: buildSteeringPrompt(steerMessage),
               logFlag: opts.log,
-              taskDir,
+              taskDir: tasksDir,
               onFeedEvent: addResumeFeedEvent,
               signal: resumeController.signal,
               resumeSessionId: engineResult.sessionId,
@@ -217,7 +215,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
             const result = `failed:exit-${engineResult.exitCode}`;
             updateStateIteration(
-              taskDir,
+              stateDir,
               result,
               iterStart,
               opts.engine,
@@ -244,7 +242,7 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
 
           // Success
           currentState = updateStateIteration(
-            taskDir,
+            stateDir,
             "success",
             iterStart,
             opts.engine,
@@ -256,22 +254,13 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
           lastResult = "";
           setConsecutiveFailures(0);
 
-          // Only auto-transition if the agent didn't already advance the phase
-          // (e.g. via ralph_advance_phase MCP tool during the engine run).
-          // Otherwise we'd double-transition, skipping the review engine run.
-          if (currentState.phase === phaseBeforeEngine) {
-            currentState = autoTransitionAfterIteration(currentState, taskDir);
-          }
-          setState(currentState);
-          setCurrentPhase(currentState.phase);
-
           try {
             gitPush();
           } catch {
             // Push failures are non-fatal
           }
 
-          const stopSignal = checkStopSignal(taskDir);
+          const stopSignal = checkStopSignal(tasksDir, stateDir);
           if (stopSignal) {
             addInfo(`STOP signal: ${stopSignal.trim()}`);
             break;
@@ -293,39 +282,13 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
         }
       }
 
-      // Cleanup
-      storage.remove(join(taskDir, "_interactive_done"));
-      const finalProgressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (finalProgressContent !== null) {
-        setProgress(countProgress(finalProgressContent));
-      }
-
-      currentState = readState(taskDir);
-      if (currentState.status === "completed") {
-        const now = new Date().toISOString();
-        currentState = {
-          ...currentState,
-          lastModified: now,
-          history: [
-            ...currentState.history,
-            {
-              timestamp: now,
-              phase: "done",
-              iteration: 0,
-              engine: currentState.engine,
-              model: currentState.model,
-              result: "task completed",
-            },
-          ],
-        };
-        writeState(taskDir, currentState);
-      }
+      currentState = ensureState(stateDir);
       setState(currentState);
 
       addInfo(`Ralph loop finished after ${iter} iterations.`);
 
       if (iter > 0) {
-        commitTaskDir(taskDir, `task ${opts.name} finished`);
+        commitTaskDir(tasksDir, `change ${opts.name} finished`);
         try {
           gitPush();
         } catch {
@@ -348,8 +311,6 @@ export function useLoop(opts: LoopOptions): UseLoopResult {
     iteration,
     consecutiveFailures,
     logLines,
-    currentPhase,
-    progress,
     stopReason,
     isRunning,
     isResume,

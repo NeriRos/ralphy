@@ -19,7 +19,7 @@ help:
 	@echo "  make install ~"
 	@echo "  → Installs to ~/.ralph"
 
-install: build copy-bin copy-assets init-tasks configure-mcp configure-package
+install: build copy-bin copy-assets init-tasks configure-mcp configure-package init-openspec
 	@echo "✓ Installation complete at $(INSTALL_PATH)"
 
 build:
@@ -33,16 +33,6 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
-	@rm -rf "$(INSTALL_PATH)/phases"
-	@cp -r packages/content/phases "$(INSTALL_PATH)/phases"
-	@mkdir -p "$(INSTALL_PATH)/templates/checklists"
-	@for f in packages/content/checklists/*.md; do \
-		name=$$(basename "$$f"); \
-		if [ ! -f "$(INSTALL_PATH)/templates/checklists/$$name" ]; then \
-			cp "$$f" "$(INSTALL_PATH)/templates/checklists/$$name"; \
-		fi; \
-	done
-	@cp -r packages/content/scaffolds/* "$(INSTALL_PATH)/templates/"
 	@echo "  ✓ Copied assets"
 
 init-tasks:
@@ -65,6 +55,11 @@ configure-mcp:
 		perl -0777 -pe 's/\[\s*\n\s*(".*?")\s*\n\s*\]/[\1]/g' > "$$MCP_FILE"; \
 	fi
 	@echo "  ✓ MCP server configured in .mcp.json"
+
+init-openspec:
+	@echo "  Initializing OpenSpec..."
+	@cd "$(BASE_PATH)" && bunx openspec init --tools none --force
+	@echo "  ✓ OpenSpec initialized"
 
 configure-package:
 	@if [ -f "$(BASE_PATH)/package.json" ] && command -v jq &> /dev/null; then \

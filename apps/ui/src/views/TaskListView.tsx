@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTasks } from "../hooks/useTasks";
-import { PhaseBadge } from "../components/PhaseBadge";
 import { useSidecar } from "../context/SidecarContext";
 
 function formatCost(usd: number): string {
@@ -59,7 +58,7 @@ export function TaskListView() {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--text-dim)" }}>
                 <th style={{ textAlign: "left", padding: "8px 12px" }}>Name</th>
-                <th style={{ textAlign: "left", padding: "8px 12px" }}>Phase</th>
+                <th style={{ textAlign: "left", padding: "8px 12px" }}>Status</th>
                 <th style={{ textAlign: "left", padding: "8px 12px" }}>Progress</th>
                 <th style={{ textAlign: "right", padding: "8px 12px" }}>Iterations</th>
                 <th style={{ textAlign: "right", padding: "8px 12px" }}>Cost</th>
@@ -79,7 +78,7 @@ export function TaskListView() {
                     </Link>
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    <PhaseBadge phase={task.phase} />
+                    <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{task.status}</span>
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {task.progress ? (
@@ -88,9 +87,7 @@ export function TaskListView() {
                       <span style={{ color: "var(--text-dim)" }}>--</span>
                     )}
                   </td>
-                  <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                    {task.totalIterations}
-                  </td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>{task.iteration}</td>
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>
                     {formatCost(task.usage.total_cost_usd)}
                   </td>

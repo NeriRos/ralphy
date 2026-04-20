@@ -9,7 +9,10 @@
       "path": "../../packages/types"
     },
     {
-      "path": "../../packages/phases"
+      "path": "../../packages/change-store"
+    },
+    {
+      "path": "../../packages/openspec"
     },
     {
       "path": "../../packages/output"

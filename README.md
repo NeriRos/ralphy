@@ -4,15 +4,15 @@ An iterative AI task execution framework. Ralphy orchestrates multi-phase autono
 
 ## How It Works
 
-Ralphy breaks down complex tasks into structured phases:
+Ralphy runs a single continuous loop against an OpenSpec change — no phases, no phase transitions.
 
 ```mermaid
 graph LR
-    R[Research] --> P[Plan] --> E[Exec] --> V[Review] --> D[Done]
-    V -->|issues found| E
+    S[Start iteration] --> R[Read Steering] --> T[Find first unchecked task] --> W[Do the work] --> V[Validate] --> C[Check off task] --> S
+    T -->|all tasks checked| D[Archive change]
 ```
 
-Each phase runs in a loop — the engine iterates until the phase's completion criteria are met, then auto-advances to the next phase. A `STEERING.md` file lets you guide the agent mid-flight.
+Each iteration reads the `## Steering` section of `proposal.md`, picks the first unchecked item from `tasks.md`, does the work, validates, and checks the item off. When all items are checked the loop archives the change automatically.
 
 ## Installation
 
@@ -53,15 +53,7 @@ ralph task --name fix-auth --prompt "Fix the JWT validation bug" --claude opus -
 
 The engine defaults to Claude Opus.
 
-### Interactive Mode
-
-```bash
-ralph task --name fix-auth --prompt "Fix the JWT validation bug" --interactive
-```
-
-Runs the research and plan phases interactively (with direct terminal I/O), then switches to automated execution for the remaining phases. Useful when you want to guide early discovery and let the agent execute autonomously.
-
-### Resume a Task
+### Resume a Change
 
 ```bash
 ralph task --name fix-auth
@@ -76,13 +68,6 @@ ralph list                    # Table of all tasks
 ralph status --name fix-auth  # Detailed view of one task
 ```
 
-### Manual Phase Control
-
-```bash
-ralph advance --name fix-auth              # Advance to next phase
-ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
-```
-
 ## CLI Options
 
 | Option                 | Description                                              |
@@ -93,8 +78,6 @@ ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
 | `--claude [model]`     | Use Claude engine (haiku/sonnet/opus)                    |
 | `--codex`              | Use Codex engine                                         |
 | `--model <model>`      | Set model (haiku/sonnet/opus)                            |
-| `--no-execute`         | Stop after research + plan phases                        |
-| `--interactive`        | Run research + plan interactively, then automate         |
 | `--max-iterations <N>` | Stop after N iterations (0 = unlimited)                  |
 | `--max-cost <N>`       | Stop when cost exceeds $N                                |
 | `--max-runtime <N>`    | Stop after N minutes                                     |
@@ -104,42 +87,32 @@ ralph set-phase --name fix-auth --phase exec  # Jump to a specific phase
 | `--log`                | Log raw JSON stream output                               |
 | `--verbose`            | Verbose output                                           |
 
-## Phases
+## OpenSpec Flow
 
-| Phase        | Purpose                                      | Output                   |
-| ------------ | -------------------------------------------- | ------------------------ |
-| **Research** | Study the codebase and gather context        | `RESEARCH.md`            |
-| **Plan**     | Design the implementation approach           | `PLAN.md`, `PROGRESS.md` |
-| **Exec**     | Implement items from the progress checklist  | Code changes             |
-| **Review**   | Verify the work, loop back to exec if needed | Updated `PROGRESS.md`    |
-| **Done**     | Terminal phase — task is complete            | —                        |
+There are no phases. One loop, one prompt, one `tasks.md` checklist.
 
-## Task Files
+Each change lives in `.ralph/tasks/<name>/`:
 
-Each task lives in `.ralph/tasks/<name>/` and contains:
+| File / Directory    | Purpose                                                   |
+| ------------------- | --------------------------------------------------------- |
+| `proposal.md`       | Description, goals, and the `## Steering` section         |
+| `design.md`         | Technical design and architecture decisions               |
+| `tasks.md`          | Checklist driving iteration — one unchecked item per loop |
+| `specs/`            | Detailed specifications for individual tasks              |
+| `.ralph-state.json` | Loop state (iteration count, status, cost, history)       |
+| `STOP`              | Create this file to signal the loop to stop               |
 
-| File             | Purpose                                          |
-| ---------------- | ------------------------------------------------ |
-| `state.json`     | Task state, usage stats, and history             |
-| `STEERING.md`    | Your guidance to the agent (editable anytime)    |
-| `RESEARCH.md`    | Agent's research findings                        |
-| `PLAN.md`        | Agent's implementation plan                      |
-| `PROGRESS.md`    | Checklist tracking execution progress            |
-| `INTERACTIVE.md` | Context saved from interactive session (if used) |
-| `STOP`           | Create this file to signal the loop to stop      |
+Steering is delivered by editing the `## Steering` section of `proposal.md`. The agent reads it at the start of every iteration.
 
 ## MCP Server
 
 Ralphy includes an MCP server that exposes task management tools to Claude agents. It's automatically configured during installation. Available tools:
 
-- `ralph_list_tasks` — List tasks with status and progress
-- `ralph_get_task` — Get task details
-- `ralph_create_task` / `ralph_run_task` — Create and run tasks
-- `ralph_read_document` — Read task documents
-- `ralph_advance_phase` — Advance or set phase
-- `ralph_update_steering` — Update STEERING.md
-- `ralph_finish_interactive` — Complete interactive session and hand off to automated phases
-- `ralph_list_checklists` / `ralph_apply_checklist` — Manage verification checklists
+- `ralph_list_changes` — List changes with status
+- `ralph_get_change` — Get change details
+- `ralph_create_change` — Create and optionally start a change
+- `ralph_append_steering` — Append a steering message to `proposal.md`
+- `ralph_stop` — Stop a running change
 
 ## Project Structure
 
@@ -149,11 +122,12 @@ ralphy/
 │   ├── cli/          # CLI application
 │   └── mcp/          # MCP server
 ├── packages/
-│   ├── core/         # State management, loop, progress
+│   ├── core/         # State management and loop
 │   ├── context/      # Storage abstraction
+│   ├── content/      # Base prompt and task templates
 │   ├── engine/       # Claude/Codex engine spawning
+│   ├── openspec/     # ChangeStore interface and OpenSpec adapter
 │   ├── output/       # Terminal formatting
-│   ├── phases/       # Phase definitions and checklists
 │   └── types/        # Zod schemas and types
 └── Makefile
 ```

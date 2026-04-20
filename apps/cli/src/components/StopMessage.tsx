@@ -1,13 +1,11 @@
 import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
-import type { ProgressCount } from "@ralphy/core/progress";
 import type { StopReason } from "../loop";
 
 export interface StopMessageProps {
   reason: StopReason;
   state: State;
-  taskDir: string;
-  progress?: ProgressCount | null;
+  stateDir: string;
   maxIterations?: number;
   maxCostUsd?: number;
   maxRuntimeMinutes?: number;
@@ -17,38 +15,21 @@ export interface StopMessageProps {
 export function StopMessage({
   reason,
   state,
-  taskDir,
-  progress,
+  stateDir,
   maxIterations,
   maxCostUsd,
   maxRuntimeMinutes,
   consecutiveFailures,
 }: StopMessageProps) {
   switch (reason) {
-    case "terminal": {
+    case "completed": {
       return (
         <Box flexDirection="column">
-          {progress != null && (
-            <Text>
-              {"\n"}All items checked ({progress.checked} done / {progress.unchecked} remaining).
-              Task complete!
-            </Text>
-          )}
-          <Text>See: {taskDir}/PROGRESS.md</Text>
+          <Text>{"\n"}All tasks completed — change archived.</Text>
+          <Text>See: {stateDir}/tasks.md</Text>
         </Box>
       );
     }
-    case "noExecute":
-      return (
-        <Box flexDirection="column">
-          <Text>
-            {"\n"}Research and planning complete. Stopping before execution (--no-execute).
-          </Text>
-          <Text>
-            See: {taskDir}/PLAN.md, {taskDir}/PROGRESS.md
-          </Text>
-        </Box>
-      );
     case "maxIterations":
       return (
         <Text>

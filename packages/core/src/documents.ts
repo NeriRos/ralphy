@@ -1,5 +1,3 @@
-import type { Phase } from "@ralphy/types";
-
 export interface TaskDocument {
   /** File name, e.g. "STEERING.md" */
   name: string;
@@ -9,7 +7,7 @@ export interface TaskDocument {
   fallbackContent?: string;
   /** If set, inject into prompt for these phases (empty array = never, "all" = always). */
   promptInjection: {
-    phases: Phase[] | "all";
+    phases: string[] | "all";
     header: string;
     /** Filter out markdown headers and empty lines, cap at maxLines. */
     filterHeaders: boolean;
@@ -107,7 +105,7 @@ export function getStatusDocuments(): TaskDocument[] {
 }
 
 /** Documents to inject into the prompt for a given phase. */
-export function getPromptDocuments(phase: Phase): TaskDocument[] {
+export function getPromptDocuments(phase: string): TaskDocument[] {
   return TASK_DOCUMENTS.filter((d) => {
     if (!d.promptInjection) return false;
     if (d.promptInjection.phases === "all") return true;

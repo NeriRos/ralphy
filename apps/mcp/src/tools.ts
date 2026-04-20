@@ -4,15 +4,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
-import { advancePhase, setPhase } from "@ralphy/core/phases";
-import { countProgress, extractCurrentSection } from "@ralphy/core/progress";
-import { commitState } from "@ralphy/core/git";
-import { scaffoldTaskDocuments } from "@ralphy/core/templates";
-import { getDocumentNames } from "@ralphy/core/documents";
-import { resolveChecklistDir, listChecklists, getPhase, loadPhases } from "@ralphy/phases";
 import { getStorage, runWithContext, createDefaultContext } from "@ralphy/context";
-
-const DOCUMENTS = getDocumentNames();
+import type { ChangeStore } from "@ralphy/change-store";
 
 /**
  * Type-safe registerTool wrapper. The MCP SDK's registerTool triggers TS2589
@@ -24,105 +17,67 @@ function safeTool<T extends Record<string, z.ZodTypeAny>>(
   server: McpServer,
   name: string,
   config: { description: string; inputSchema: T },
-  cb: (args: { [K in keyof T]: z.infer<T[K]> }) => CallToolResult | Promise<CallToolResult>,
+  callback: (args: { [K in keyof T]: z.infer<T[K]> }) => CallToolResult | Promise<CallToolResult>,
 ): void {
-  // Double-cast via unknown to prevent TS from resolving McpServer.registerTool's deep generic types
   type SimpleTool = { registerTool(n: string, c: unknown, cb: unknown): unknown };
-  (server as unknown as SimpleTool).registerTool(name, config, cb);
+  (server as unknown as SimpleTool).registerTool(name, config, callback);
 }
 
-// Extracted schemas for tools with complex Zod types
-const listTasksSchema = {
-  includeCompleted: z.boolean().optional().describe("Include tasks in 'done' phase"),
-};
-
-const readDocumentSchema = {
-  name: z.string().describe("Task name"),
-  document: z.enum(DOCUMENTS as [string, ...string[]]).describe("Document to read"),
-};
-
-const createTaskSchema = {
-  name: z.string().describe("Task name (used as directory name)"),
-  prompt: z.string().describe("Task prompt/description"),
-  engine: z.string().optional().describe("Engine to use (default: claude)"),
-  model: z.string().optional().describe("Model to use (default: opus)"),
-};
-
-const runTaskSchema = {
-  name: z.string().describe("Task name"),
-  maxIterations: z.number().optional().describe("Maximum iterations to run"),
-  maxCostUsd: z.number().optional().describe("Stop when total cost exceeds this USD amount"),
-  maxRuntimeMinutes: z
-    .number()
-    .optional()
-    .describe("Stop after this many minutes of wall-clock time"),
-  engine: z.string().optional().describe("Engine override"),
-  model: z.string().optional().describe("Model override"),
-};
-
-const applyChecklistSchema = {
-  name: z.string().describe("Task name"),
-  checklists: z.array(z.string()).describe('Checklist names to append (e.g. ["static", "tests"])'),
-};
-
-export function registerTools(server: McpServer, tasksDir: string): void {
-  // --- ralph_list_tasks ---
+export function registerTools(
+  server: McpServer,
+  changesDir: string,
+  changeStore: ChangeStore,
+  taskFilesDir: string = changesDir,
+): void {
+  // --- ralph_list_changes ---
   safeTool(
     server,
-    "ralph_list_tasks",
+    "ralph_list_changes",
     {
-      description: "List all ralph tasks with their phase, status, and progress",
-      inputSchema: listTasksSchema,
+      description: "List all active OpenSpec changes with their status",
+      inputSchema: {
+        includeCompleted: z.boolean().optional().describe("Include completed changes"),
+      },
     },
     async ({ includeCompleted }) => {
-      return runWithContext(createDefaultContext(), () => {
+      return runWithContext(createDefaultContext(), async () => {
         try {
           const storage = getStorage();
-          const entries = storage.list(tasksDir);
-          const tasks = [];
+          const names = await changeStore.listChanges();
+          const changes = [];
 
-          for (const entry of entries) {
-            const taskDir = join(tasksDir, entry);
-
+          for (const name of names) {
+            const changeDir = join(changesDir, name);
             try {
-              const state = readState(taskDir);
-              try {
-                const phaseConfig = getPhase(state.phase);
-                if (!includeCompleted && phaseConfig.terminal) continue;
-              } catch {
-                // Unknown phase — include it
-              }
-
-              let progress = null;
-              const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-              if (progressContent !== null) {
-                progress = countProgress(progressContent);
-              }
-
-              tasks.push({
+              const state = readState(changeDir);
+              if (!includeCompleted && state.status === "completed") continue;
+              changes.push({
                 name: state.name,
-                phase: state.phase,
                 status: state.status,
-                phaseIteration: state.phaseIteration,
-                totalIterations: state.totalIterations,
-                progress,
+                iteration: state.iteration,
                 engine: state.engine,
                 model: state.model,
                 createdAt: state.createdAt,
                 lastModified: state.lastModified,
               });
             } catch {
-              // skip tasks with invalid state
+              // Also try listing from the changes directory directly
+              const stateRaw = storage.read(join(changeDir, ".ralph-state.json"));
+              if (stateRaw !== null) {
+                changes.push({ name, status: "unknown" });
+              }
             }
           }
 
-          return { content: [{ type: "text" as const, text: JSON.stringify({ tasks }, null, 2) }] };
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ changes }, null, 2) }],
+          };
         } catch (err) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Error listing tasks: ${err instanceof Error ? err.message : err}`,
+                text: `Error listing changes: ${err instanceof Error ? err.message : String(err)}`,
               },
             ],
             isError: true,
@@ -132,53 +87,38 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     },
   );
 
-  // --- ralph_get_task ---
+  // --- ralph_get_change ---
   safeTool(
     server,
-    "ralph_get_task",
+    "ralph_get_change",
     {
-      description: "Get detailed information about a specific task",
-      inputSchema: { name: z.string().describe("Task name") },
+      description: "Get detailed information about a specific OpenSpec change",
+      inputSchema: { name: z.string().describe("Change name") },
     },
     async ({ name }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
           const storage = getStorage();
-          const taskDir = join(tasksDir, name);
-          const state = readState(taskDir);
+          const changeDir = join(changesDir, name);
+          const state = readState(changeDir);
 
-          let progress = null;
-          let currentSection = null;
-          const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-          if (progressContent !== null) {
-            progress = countProgress(progressContent);
-            currentSection = extractCurrentSection(progressContent);
-          }
-
-          const documents: string[] = [];
-          for (const doc of DOCUMENTS) {
-            if (storage.read(join(taskDir, doc)) !== null) documents.push(doc);
-          }
-
-          const steering = storage.read(join(taskDir, "STEERING.md"));
+          const taskDir = join(taskFilesDir, name);
+          const tasksContent = storage.read(join(taskDir, "tasks.md"));
+          const proposalContent = storage.read(join(taskDir, "proposal.md"));
 
           const result = {
             name: state.name,
             prompt: state.prompt,
-            phase: state.phase,
             status: state.status,
-            phaseIteration: state.phaseIteration,
-            totalIterations: state.totalIterations,
+            iteration: state.iteration,
             engine: state.engine,
             model: state.model,
             createdAt: state.createdAt,
             lastModified: state.lastModified,
-            progress,
-            currentSection,
-            documents,
-            steering,
             metadata: state.metadata,
             historyLength: state.history.length,
+            hasTasks: tasksContent !== null,
+            hasProposal: proposalContent !== null,
           };
 
           return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
@@ -187,7 +127,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
             content: [
               {
                 type: "text" as const,
-                text: `Error getting task '${name}': ${err instanceof Error ? err.message : err}`,
+                text: `Error getting change '${name}': ${err instanceof Error ? err.message : String(err)}`,
               },
             ],
             isError: true,
@@ -197,128 +137,73 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     },
   );
 
-  // --- ralph_read_document ---
+  // --- ralph_create_change ---
   safeTool(
     server,
-    "ralph_read_document",
+    "ralph_create_change",
     {
-      description: "Read a document file from a task directory",
-      inputSchema: readDocumentSchema,
+      description: "Create a new OpenSpec change and optionally start running it in the background",
+      inputSchema: {
+        name: z.string().describe("Change name (used as directory name)"),
+        prompt: z.string().describe("Change description / prompt"),
+        engine: z.string().optional().describe("Engine to use (default: claude)"),
+        model: z.string().optional().describe("Model to use (default: opus)"),
+        run: z.boolean().optional().describe("Start running the change immediately"),
+        maxIterations: z.number().optional().describe("Maximum iterations to run"),
+        maxCostUsd: z.number().optional().describe("Stop when total cost exceeds this USD amount"),
+        maxRuntimeMinutes: z
+          .number()
+          .optional()
+          .describe("Stop after this many minutes of wall-clock time"),
+      },
     },
-    async ({ name, document }) => {
+    async ({ name, prompt, engine, model, run, maxIterations, maxCostUsd, maxRuntimeMinutes }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
-          const content = getStorage().read(join(tasksDir, name, document));
-          if (content === null) {
+          const changeDir = join(changesDir, name);
+          const stateExists = getStorage().read(join(changeDir, ".ralph-state.json")) !== null;
+
+          if (!stateExists) {
+            const state = buildInitialState({
+              name,
+              prompt,
+              ...(engine !== undefined && { engine }),
+              ...(model !== undefined && { model }),
+            });
+            writeState(changeDir, state);
+          }
+
+          if (!run) {
+            const taskFilesPath = join(taskFilesDir, name);
             return {
               content: [
                 {
                   type: "text" as const,
-                  text: `Document '${document}' does not exist for task '${name}'`,
+                  text: JSON.stringify(
+                    {
+                      created: name,
+                      stateDir: changeDir,
+                      taskFilesDir: taskFilesPath,
+                      note: "Write proposal.md, design.md, tasks.md, specs/ to taskFilesDir. State (.ralph-state.json) is managed automatically in stateDir.",
+                    },
+                    null,
+                    2,
+                  ),
                 },
               ],
-              isError: true,
-            };
-          }
-          return { content: [{ type: "text" as const, text: content }] };
-        } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error reading document: ${err instanceof Error ? err.message : err}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      });
-    },
-  );
-
-  // --- ralph_create_task ---
-  safeTool(
-    server,
-    "ralph_create_task",
-    {
-      description: "Create a new ralph task with initial state and steering file",
-      inputSchema: createTaskSchema,
-    },
-    async ({ name, prompt, engine, model }) => {
-      return runWithContext(createDefaultContext(), () => {
-        try {
-          const storage = getStorage();
-          const taskDir = join(tasksDir, name);
-          if (storage.read(join(taskDir, "state.json")) !== null) {
-            return {
-              content: [{ type: "text" as const, text: `Task '${name}' already exists` }],
-              isError: true,
             };
           }
 
-          const state = buildInitialState({
-            name,
-            prompt,
-            ...(engine !== undefined && { engine }),
-            ...(model !== undefined && { model }),
-          });
-          writeState(taskDir, state);
+          const cliArgs = ["run", "apps/cli/src/index.ts", "task", "--name", name];
+          if (maxIterations) cliArgs.push("--max-iterations", String(maxIterations));
+          if (maxCostUsd) cliArgs.push("--max-cost", String(maxCostUsd));
+          if (maxRuntimeMinutes) cliArgs.push("--max-runtime", String(maxRuntimeMinutes));
+          if (engine) cliArgs.push("--" + engine);
+          if (model) cliArgs.push("--model", model);
 
-          scaffoldTaskDocuments(taskDir, prompt);
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify({ created: name, phase: state.phase, taskDir }, null, 2),
-              },
-            ],
-          };
-        } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error creating task: ${err instanceof Error ? err.message : err}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      });
-    },
-  );
-
-  // --- ralph_run_task ---
-  safeTool(
-    server,
-    "ralph_run_task",
-    {
-      description: "Start running a task in the background (spawns a detached subprocess)",
-      inputSchema: runTaskSchema,
-    },
-    async ({ name, maxIterations, maxCostUsd, maxRuntimeMinutes, engine, model }) => {
-      return runWithContext(createDefaultContext(), () => {
-        try {
-          const taskDir = join(tasksDir, name);
-          if (getStorage().read(join(taskDir, "state.json")) === null) {
-            return {
-              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
-              isError: true,
-            };
-          }
-
-          const args = ["run", "apps/cli/src/index.ts", "task", "--name", name];
-          if (maxIterations) args.push(String(maxIterations));
-          if (maxCostUsd) args.push("--max-cost", String(maxCostUsd));
-          if (maxRuntimeMinutes) args.push("--max-runtime", String(maxRuntimeMinutes));
-          if (engine) args.push("--engine", engine);
-          if (model) args.push("--model", model);
-
-          const child = spawn("bun", args, {
+          const child = spawn("bun", cliArgs, {
             detached: true,
             stdio: "ignore",
-            cwd: join(tasksDir, "..", ".."), // project root
           });
           child.unref();
 
@@ -326,7 +211,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
             content: [
               {
                 type: "text" as const,
-                text: JSON.stringify({ started: name, pid: child.pid }, null, 2),
+                text: JSON.stringify({ created: name, started: true, pid: child.pid }, null, 2),
               },
             ],
           };
@@ -335,7 +220,7 @@ export function registerTools(server: McpServer, tasksDir: string): void {
             content: [
               {
                 type: "text" as const,
-                text: `Error running task: ${err instanceof Error ? err.message : err}`,
+                text: `Error creating change: ${err instanceof Error ? err.message : String(err)}`,
               },
             ],
             isError: true,
@@ -345,176 +230,40 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     },
   );
 
-  // --- ralph_advance_phase ---
+  // --- ralph_append_steering ---
   safeTool(
     server,
-    "ralph_advance_phase",
-    {
-      description: "Advance a task to its next phase, or set a specific phase",
-      inputSchema: {
-        name: z.string().describe("Task name"),
-        phase: z.string().optional().describe("Target phase (if omitted, advances to next phase)"),
-      },
-    },
-    async ({ name, phase }) => {
-      return runWithContext(createDefaultContext(), () => {
-        try {
-          const taskDir = join(tasksDir, name);
-          const state = readState(taskDir);
-          const from = state.phase;
-
-          let updated;
-          if (phase) {
-            // setPhase writes state internally
-            updated = setPhase(state, taskDir, phase);
-          } else {
-            // advancePhase does NOT write state — caller must do it
-            updated = advancePhase(state, taskDir);
-            writeState(taskDir, updated);
-          }
-
-          commitState(taskDir, `advance phase: ${from} -> ${updated.phase}`);
-
-          return {
-            content: [
-              { type: "text" as const, text: JSON.stringify({ from, to: updated.phase }, null, 2) },
-            ],
-          };
-        } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error advancing phase: ${err instanceof Error ? err.message : err}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      });
-    },
-  );
-
-  // --- ralph_update_steering ---
-  safeTool(
-    server,
-    "ralph_update_steering",
-    {
-      description: "Update the STEERING.md file for a task with new guidance",
-      inputSchema: {
-        name: z.string().describe("Task name"),
-        content: z.string().describe("New STEERING.md content"),
-      },
-    },
-    async ({ name, content }) => {
-      return runWithContext(createDefaultContext(), () => {
-        try {
-          const storage = getStorage();
-          const taskDir = join(tasksDir, name);
-          // Verify task exists by checking for state
-          if (storage.read(join(taskDir, "state.json")) === null) {
-            return {
-              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
-              isError: true,
-            };
-          }
-
-          storage.write(join(taskDir, "STEERING.md"), content);
-
-          return {
-            content: [{ type: "text" as const, text: `Updated STEERING.md for task '${name}'` }],
-          };
-        } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error updating steering: ${err instanceof Error ? err.message : err}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      });
-    },
-  );
-
-  // --- ralph_finish_interactive ---
-  safeTool(
-    server,
-    "ralph_finish_interactive",
+    "ralph_append_steering",
     {
       description:
-        "Finish the interactive planning session. Call this with a summary of everything learned " +
-        "from the conversation: requirements, decisions, constraints, and context. " +
-        "This writes the summary to STEERING.md so all subsequent automated phases have full context. " +
-        "After calling this tool you MUST immediately use /exit to end your session.",
+        "Append a steering message to the ## Steering section in proposal.md for a change",
       inputSchema: {
-        name: z.string().describe("Task name"),
-        context: z
-          .string()
-          .describe(
-            "Comprehensive summary of the interactive session: refined requirements, " +
-              "architectural decisions, constraints, edge cases, and any user preferences discussed",
-          ),
+        name: z.string().describe("Change name"),
+        message: z.string().describe("Steering message to append"),
       },
     },
-    async ({ name, context }) => {
-      return runWithContext(createDefaultContext(), () => {
+    async ({ name, message }) => {
+      return runWithContext(createDefaultContext(), async () => {
         try {
-          const storage = getStorage();
-          const taskDir = join(tasksDir, name);
-
-          if (storage.read(join(taskDir, "state.json")) === null) {
+          const changeDir = join(changesDir, name);
+          if (getStorage().read(join(changeDir, ".ralph-state.json")) === null) {
             return {
-              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
+              content: [{ type: "text" as const, text: `Change '${name}' does not exist` }],
               isError: true,
             };
           }
 
-          // Write the interactive context to INTERACTIVE.md
-          const interactiveContent = [
-            "# Interactive Session Context",
-            "",
-            "**This context was gathered during an interactive planning session with the user.**",
-            "**Treat these as authoritative requirements and decisions.**",
-            "",
-            context,
-          ].join("\n");
-
-          storage.write(join(taskDir, "INTERACTIVE.md"), interactiveContent);
-
-          // Write signal file so the loop knows the interactive session completed successfully
-          storage.write(join(taskDir, "_interactive_done"), new Date().toISOString());
-
-          commitState(taskDir, `interactive: save session context for ${name}`);
-
-          const phaseNames = loadPhases()
-            .filter((p) => !p.terminal)
-            .map((p) => p.name)
-            .join(" → ");
+          await changeStore.appendSteering(name, message);
 
           return {
-            content: [
-              {
-                type: "text" as const,
-                text: [
-                  `Interactive session complete. Context saved to STEERING.md for task '${name}'.`,
-                  "",
-                  `The automated ralph loop will now run all phases (${phaseNames}) with this context.`,
-                  "",
-                  "IMPORTANT: Tell the user to run /exit to end this session so the automated loop can continue.",
-                  "You cannot exit on your own — the user must type /exit in the terminal.",
-                ].join("\n"),
-              },
-            ],
+            content: [{ type: "text" as const, text: `Steering appended to change '${name}'` }],
           };
         } catch (err) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Error finishing interactive session: ${err instanceof Error ? err.message : err}`,
+                text: `Error appending steering: ${err instanceof Error ? err.message : String(err)}`,
               },
             ],
             isError: true,
@@ -524,33 +273,32 @@ export function registerTools(server: McpServer, tasksDir: string): void {
     },
   );
 
-  // --- ralph_list_checklists ---
+  // --- ralph_stop ---
   safeTool(
     server,
-    "ralph_list_checklists",
+    "ralph_stop",
     {
-      description: "List available verification checklists with their contents",
-      inputSchema: {},
+      description: "Stop a running change by writing a STOP signal file",
+      inputSchema: {
+        name: z.string().describe("Change name"),
+        reason: z.string().optional().describe("Reason for stopping"),
+      },
     },
-    async () => {
+    async ({ name, reason }) => {
       return runWithContext(createDefaultContext(), () => {
         try {
-          const storage = getStorage();
-          const dir = resolveChecklistDir();
-          const names = listChecklists();
-          const checklists = names.map((name) => ({
-            name,
-            content: storage.read(join(dir, `${name}.md`)) ?? "",
-          }));
+          const taskDir = join(taskFilesDir, name);
+          getStorage().write(join(taskDir, "STOP"), reason ?? "Stopped via MCP");
+
           return {
-            content: [{ type: "text" as const, text: JSON.stringify({ checklists }, null, 2) }],
+            content: [{ type: "text" as const, text: `Stop signal written for change '${name}'` }],
           };
         } catch (err) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Error listing checklists: ${err instanceof Error ? err.message : err}`,
+                text: `Error stopping change: ${err instanceof Error ? err.message : String(err)}`,
               },
             ],
             isError: true,
@@ -559,93 +307,4 @@ export function registerTools(server: McpServer, tasksDir: string): void {
       });
     },
   );
-
-  // --- ralph_apply_checklist ---
-  safeTool(
-    server,
-    "ralph_apply_checklist",
-    {
-      description:
-        "Append verification checklists as new sections at the end of a task's PROGRESS.md",
-      inputSchema: applyChecklistSchema,
-    },
-    async ({ name, checklists }) => {
-      return runWithContext(createDefaultContext(), () => {
-        try {
-          const storage = getStorage();
-          const taskDir = join(tasksDir, name);
-          if (storage.read(join(taskDir, "state.json")) === null) {
-            return {
-              content: [{ type: "text" as const, text: `Task '${name}' does not exist` }],
-              isError: true,
-            };
-          }
-
-          const progressPath = join(taskDir, "PROGRESS.md");
-          let progress = storage.read(progressPath);
-          if (progress === null) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `PROGRESS.md does not exist for task '${name}'`,
-                },
-              ],
-              isError: true,
-            };
-          }
-
-          // Count existing sections to auto-number
-          const sectionMatches = progress.match(/^## Section \d+/gm);
-          let nextSection = (sectionMatches?.length ?? 0) + 1;
-
-          const dir = resolveChecklistDir();
-          const applied: string[] = [];
-
-          for (const cl of checklists) {
-            const raw = storage.read(join(dir, `${cl}.md`));
-            if (raw === null) continue;
-
-            const { title, body } = parseChecklist(raw);
-            progress += `\n## Section ${nextSection} — ${title}\n\n${body.trimEnd()}\n`;
-            nextSection++;
-            applied.push(cl);
-          }
-
-          storage.write(progressPath, progress);
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify({ applied, totalSections: nextSection - 1 }, null, 2),
-              },
-            ],
-          };
-        } catch (err) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error applying checklists: ${err instanceof Error ? err.message : err}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-      });
-    },
-  );
-}
-
-/**
- * Parse a checklist file: extract the H1 title and the remaining body.
- * If no H1 is found, falls back to "Checklist".
- */
-function parseChecklist(content: string): { title: string; body: string } {
-  const match = content.match(/^# (.+)\n/);
-  if (match) {
-    return { title: match[1]!, body: content.slice(match[0].length).replace(/^\n+/, "") };
-  }
-  return { title: "Checklist", body: content };
 }

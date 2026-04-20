@@ -27,11 +27,10 @@ describe("HistoryEntrySchema", () => {
   test("parses a minimal history entry", () => {
     const input = {
       timestamp: "2026-03-03T16:10:35Z",
-      phase: "research",
       iteration: 0,
       engine: "claude",
       model: "opus",
-      result: "advance -> plan",
+      result: "iteration complete",
     };
     const result = HistoryEntrySchema.parse(input);
     expect(result.timestamp).toBe("2026-03-03T16:10:35Z");
@@ -43,7 +42,6 @@ describe("HistoryEntrySchema", () => {
       timestamp: "2026-03-03T16:10:47Z",
       startedAt: "2026-03-03T16:06:04Z",
       endedAt: "2026-03-03T16:10:47Z",
-      phase: "plan",
       iteration: 1,
       engine: "claude",
       model: "opus",
@@ -61,19 +59,17 @@ describe("HistoryEntrySchema", () => {
 });
 
 describe("StateSchema", () => {
-  test("parses a real state.json", () => {
+  test("parses a real state file", () => {
     const input = {
-      version: "1",
+      version: "2" as const,
       name: "typescript",
       prompt: "Convert to typescript",
-      phase: "exec",
-      phaseIteration: 2,
-      totalIterations: 3,
+      iteration: 3,
       createdAt: "2026-03-03T16:06:04Z",
       lastModified: "2026-03-03T16:15:20Z",
-      engine: "claude",
+      engine: "claude" as const,
       model: "opus",
-      status: "active",
+      status: "active" as const,
       usage: {
         total_cost_usd: 2.22,
         total_duration_ms: 550298,
@@ -86,11 +82,10 @@ describe("StateSchema", () => {
       history: [
         {
           timestamp: "2026-03-03T16:10:35Z",
-          phase: "research",
           iteration: 0,
           engine: "claude",
           model: "opus",
-          result: "advance -> plan",
+          result: "iteration complete",
         },
       ],
       metadata: { branch: "main" },
@@ -103,19 +98,18 @@ describe("StateSchema", () => {
 
   test("applies defaults for minimal input", () => {
     const input = {
+      version: "2" as const,
       name: "test-task",
       prompt: "do something",
-      phase: "research",
       createdAt: "2026-01-01T00:00:00Z",
       lastModified: "2026-01-01T00:00:00Z",
     };
     const result = StateSchema.parse(input);
-    expect(result.version).toBe("1");
+    expect(result.version).toBe("2");
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("opus");
     expect(result.status).toBe("active");
-    expect(result.phaseIteration).toBe(0);
-    expect(result.totalIterations).toBe(0);
+    expect(result.iteration).toBe(0);
     expect(result.usage.total_cost_usd).toBe(0);
     expect(result.history).toEqual([]);
     expect(result.metadata).toEqual({});

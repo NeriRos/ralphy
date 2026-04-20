@@ -6,4 +6,10 @@ bun.lock
 .nx/
 *.tsbuildinfo
 .ralph
+openspec/changes/
 target/
+.claude/commands/opsx/
+.claude/skills/openspec-apply-change/
+.claude/skills/openspec-archive-change/
+.claude/skills/openspec-explore/
+.claude/skills/openspec-propose/
