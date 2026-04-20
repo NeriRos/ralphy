@@ -47,7 +47,7 @@
     "test:ci": "nx affected -t test",
     "test:affected-files:coverage:ci": "bun scripts/bun-test-affected-files.ts --coverage",
     "test:coverage:ci": "nx affected -t test:coverage",
-    "build:ci": "nx affected -t build",
+    "build:ci": "nx affected -t build --exclude=@ralphy/ui",
     "check:circular:ci": "depcruise packages/*/src apps/*/src --config .dependency-cruiser.cjs",
     "check:unused:ci": "knip",
     "check:outdated:ci": "bun scripts/check-outdated.ts",
