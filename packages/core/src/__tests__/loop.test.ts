@@ -23,13 +23,13 @@ function makeState(): State {
 }
 
 describe("buildTaskPrompt", () => {
-  test("includes steering content from proposal.md when present", () =>
+  test("includes steering content from steering.md when present", () =>
     withStorage(() => {
       const state = makeState();
       writeState(tempDir, state);
       writeFileSync(
-        join(tempDir, "proposal.md"),
-        "# Proposal\n\n## Steering\n\nFollow convention X\nAvoid pattern Y\n",
+        join(tempDir, "steering.md"),
+        "Follow convention X\nAvoid pattern Y\n",
         "utf-8",
       );
 
@@ -66,15 +66,10 @@ describe("buildTaskPrompt", () => {
       expect(prompt).not.toContain("## 3. Finish");
     }));
 
-  test("omits steering block when proposal.md has no Steering section", () =>
+  test("omits steering block when steering.md is absent", () =>
     withStorage(() => {
       const state = makeState();
       writeState(tempDir, state);
-      writeFileSync(
-        join(tempDir, "proposal.md"),
-        "# Proposal\n\n## Why\n\nSome rationale\n",
-        "utf-8",
-      );
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).not.toContain("User Steering");

@@ -91,7 +91,7 @@ ralph status --name fix-auth  # Detailed view of one task
 
 There are no phases. One loop, one prompt, one `tasks.md` checklist.
 
-Each change lives in `openspec/changes/<name>/`:
+Each change lives in `.ralph/tasks/<name>/`:
 
 | File / Directory    | Purpose                                                   |
 | ------------------- | --------------------------------------------------------- |

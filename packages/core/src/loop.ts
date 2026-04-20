@@ -58,30 +58,20 @@ export function buildTaskPrompt(state: State, changeDir: string): string {
   const storage = getStorage();
   let prompt = "";
 
-  // 1. Steering section from proposal.md
-  const proposalContent = storage.read(join(changeDir, "proposal.md"));
-  if (proposalContent !== null) {
-    const steeringHeader = "## Steering";
-    const steeringIndex = proposalContent.indexOf(steeringHeader);
-    if (steeringIndex !== -1) {
-      const afterSteering = proposalContent.slice(steeringIndex + steeringHeader.length);
-      const nextSectionMatch = afterSteering.match(/\n## /);
-      const steeringSectionContent = nextSectionMatch
-        ? afterSteering.slice(0, nextSectionMatch.index)
-        : afterSteering;
+  // 1. Steering from steering.md
+  const steeringContent = storage.read(join(changeDir, "steering.md"));
+  if (steeringContent !== null) {
+    const steeringLines = steeringContent
+      .split("\n")
+      .filter((line) => !line.startsWith("#"))
+      .filter((line) => line.trim())
+      .slice(0, STEERING_MAX_LINES);
 
-      const steeringLines = steeringSectionContent
-        .split("\n")
-        .filter((line) => !line.startsWith("#"))
-        .filter((line) => line.trim())
-        .slice(0, STEERING_MAX_LINES);
-
-      if (steeringLines.length > 0) {
-        prompt += "---\n";
-        prompt += "# User Steering (READ FIRST)\n\n";
-        prompt += steeringLines.join("\n") + "\n\n";
-        prompt += "---\n\n";
-      }
+    if (steeringLines.length > 0) {
+      prompt += "---\n";
+      prompt += "# User Steering (READ FIRST)\n\n";
+      prompt += steeringLines.join("\n") + "\n\n";
+      prompt += "---\n\n";
     }
   }
 
@@ -224,29 +214,14 @@ export function updateStateIteration(
 }
 
 /**
- * Append a steering message to the `## Steering` section in proposal.md.
+ * Append a steering message to steering.md (prepend-style, newest first).
  */
 export function appendSteeringMessage(changeDir: string, message: string): void {
   const storage = getStorage();
-  const proposalPath = join(changeDir, "proposal.md");
-  const existing = storage.read(proposalPath) ?? "";
-  const steeringHeader = "## Steering";
-
-  if (existing.includes(steeringHeader)) {
-    const steeringIndex = existing.indexOf(steeringHeader);
-    const afterSteering = existing.slice(steeringIndex + steeringHeader.length);
-    const nextSectionMatch = afterSteering.match(/\n## /);
-    const insertionPoint = nextSectionMatch
-      ? steeringIndex + steeringHeader.length + (nextSectionMatch.index ?? 0)
-      : existing.length;
-
-    const before = existing.slice(0, insertionPoint).trimEnd();
-    const after = existing.slice(insertionPoint);
-    storage.write(proposalPath, `${before}\n\n${message}\n${after}`);
-  } else {
-    const updated = existing.trimEnd() + `\n\n${steeringHeader}\n\n${message}\n`;
-    storage.write(proposalPath, updated);
-  }
+  const steeringPath = join(changeDir, "steering.md");
+  const existing = storage.read(steeringPath);
+  const updated = existing ? `${message}\n\n${existing.trimStart()}` : `${message}\n`;
+  storage.write(steeringPath, updated);
 }
 
 /**

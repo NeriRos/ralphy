@@ -22,7 +22,7 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   getChangeDirectory(name: string): string {
-    return join("openspec", "changes", name);
+    return join(".ralph", "tasks", name);
   }
 
   listChanges(): Promise<string[]> {
@@ -42,8 +42,8 @@ export class OpenSpecChangeStore implements ChangeStore {
       }
     }
 
-    // Fallback: scan the openspec/changes directory
-    const changesDir = join("openspec", "changes");
+    // Fallback: scan the .ralph/tasks directory
+    const changesDir = join(".ralph", "tasks");
     if (!existsSync(changesDir)) return Promise.resolve([]);
     const names = readdirSync(changesDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
@@ -52,48 +52,27 @@ export class OpenSpecChangeStore implements ChangeStore {
   }
 
   readTaskList(name: string): Promise<string> {
-    const path = join("openspec", "changes", name, "tasks.md");
+    const path = join(".ralph", "tasks", name, "tasks.md");
     if (!existsSync(path)) return Promise.resolve("");
     return Promise.resolve(readFileSync(path, "utf-8"));
   }
 
   writeTaskList(name: string, content: string): Promise<void> {
-    const path = join("openspec", "changes", name, "tasks.md");
+    const path = join(".ralph", "tasks", name, "tasks.md");
     writeFileSync(path, content, "utf-8");
     return Promise.resolve();
   }
 
   appendSteering(name: string, message: string): Promise<void> {
-    const path = join("openspec", "changes", name, "proposal.md");
-    if (!existsSync(path)) {
-      writeFileSync(path, `## Steering\n\n${message}\n`, "utf-8");
-      return Promise.resolve();
-    }
-
-    const existing = readFileSync(path, "utf-8");
-    const steeringHeader = "## Steering";
-
-    if (existing.includes(steeringHeader)) {
-      const steeringIndex = existing.indexOf(steeringHeader);
-      const afterSteering = existing.slice(steeringIndex + steeringHeader.length);
-      const nextSectionMatch = afterSteering.match(/\n## /);
-      const insertionPoint = nextSectionMatch
-        ? steeringIndex + steeringHeader.length + (nextSectionMatch.index ?? 0)
-        : existing.length;
-
-      const before = existing.slice(0, insertionPoint).trimEnd();
-      const after = existing.slice(insertionPoint);
-      writeFileSync(path, `${before}\n\n${message}\n${after}`, "utf-8");
-    } else {
-      const updated = existing.trimEnd() + `\n\n${steeringHeader}\n\n${message}\n`;
-      writeFileSync(path, updated, "utf-8");
-    }
-
+    const path = join(".ralph", "tasks", name, "steering.md");
+    const existing = existsSync(path) ? readFileSync(path, "utf-8") : null;
+    const updated = existing ? `${message}\n\n${existing.trimStart()}` : `${message}\n`;
+    writeFileSync(path, updated, "utf-8");
     return Promise.resolve();
   }
 
   readSection(name: string, artifact: string, heading: string): Promise<string> {
-    const path = join("openspec", "changes", name, artifact);
+    const path = join(".ralph", "tasks", name, artifact);
     if (!existsSync(path)) return Promise.resolve("");
 
     const content = readFileSync(path, "utf-8");

@@ -8,7 +8,7 @@ Ralph loop framework.
 
 ## Change Layout
 
-Changes live under `openspec/changes/<change-name>/`. Key files:
+Changes live under `.ralph/tasks/<change-name>/`. Key files:
 
 - `proposal.md` — description and `## Steering` section
 - `design.md` — technical design

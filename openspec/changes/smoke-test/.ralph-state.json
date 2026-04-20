@@ -4,8 +4,8 @@
   "prompt": "do nothing this is a smoke test, just do through the phases",
   "iteration": 0,
   "status": "active",
-  "createdAt": "2026-04-20T11:32:30.667Z",
-  "lastModified": "2026-04-20T11:32:30.667Z",
+  "createdAt": "2026-04-20T11:42:51.399Z",
+  "lastModified": "2026-04-20T11:42:51.399Z",
   "engine": "claude",
   "model": "haiku",
   "usage": {

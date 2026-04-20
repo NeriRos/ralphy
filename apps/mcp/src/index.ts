@@ -11,16 +11,16 @@ import { error } from "@ralphy/output";
 import { OpenSpecChangeStore } from "@ralphy/openspec";
 
 /**
- * Resolve the openspec/changes directory by walking up from a starting dir.
+ * Resolve the .ralph/tasks directory by walking up from a starting dir.
  */
 function resolveChangesDir(startDir: string): string {
   let dir = startDir;
   while (dir !== "/") {
-    const candidate = join(dir, "openspec", "changes");
+    const candidate = join(dir, ".ralph", "tasks");
     if (existsSync(candidate)) return candidate;
     dir = resolve(dir, "..");
   }
-  return join(startDir, "openspec", "changes");
+  return join(startDir, ".ralph", "tasks");
 }
 
 async function main(): Promise<void> {

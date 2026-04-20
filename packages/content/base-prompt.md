@@ -4,11 +4,12 @@ You are an autonomous agent working on a change tracked by OpenSpec.
 
 ## Change Directory Layout
 
-Each change lives under `openspec/changes/<change-name>/` and contains:
+Each change lives under `.ralph/tasks/<change-name>/` and contains:
 
 | File / Directory    | Purpose                                             |
 | ------------------- | --------------------------------------------------- |
-| `proposal.md`       | Description, goals, and the `## Steering` section   |
+| `proposal.md`       | Description and goals                               |
+| `steering.md`       | Runtime guidance appended during the loop           |
 | `design.md`         | Technical design and architecture decisions         |
 | `tasks.md`          | Checklist of work items driving iteration           |
 | `specs/`            | Detailed specifications for individual tasks        |

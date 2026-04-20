@@ -25,7 +25,7 @@ beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), "openspec-store-test-"));
   originalCwd = process.cwd();
   process.chdir(tempDir);
-  mkdirSync(join(tempDir, "openspec", "changes", "sample-change"), { recursive: true });
+  mkdirSync(join(tempDir, ".ralph", "tasks", "sample-change"), { recursive: true });
   spawnCalls.length = 0;
   nextSpawnResult = { status: 0, stdout: "", stderr: "" };
 });
@@ -52,13 +52,13 @@ describe("OpenSpecChangeStore", () => {
   test("getChangeDirectory returns the expected path", () => {
     const store = new OpenSpecChangeStore();
     expect(store.getChangeDirectory("sample-change")).toBe(
-      join("openspec", "changes", "sample-change"),
+      join(".ralph", "tasks", "sample-change"),
     );
   });
 
   test("readTaskList reads tasks.md from the change directory", async () => {
     const store = new OpenSpecChangeStore();
-    const tasksPath = join(tempDir, "openspec", "changes", "sample-change", "tasks.md");
+    const tasksPath = join(tempDir, ".ralph", "tasks", "sample-change", "tasks.md");
     writeFileSync(tasksPath, "## Work\n- [ ] item one\n", "utf-8");
 
     const content = await store.readTaskList("sample-change");
@@ -75,50 +75,32 @@ describe("OpenSpecChangeStore", () => {
     const store = new OpenSpecChangeStore();
     await store.writeTaskList("sample-change", "## Work\n- [ ] new item\n");
 
-    const tasksPath = join(tempDir, "openspec", "changes", "sample-change", "tasks.md");
+    const tasksPath = join(tempDir, ".ralph", "tasks", "sample-change", "tasks.md");
     expect(existsSync(tasksPath)).toBe(true);
     expect(readFileSync(tasksPath, "utf-8")).toContain("new item");
   });
 
-  test("appendSteering creates the Steering section when proposal.md lacks one", async () => {
+  test("appendSteering creates steering.md when missing", async () => {
     const store = new OpenSpecChangeStore();
-    const proposalPath = join(tempDir, "openspec", "changes", "sample-change", "proposal.md");
-    writeFileSync(proposalPath, "# Proposal\n\n## Why\n\nRationale here\n", "utf-8");
+    await store.appendSteering("sample-change", "Initial steering");
 
-    await store.appendSteering("sample-change", "Prefer approach X");
-
-    const updated = readFileSync(proposalPath, "utf-8");
-    expect(updated).toContain("## Steering");
-    expect(updated).toContain("Prefer approach X");
+    const steeringPath = join(tempDir, ".ralph", "tasks", "sample-change", "steering.md");
+    expect(existsSync(steeringPath)).toBe(true);
+    const content = readFileSync(steeringPath, "utf-8");
+    expect(content).toContain("Initial steering");
   });
 
-  test("appendSteering updates the existing Steering section", async () => {
+  test("appendSteering prepends to existing steering.md", async () => {
     const store = new OpenSpecChangeStore();
-    const proposalPath = join(tempDir, "openspec", "changes", "sample-change", "proposal.md");
-    writeFileSync(
-      proposalPath,
-      "# Proposal\n\n## Steering\n\nOriginal note\n\n## Why\n\nRationale\n",
-      "utf-8",
-    );
+    const steeringPath = join(tempDir, ".ralph", "tasks", "sample-change", "steering.md");
+    writeFileSync(steeringPath, "Original note\n", "utf-8");
 
     await store.appendSteering("sample-change", "Follow-up note");
 
-    const updated = readFileSync(proposalPath, "utf-8");
+    const updated = readFileSync(steeringPath, "utf-8");
     expect(updated).toContain("Original note");
     expect(updated).toContain("Follow-up note");
-    expect(updated).toContain("## Why");
-    expect(updated.indexOf("Follow-up note")).toBeLessThan(updated.indexOf("## Why"));
-  });
-
-  test("appendSteering creates proposal.md when missing", async () => {
-    const store = new OpenSpecChangeStore();
-    const proposalPath = join(tempDir, "openspec", "changes", "sample-change", "proposal.md");
-    await store.appendSteering("sample-change", "Initial steering");
-
-    expect(existsSync(proposalPath)).toBe(true);
-    const content = readFileSync(proposalPath, "utf-8");
-    expect(content).toContain("## Steering");
-    expect(content).toContain("Initial steering");
+    expect(updated.indexOf("Follow-up note")).toBeLessThan(updated.indexOf("Original note"));
   });
 
   test("createChange invokes `bunx openspec new change`", async () => {

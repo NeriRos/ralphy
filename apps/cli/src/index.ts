@@ -9,17 +9,17 @@ import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { App } from "./components/App";
 
 /**
- * Resolve the openspec/changes directory by walking up from cwd.
- * Falls back to <cwd>/openspec/changes if not found.
+ * Resolve the .ralph/tasks directory by walking up from cwd.
+ * Falls back to <cwd>/.ralph/tasks if not found.
  */
 function resolveChangesDir(): string {
   let dir = process.cwd();
   while (dir !== "/") {
-    const candidate = join(dir, "openspec", "changes");
+    const candidate = join(dir, ".ralph", "tasks");
     if (existsSync(candidate)) return candidate;
     dir = resolve(dir, "..");
   }
-  return join(process.cwd(), "openspec", "changes");
+  return join(process.cwd(), ".ralph", "tasks");
 }
 
 try {
