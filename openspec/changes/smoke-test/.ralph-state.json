@@ -1,0 +1,43 @@
+{
+  "version": "2",
+  "name": "smoke-test",
+  "prompt": "do nothing this is a smoke test, just output a single line and stop",
+  "iteration": 1,
+  "status": "active",
+  "createdAt": "2026-04-20T11:27:08.777Z",
+  "lastModified": "2026-04-20T11:28:05.081Z",
+  "engine": "claude",
+  "model": "haiku",
+  "usage": {
+    "total_cost_usd": 0.25,
+    "total_duration_ms": 49884,
+    "total_turns": 16,
+    "total_input_tokens": 114,
+    "total_output_tokens": 2598,
+    "total_cache_read_input_tokens": 1248741,
+    "total_cache_creation_input_tokens": 85480
+  },
+  "history": [
+    {
+      "timestamp": "2026-04-20T11:28:05.081Z",
+      "startedAt": "2026-04-20T11:27:08.803Z",
+      "endedAt": "2026-04-20T11:28:05.081Z",
+      "iteration": 1,
+      "engine": "claude",
+      "model": "haiku",
+      "result": "success",
+      "usage": {
+        "cost_usd": 0.25,
+        "duration_ms": 49884,
+        "num_turns": 16,
+        "input_tokens": 114,
+        "output_tokens": 2598,
+        "cache_read_input_tokens": 1248741,
+        "cache_creation_input_tokens": 85480
+      }
+    }
+  ],
+  "metadata": {
+    "branch": "claude/simplify-paths-openspec-zaudu"
+  }
+}
