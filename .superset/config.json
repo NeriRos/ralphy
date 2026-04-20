@@ -1,0 +1,7 @@
+{
+  "setup": ["bun i && make install"],
+  "teardown": ["find . -name \\\"node_modules\\\" -type d -prune -exec rm -rf '{}' +"],
+  "run": [
+    "bun run ralph --name \"smoke test\" --prompt \"do nothing this is a smoke test, just do through the phases\" --claude --model haiku"
+  ]
+}

@@ -51,7 +51,7 @@
     "test:coverage:ci": "nx affected -t test:coverage",
     "check:circular:ci": "depcruise packages/*/src apps/*/src --config .dependency-cruiser.cjs",
     "prepare": "bunx husky",
-    "build:publish": "bunx nx run-many --target=build --projects=cli,mcp && bun run copy-assets",
+    "build:publish": "bunx nx run-many --target=build --projects=cli,mcp --output-style stream && bun run copy-assets",
     "copy-assets": "bun scripts/copy-assets.ts",
     "prepublishOnly": "bun run build:publish"
   },
