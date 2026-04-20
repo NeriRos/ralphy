@@ -7,4 +7,3 @@ bun.lock
 *.tsbuildinfo
 .ralph
 target/
-openspec/changes/
