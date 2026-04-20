@@ -26,8 +26,9 @@ function findProjectRoot(start: string): string {
 const projectRoot = findProjectRoot(process.cwd());
 const openspecDir = join(projectRoot, "openspec");
 const tasksDir = join(openspecDir, "changes");
+const statesDir = join(projectRoot, ".ralph", "tasks");
 
-const ctx: SidecarContext = { tasksDir, ralphDir: openspecDir, projectRoot };
+const ctx: SidecarContext = { tasksDir, statesDir, ralphDir: openspecDir, projectRoot };
 
 interface WsData {
   taskName: string;

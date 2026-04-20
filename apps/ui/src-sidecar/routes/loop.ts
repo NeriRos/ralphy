@@ -121,7 +121,8 @@ export async function loopRoutes(
       delay: body.delay ?? 2,
       log: body.log ?? false,
       verbose: body.verbose ?? false,
-      changesDir: ctx.tasksDir,
+      statesDir: ctx.statesDir,
+      tasksDir: ctx.tasksDir,
       changeStore: new OpenSpecChangeStore(),
     };
 
@@ -136,7 +137,7 @@ export async function loopRoutes(
     runningLoops.set(taskName, { cancel });
 
     // Run loop in background
-    runLoopAsync(taskName, taskDir, opts, () => cancelled, ctx.projectRoot)
+    runLoopAsync(taskName, taskDir, opts, () => cancelled, ctx.projectRoot, ctx.statesDir)
       .catch((err) => {
         broadcast(taskName, { type: "error", message: String(err) });
       })
@@ -157,6 +158,7 @@ async function runLoopAsync(
   opts: LoopOptions,
   isCancelled: () => boolean,
   projectRoot: string,
+  statesDir: string,
 ): Promise<void> {
   await runWithContext(createDefaultContext(), async () => {
     const storage = getStorage();
@@ -319,7 +321,7 @@ async function runLoopAsync(
           // Non-fatal
         }
 
-        const stopSignal = checkStopSignal(taskDir);
+        const stopSignal = checkStopSignal(taskDir, join(statesDir, taskName));
         if (stopSignal) {
           broadcast(taskName, { type: "stopped", reason: "signal" });
           break;
