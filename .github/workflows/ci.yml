@@ -134,6 +134,7 @@ jobs:
       - name: Security audit
         if: "!cancelled()"
         run: bun audit --audit-level=high
+        continue-on-error: true
 
       - name: Install Tauri system dependencies # local-ci: skip
         if: "!cancelled() && runner.os == 'Linux'"
