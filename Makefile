@@ -19,7 +19,7 @@ help:
 	@echo "  make install ~"
 	@echo "  → Installs to ~/.ralph"
 
-install: build copy-bin copy-assets init-tasks configure-mcp configure-package
+install: build copy-bin copy-assets init-tasks configure-mcp configure-package init-openspec
 	@echo "✓ Installation complete at $(INSTALL_PATH)"
 
 build:
@@ -33,10 +33,6 @@ copy-bin:
 	@echo "  ✓ Copied binaries"
 
 copy-assets:
-	@mkdir -p "$(INSTALL_PATH)/templates"
-	@if [ -f packages/content/base-prompt.md ]; then \
-		cp packages/content/base-prompt.md "$(INSTALL_PATH)/templates/base-prompt.md"; \
-	fi
 	@echo "  ✓ Copied assets"
 
 init-tasks:
@@ -59,6 +55,11 @@ configure-mcp:
 		perl -0777 -pe 's/\[\s*\n\s*(".*?")\s*\n\s*\]/[\1]/g' > "$$MCP_FILE"; \
 	fi
 	@echo "  ✓ MCP server configured in .mcp.json"
+
+init-openspec:
+	@echo "  Initializing OpenSpec..."
+	@cd "$(BASE_PATH)" && bunx openspec init --tools none --force
+	@echo "  ✓ OpenSpec initialized"
 
 configure-package:
 	@if [ -f "$(BASE_PATH)/package.json" ] && command -v jq &> /dev/null; then \

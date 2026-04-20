@@ -2,6 +2,7 @@
 
 import { resolve, join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { render } from "ink";
 import { createElement } from "react";
 import { parseArgs } from "./cli";
@@ -28,6 +29,10 @@ try {
 
   if (args.mode === "init") {
     mkdirSync(changesDir, { recursive: true });
+    spawnSync("bunx", ["openspec", "init", "--tools", "none", "--force"], {
+      stdio: "inherit",
+      cwd: process.cwd(),
+    });
   }
 
   runWithContext(createDefaultContext(), () => {
