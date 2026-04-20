@@ -13,7 +13,7 @@ import type { LoopOptions } from "../loop";
 import { buildInitialState, writeState, readState } from "@ralphy/core/state";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import type { State, Engine } from "@ralphy/types";
-import type { BuildInitialStateOpts } from "@ralphy/core/state";
+import type { BuildInitialStateOptions } from "@ralphy/core/state";
 
 let tempDir: string;
 const withStorage = <T>(fn: () => T): T => runWithContext(createDefaultContext(), fn);
@@ -26,7 +26,7 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
+function makeState(overrides: Partial<BuildInitialStateOptions> = {}): State {
   return buildInitialState({
     name: "test-task",
     prompt: "Test prompt text",
@@ -35,99 +35,62 @@ function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
 }
 
 describe("buildTaskPrompt", () => {
-  test("includes steering content when STEERING.md exists", () =>
+  test("includes steering content from proposal.md ## Steering section", () =>
     withStorage(() => {
-      const state = makeState({ phase: "research" });
+      const state = makeState();
       writeState(tempDir, state);
-      writeFileSync(join(tempDir, "STEERING.md"), "# Heading\nUse pattern X\nAvoid Y\n", "utf-8");
+      writeFileSync(
+        join(tempDir, "proposal.md"),
+        "# Proposal\n\n## Steering\n\nUse pattern X\nAvoid Y\n",
+        "utf-8",
+      );
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).toContain("User Steering");
       expect(prompt).toContain("Use pattern X");
       expect(prompt).toContain("Avoid Y");
-      // Headings should be filtered out from steering content
-      expect(prompt).not.toContain("# Heading\nUse pattern X");
     }));
 
-  test("omits steering when STEERING.md does not exist", () =>
+  test("omits steering when proposal.md does not exist", () =>
     withStorage(() => {
-      const state = makeState({ phase: "research" });
+      const state = makeState();
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).not.toContain("User Steering");
     }));
 
-  test("omits steering when STEERING.md is empty or only headers", () =>
+  test("omits steering when proposal.md has no Steering section", () =>
     withStorage(() => {
-      const state = makeState({ phase: "research" });
+      const state = makeState();
       writeState(tempDir, state);
-      writeFileSync(join(tempDir, "STEERING.md"), "# Title\n## Subtitle\n", "utf-8");
+      writeFileSync(join(tempDir, "proposal.md"), "# Title\n## Why\nSome reason\n", "utf-8");
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).not.toContain("User Steering");
     }));
 
-  test("plan phase includes RESEARCH.md content", () =>
+  test("includes first unchecked section from tasks.md when present", () =>
     withStorage(() => {
-      const state = { ...makeState(), phase: "plan" };
-      writeState(tempDir, state);
-      writeFileSync(join(tempDir, "RESEARCH.md"), "## Key Findings\nThe API uses REST.\n", "utf-8");
-
-      const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).toContain("Research Findings");
-      expect(prompt).toContain("The API uses REST.");
-    }));
-
-  test("exec phase includes current section from PROGRESS.md", () =>
-    withStorage(() => {
-      const state = { ...makeState(), phase: "exec" };
+      const state = makeState();
       writeState(tempDir, state);
       writeFileSync(
-        join(tempDir, "PROGRESS.md"),
-        [
-          "## Section 1 — Setup",
-          "- [x] Create config",
-          "- [x] Install deps",
-          "",
-          "## Section 2 — Implementation",
-          "- [ ] Add feature A",
-          "- [ ] Add feature B",
-        ].join("\n"),
+        join(tempDir, "tasks.md"),
+        "## Section A\n\n- [ ] Task one\n- [ ] Task two\n",
         "utf-8",
       );
 
       const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).toContain("Section 2");
-      expect(prompt).toContain("Add feature A");
-      expect(prompt).toContain("Add feature B");
-      // Should not include already-completed Section 1
-      expect(prompt).not.toContain("Create config");
-    }));
-
-  test("review phase includes current section for review", () =>
-    withStorage(() => {
-      const state = { ...makeState(), phase: "review" };
-      writeState(tempDir, state);
-      writeFileSync(
-        join(tempDir, "PROGRESS.md"),
-        ["## Section 1 — Done", "- [x] Item 1", "", "## Section 2 — WIP", "- [ ] Item 2"].join(
-          "\n",
-        ),
-        "utf-8",
-      );
-
-      const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).toContain("Current Section (to review)");
-      expect(prompt).toContain("Item 2");
+      expect(prompt).toContain("Current Task Section");
+      expect(prompt).toContain("Task one");
     }));
 
   test("steering content is limited to 20 lines", () =>
     withStorage(() => {
-      const state = makeState({ phase: "research" });
+      const state = makeState();
       writeState(tempDir, state);
       const lines = Array.from({ length: 30 }, (_, i) => `Guidance line ${i + 1}`);
-      writeFileSync(join(tempDir, "STEERING.md"), lines.join("\n"), "utf-8");
+      writeFileSync(join(tempDir, "proposal.md"), `## Steering\n\n${lines.join("\n")}\n`, "utf-8");
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).toContain("Guidance line 1");
@@ -136,54 +99,40 @@ describe("buildTaskPrompt", () => {
     }));
 });
 
-describe("MCP tools injection", () => {
-  test("includes MCP tools block when engine is claude", () =>
+describe("change name and validation instructions", () => {
+  test("prompt includes the change name for claude engine", () =>
     withStorage(() => {
-      const state = makeState({ engine: "claude", phase: "research" });
+      const state = makeState({ engine: "claude" });
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).toContain("MCP Tools Available");
-      expect(prompt).toContain("ralph_advance_phase");
-      expect(prompt).toContain("ralph_read_document");
-      expect(prompt).toContain("ralph_get_task");
-      expect(prompt).toContain("Task name: `test-task`");
+      expect(prompt).toContain("Change name: `test-task`");
     }));
 
-  test("omits MCP tools block when engine is codex", () =>
+  test("prompt includes the change name for codex engine", () =>
     withStorage(() => {
-      const state = { ...makeState({ engine: "codex" as Engine, phase: "research" }) };
+      const state = { ...makeState({ engine: "codex" as Engine }) };
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
-      expect(prompt).not.toContain("MCP Tools Available");
-      expect(prompt).not.toContain("ralph_get_task");
+      expect(prompt).toContain("Change name: `test-task`");
     }));
 
-  test("MCP tools block appears in all phases for claude engine", () =>
+  test("prompt instructs running openspec validate for the change", () =>
     withStorage(() => {
-      for (const phase of ["research", "plan", "exec", "review"] as const) {
-        const state = { ...makeState({ engine: "claude" }), phase };
-        writeState(tempDir, state);
-        // Add PROGRESS.md for exec/review phases
-        if (phase === "exec" || phase === "review") {
-          writeFileSync(join(tempDir, "PROGRESS.md"), "## Section 1 — Test\n- [ ] Item\n", "utf-8");
-        }
-
-        const prompt = buildTaskPrompt(state, tempDir);
-        expect(prompt).toContain("MCP Tools Available");
-      }
-    }));
-
-  test("template variables are rendered in phase prompts", () =>
-    withStorage(() => {
-      const state = makeState({ engine: "claude", phase: "research" });
+      const state = makeState({ engine: "claude" });
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
-      // TASK_NAME should be rendered
-      expect(prompt).toContain('--name "test-task"');
-      // Raw template var should NOT appear
+      expect(prompt).toContain("bunx openspec validate test-task");
+    }));
+
+  test("prompt does not contain unrendered template variables", () =>
+    withStorage(() => {
+      const state = makeState({ engine: "claude" });
+      writeState(tempDir, state);
+
+      const prompt = buildTaskPrompt(state, tempDir);
       expect(prompt).not.toContain("{{TASK_NAME}}");
       expect(prompt).not.toContain("{{MCP_TOOLS}}");
       expect(prompt).not.toContain("{{PHASE_ITERATION}}");
@@ -193,7 +142,7 @@ describe("MCP tools injection", () => {
 describe("parseArgs → buildTaskPrompt integration", () => {
   test("research phase produces non-empty prompt", () =>
     withStorage(() => {
-      const state = makeState({ phase: "research" });
+      const state = makeState();
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
@@ -201,15 +150,19 @@ describe("parseArgs → buildTaskPrompt integration", () => {
       expect(typeof prompt).toBe("string");
     }));
 
-  test("exec phase with no PROGRESS.md still returns prompt", () =>
+  test("returns prompt when no optional files are present", () =>
     withStorage(() => {
-      const state = { ...makeState(), phase: "exec" };
+      const state = makeState();
       writeState(tempDir, state);
 
       const prompt = buildTaskPrompt(state, tempDir);
       expect(typeof prompt).toBe("string");
     }));
 });
+
+const stubChangeStore = {
+  archiveChange: (_name: string) => Promise.resolve(),
+};
 
 function makeOpts(overrides: Partial<LoopOptions> = {}): LoopOptions {
   return {
@@ -221,51 +174,38 @@ function makeOpts(overrides: Partial<LoopOptions> = {}): LoopOptions {
     maxCostUsd: 0,
     maxRuntimeMinutes: 0,
     maxConsecutiveFailures: 5,
-    noExecute: false,
-    interactive: false,
     delay: 0,
     log: false,
     verbose: false,
-    tasksDir: tempDir,
+    changesDir: tempDir,
+    changeStore: stubChangeStore,
     ...overrides,
   };
 }
 
 describe("checkStopCondition", () => {
   test("returns null when no limits are reached", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(state, 0, makeOpts(), Date.now(), 0);
     expect(result).toBeNull();
   });
 
   test("returns maxIterations when limit reached", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(state, 5, makeOpts({ maxIterations: 5 }), Date.now(), 0);
     expect(result).toBe("maxIterations");
   });
 
   test("returns null when iteration is below maxIterations", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(state, 4, makeOpts({ maxIterations: 5 }), Date.now(), 0);
     expect(result).toBeNull();
   });
 
-  test("returns terminal when phase is terminal (done)", () => {
-    const state = { ...makeState(), phase: "done" };
+  test("returns completed when status is not active", () => {
+    const state = { ...makeState(), status: "completed" as const };
     const result = checkStopCondition(state, 0, makeOpts(), Date.now(), 0);
-    expect(result).toBe("terminal");
-  });
-
-  test("returns noExecute when noExecute is true and phase is exec", () => {
-    const state = { ...makeState(), phase: "exec" };
-    const result = checkStopCondition(state, 0, makeOpts({ noExecute: true }), Date.now(), 0);
-    expect(result).toBe("noExecute");
-  });
-
-  test("returns null when noExecute is true but phase is not exec", () => {
-    const state = makeState({ phase: "research" });
-    const result = checkStopCondition(state, 0, makeOpts({ noExecute: true }), Date.now(), 0);
-    expect(result).toBeNull();
+    expect(result).toBe("completed");
   });
 
   test("returns costCap when cost exceeds limit", () => {
@@ -286,14 +226,14 @@ describe("checkStopCondition", () => {
   });
 
   test("returns runtimeLimit when elapsed time exceeds limit", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const pastStart = Date.now() - 31 * 60_000; // 31 minutes ago
     const result = checkStopCondition(state, 0, makeOpts({ maxRuntimeMinutes: 30 }), pastStart, 0);
     expect(result).toBe("runtimeLimit");
   });
 
   test("returns consecutiveFailures when threshold reached", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(
       state,
       0,
@@ -305,7 +245,7 @@ describe("checkStopCondition", () => {
   });
 
   test("returns null when consecutiveFailures is below threshold", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(
       state,
       0,
@@ -317,7 +257,7 @@ describe("checkStopCondition", () => {
   });
 
   test("ignores maxIterations when set to 0 (unlimited)", () => {
-    const state = makeState({ phase: "research" });
+    const state = makeState();
     const result = checkStopCondition(state, 100, makeOpts({ maxIterations: 0 }), Date.now(), 0);
     expect(result).toBeNull();
   });
@@ -357,7 +297,7 @@ describe("checkStopSignal", () => {
 });
 
 describe("updateStateIteration", () => {
-  test("increments phaseIteration and totalIterations", () =>
+  test("increments iteration counter", () =>
     withStorage(() => {
       writeState(tempDir, makeState());
 
@@ -369,8 +309,7 @@ describe("updateStateIteration", () => {
         "opus",
         null,
       );
-      expect(updated.phaseIteration).toBe(1);
-      expect(updated.totalIterations).toBe(1);
+      expect(updated.iteration).toBe(1);
     }));
 
   test("appends history entry", () =>

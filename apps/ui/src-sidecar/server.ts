@@ -11,11 +11,11 @@ import type { SidecarContext } from "./types";
 // Use SIDECAR_PORT env var, or 0 to let the OS assign a free port
 const port = Number(process.env["SIDECAR_PORT"] ?? 0);
 
-// Walk up from cwd to find the project root (directory containing .ralph/)
+// Walk up from cwd to find the project root (directory containing openspec/)
 function findProjectRoot(start: string): string {
   let dir = start;
   while (true) {
-    if (existsSync(join(dir, ".ralph"))) return dir;
+    if (existsSync(join(dir, "openspec"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
@@ -24,10 +24,10 @@ function findProjectRoot(start: string): string {
 }
 
 const projectRoot = findProjectRoot(process.cwd());
-const ralphDir = join(projectRoot, ".ralph");
-const tasksDir = join(ralphDir, "tasks");
+const openspecDir = join(projectRoot, "openspec");
+const tasksDir = join(openspecDir, "changes");
 
-const ctx: SidecarContext = { tasksDir, ralphDir, projectRoot };
+const ctx: SidecarContext = { tasksDir, ralphDir: openspecDir, projectRoot };
 
 interface WsData {
   taskName: string;
@@ -58,12 +58,8 @@ function parseRoute(pathname: string): Route | null {
     return { handler: "loop", name: parts[1]!, action: parts[2]! };
   }
 
-  // /tasks/:name/advance or /tasks/:name/set-phase or /tasks/:name/delete
-  if (
-    parts.length === 3 &&
-    parts[0] === "tasks" &&
-    (parts[2] === "advance" || parts[2] === "set-phase" || parts[2] === "delete")
-  ) {
+  // /tasks/:name/delete
+  if (parts.length === 3 && parts[0] === "tasks" && parts[2] === "delete") {
     return { handler: "tasks", action: parts[2]!, name: parts[1]! };
   }
 

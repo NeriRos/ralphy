@@ -132,7 +132,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
 
   if (!loop.state) return null;
 
-  const taskDir = join(opts.tasksDir, opts.name);
+  const changeDir = join(opts.changesDir, opts.name);
 
   return (
     <Box flexDirection="column">
@@ -145,8 +145,6 @@ export function TaskLoop({ opts }: TaskLoopProps) {
                 state={loop.state!}
                 mode="task"
                 isResume={loop.isResume}
-                noExecute={opts.noExecute}
-                interactive={opts.interactive}
                 maxIterations={opts.maxIterations}
                 maxCostUsd={opts.maxCostUsd}
                 maxRuntimeMinutes={opts.maxRuntimeMinutes}
@@ -163,9 +161,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
       {loop.isRunning && (
         <>
           <StatusBar
-            phase={loop.currentPhase}
             iteration={loop.iteration}
-            progress={loop.progress}
             costUsd={loop.state.usage.total_cost_usd}
             startedAt={loop.startedAt}
             engine={opts.engine}
@@ -179,9 +175,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
       {loop.stopReason && (
         <>
           <StatusBar
-            phase={loop.currentPhase}
             iteration={loop.iteration}
-            progress={loop.progress}
             costUsd={loop.state.usage.total_cost_usd}
             startedAt={loop.startedAt}
             engine={opts.engine}
@@ -191,8 +185,7 @@ export function TaskLoop({ opts }: TaskLoopProps) {
           <StopMessage
             reason={loop.stopReason}
             state={loop.state}
-            taskDir={taskDir}
-            progress={loop.progress}
+            changeDir={changeDir}
             maxIterations={opts.maxIterations}
             maxCostUsd={opts.maxCostUsd}
             maxRuntimeMinutes={opts.maxRuntimeMinutes}

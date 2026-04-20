@@ -56,10 +56,14 @@
     // Skip type-checking third-party .d.ts files for faster builds
     "skipLibCheck": true,
     // Prevent import casing mismatches that break on case-sensitive file systems (Linux CI)
-    "forceConsistentCasingInFileNames": true
-  },
-  "paths": {
-    "@ralphy/openspec": ["./packages/openspec/src/index.ts"]
+    "forceConsistentCasingInFileNames": true,
+
+    // --- Path Aliases ---
+
+    "paths": {
+      "@ralphy/openspec": ["./packages/openspec/src/index.ts"],
+      "@ralphy/openspec/*": ["./packages/openspec/src/*"]
+    }
   },
   "exclude": ["node_modules", "dist"]
 }

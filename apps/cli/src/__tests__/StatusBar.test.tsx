@@ -4,20 +4,13 @@ import { StatusBar } from "../components/StatusBar";
 
 describe("StatusBar", () => {
   const baseProps = {
-    phase: "exec",
     iteration: 3,
-    progress: null,
     costUsd: 0,
     startedAt: Date.now(),
     engine: "claude",
     model: "opus",
     isRunning: true,
   };
-
-  test("renders phase name", () => {
-    const { lastFrame } = render(<StatusBar {...baseProps} />);
-    expect(lastFrame()!).toContain("exec");
-  });
 
   test("renders iteration number", () => {
     const { lastFrame } = render(<StatusBar {...baseProps} />);
@@ -27,22 +20,6 @@ describe("StatusBar", () => {
   test("renders engine/model", () => {
     const { lastFrame } = render(<StatusBar {...baseProps} />);
     expect(lastFrame()!).toContain("claude/opus");
-  });
-
-  test("renders progress when provided", () => {
-    const { lastFrame } = render(
-      <StatusBar {...baseProps} progress={{ checked: 5, unchecked: 3, total: 8 }} />,
-    );
-    const frame = lastFrame()!;
-    expect(frame).toContain("5/8");
-    expect(frame).toContain("done");
-  });
-
-  test("renders progress with all checked (green)", () => {
-    const { lastFrame } = render(
-      <StatusBar {...baseProps} progress={{ checked: 8, unchecked: 0, total: 8 }} />,
-    );
-    expect(lastFrame()!).toContain("8/8");
   });
 
   test("renders cost when > 0", () => {
@@ -88,10 +65,9 @@ describe("StatusBar", () => {
     expect(lastFrame()!).toContain("2h");
   });
 
-  test("renders without progress", () => {
-    const { lastFrame } = render(<StatusBar {...baseProps} progress={null} />);
+  test("renders iteration label", () => {
+    const { lastFrame } = render(<StatusBar {...baseProps} />);
     const frame = lastFrame()!;
     expect(frame).toContain("iter");
-    expect(frame).not.toContain("done");
   });
 });

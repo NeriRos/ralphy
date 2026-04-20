@@ -3,17 +3,15 @@ import { join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { Text, useApp } from "ink";
 import type { ParsedArgs } from "../cli";
-import type { Phase } from "@ralphy/types";
-import { readState, ensureState, writeState } from "@ralphy/core/state";
-import { advancePhase, setPhase } from "@ralphy/core/phases";
-import { commitState } from "@ralphy/core/git";
+import { readState } from "@ralphy/core/state";
 import { TaskList } from "./TaskList";
 import { TaskStatus } from "./TaskStatus";
 import { TaskLoop } from "./TaskLoop";
+import { OpenSpecChangeStore } from "@ralphy/openspec";
 
 export interface AppProps {
   args: ParsedArgs;
-  tasksDir: string;
+  changesDir: string;
 }
 
 function ExitAfterRender({ children }: { children: ReactNode }) {
@@ -33,56 +31,23 @@ function ErrorMessage({ message }: { message: string }) {
   return <Text color="red">{message}</Text>;
 }
 
-export function App({ args, tasksDir }: AppProps) {
+export function App({ args, changesDir }: AppProps) {
   switch (args.mode) {
     case "list":
-      return <TaskList tasksDir={tasksDir} />;
+      return <TaskList changesDir={changesDir} />;
 
     case "status": {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for status mode" />;
       }
-      const taskDir = join(tasksDir, args.name);
-      if (!existsSync(join(taskDir, "state.json"))) {
-        return <ErrorMessage message={`Error: task '${args.name}' not found`} />;
+      const changeDir = join(changesDir, args.name);
+      if (!existsSync(join(changeDir, ".ralph-state.json"))) {
+        return <ErrorMessage message={`Error: change '${args.name}' not found`} />;
       }
-      const state = readState(taskDir);
+      const state = readState(changeDir);
       return (
         <ExitAfterRender>
-          <TaskStatus state={state} taskDir={taskDir} />
-        </ExitAfterRender>
-      );
-    }
-
-    case "advance": {
-      if (!args.name) {
-        return <ErrorMessage message="Error: --name is required for advance mode" />;
-      }
-      const taskDir = join(tasksDir, args.name);
-      const state = ensureState(taskDir);
-      const updated = advancePhase(state, taskDir);
-      writeState(taskDir, updated);
-      commitState(taskDir, `advance phase: ${state.phase} -> ${updated.phase}`);
-      return (
-        <ExitAfterRender>
-          <Text>{`Advanced: ${state.phase} -> ${updated.phase}`}</Text>
-        </ExitAfterRender>
-      );
-    }
-
-    case "set-phase": {
-      if (!args.name) {
-        return <ErrorMessage message="Error: --name is required for set-phase mode" />;
-      }
-      if (!args.phase) {
-        return <ErrorMessage message="Error: --phase is required for set-phase mode" />;
-      }
-      const taskDir = join(tasksDir, args.name);
-      const state = ensureState(taskDir);
-      const updated = setPhase(state, taskDir, args.phase as Phase);
-      return (
-        <ExitAfterRender>
-          <Text>{`Set phase: ${state.phase} -> ${updated.phase}`}</Text>
+          <TaskStatus state={state} changeDir={changeDir} />
         </ExitAfterRender>
       );
     }
@@ -90,7 +55,7 @@ export function App({ args, tasksDir }: AppProps) {
     case "init":
       return (
         <ExitAfterRender>
-          <Text color="green">Initialized .ralph directory</Text>
+          <Text color="green">Initialized openspec directory</Text>
         </ExitAfterRender>
       );
 
@@ -98,7 +63,7 @@ export function App({ args, tasksDir }: AppProps) {
       if (!args.name) {
         return <ErrorMessage message="Error: --name is required for task mode" />;
       }
-      mkdirSync(join(tasksDir, args.name), { recursive: true });
+      mkdirSync(join(changesDir, args.name), { recursive: true });
       return (
         <TaskLoop
           opts={{
@@ -110,12 +75,11 @@ export function App({ args, tasksDir }: AppProps) {
             maxCostUsd: args.maxCostUsd,
             maxRuntimeMinutes: args.maxRuntimeMinutes,
             maxConsecutiveFailures: args.maxConsecutiveFailures,
-            noExecute: args.noExecute,
-            interactive: args.interactive,
             delay: args.delay,
             log: args.log,
             verbose: args.verbose,
-            tasksDir,
+            changesDir,
+            changeStore: new OpenSpecChangeStore(),
           }}
         />
       );

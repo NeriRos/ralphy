@@ -7,20 +7,20 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools";
 import { registerPrompts } from "./prompts";
-import { scaffoldTasksDir } from "@ralphy/core/templates";
 import { error } from "@ralphy/output";
+import { OpenSpecChangeStore } from "@ralphy/openspec";
 
 /**
- * Resolve the .ralph/tasks directory by walking up from a starting dir.
+ * Resolve the openspec/changes directory by walking up from a starting dir.
  */
-function resolveTasksDir(startDir: string): string {
+function resolveChangesDir(startDir: string): string {
   let dir = startDir;
   while (dir !== "/") {
-    const candidate = join(dir, ".ralph", "tasks");
+    const candidate = join(dir, "openspec", "changes");
     if (existsSync(candidate)) return candidate;
     dir = resolve(dir, "..");
   }
-  return join(startDir, ".ralph", "tasks");
+  return join(startDir, "openspec", "changes");
 }
 
 async function main(): Promise<void> {
@@ -32,22 +32,24 @@ async function main(): Promise<void> {
     projectDir = resolve(args[dirIdx + 1]!);
   }
 
-  const tasksDir = resolveTasksDir(projectDir);
-  runWithContext(createDefaultContext(), () => scaffoldTasksDir(tasksDir));
+  const changesDir = resolveChangesDir(projectDir);
+  const changeStore = new OpenSpecChangeStore();
 
   const server = new McpServer({
     name: "ralph",
     version: "1.0.0",
   });
 
-  registerTools(server, tasksDir);
-  registerPrompts(server);
+  runWithContext(createDefaultContext(), () => {
+    registerTools(server, changesDir, changeStore);
+    registerPrompts(server);
+  });
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
 await main().catch((err) => {
-  error(err instanceof Error ? err.message : err);
+  error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

@@ -1,16 +1,13 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useSidecar } from "../context/SidecarContext";
 import { useTaskStream } from "../hooks/useTaskStream";
 import { useDocument } from "../hooks/useDocument";
-import { PhaseBadge } from "../components/PhaseBadge";
-import { PhaseStepper } from "../components/PhaseStepper";
 import { FeedLine } from "../components/FeedLine";
 import { StatusBar } from "../components/StatusBar";
 import { ProgressList } from "../components/ProgressList";
 import { SteeringInput } from "../components/SteeringInput";
 import type { State } from "@ralphy/types";
-import type { PhaseName } from "../lib/phases";
 
 export function TaskDetailView() {
   const { name } = useParams<{ name: string }>();
@@ -56,35 +53,6 @@ export function TaskDetailView() {
 
   type DocKey = "spec" | "plan" | "research" | "progress" | "steering" | "log";
   const [expandedDoc, setExpandedDoc] = useState<DocKey>("spec");
-
-  // Auto-follow: expand the document most relevant to the current phase
-  const autoTarget = useMemo((): DocKey => {
-    if (!state) return "spec";
-    const hasContent = (c: string | null) => c !== null && c.trim().length > 0;
-    switch (state.phase) {
-      case "specify":
-        return "spec";
-      case "research":
-        return hasContent(research.content) ? "research" : "spec";
-      case "plan":
-        return hasContent(plan.content) ? "plan" : "spec";
-      case "exec":
-        return progressItems.length > 0 ? "progress" : "plan";
-      case "review":
-      case "done":
-        return "progress";
-      default:
-        return "spec";
-    }
-  }, [state?.phase, research.content, plan.content, progressItems.length]);
-
-  const prevAutoTargetRef = useRef<DocKey | null>(null);
-  useEffect(() => {
-    if (autoTarget !== prevAutoTargetRef.current) {
-      prevAutoTargetRef.current = autoTarget;
-      setExpandedDoc(autoTarget);
-    }
-  }, [autoTarget]);
 
   // Refresh log content when tab is expanded or periodically while running
   useEffect(() => {
@@ -144,8 +112,8 @@ export function TaskDetailView() {
           {" / "}
           {name}
           {state && (
-            <span style={{ marginLeft: 12 }}>
-              <PhaseBadge phase={state.phase} />
+            <span style={{ marginLeft: 12, fontSize: 13, color: "var(--text-dim)" }}>
+              {state.status}
             </span>
           )}
         </h1>
@@ -154,7 +122,7 @@ export function TaskDetailView() {
             <button className="danger" onClick={stopTask}>
               Stop
             </button>
-          ) : state?.phase !== "done" ? (
+          ) : state?.status !== "completed" ? (
             <button
               className="primary"
               onClick={() =>
@@ -167,13 +135,11 @@ export function TaskDetailView() {
                 })
               }
             >
-              {state?.totalIterations ? "Resume" : "Start"}
+              {state?.iteration ? "Resume" : "Start"}
             </button>
           ) : null}
         </div>
       </div>
-
-      {state && <PhaseStepper currentPhase={state.phase as PhaseName} />}
 
       {state && (
         <StatusBar
@@ -184,7 +150,7 @@ export function TaskDetailView() {
         />
       )}
 
-      {!effectiveIsRunning && !stopReason && state?.phase !== "done" && (
+      {!effectiveIsRunning && !stopReason && state?.status !== "completed" && (
         <div
           style={{
             padding: "12px 20px",
@@ -232,10 +198,10 @@ export function TaskDetailView() {
           >
             {logEntries.length === 0 && !effectiveIsRunning ? (
               <p style={{ color: "var(--text-dim)", textAlign: "center", paddingTop: 40 }}>
-                {state?.phase === "done"
+                {state?.status === "completed"
                   ? "Task completed."
-                  : state?.totalIterations
-                    ? `${state.totalIterations} iterations completed. Click Resume to continue.`
+                  : state?.iteration
+                    ? `${state.iteration} iterations completed. Click Resume to continue.`
                     : "Click Start to begin the task loop."}
               </p>
             ) : (
@@ -275,7 +241,7 @@ export function TaskDetailView() {
             expanded={expandedDoc === "spec"}
             content={spec.content}
             loading={spec.loading}
-            placeholder="Feature specification — requirements, user stories, and success criteria. Created during the specify phase."
+            placeholder="Feature specification — requirements, user stories, and success criteria."
             onExpand={() => setExpandedDoc("spec")}
           />
 
@@ -284,7 +250,7 @@ export function TaskDetailView() {
             expanded={expandedDoc === "research"}
             content={research.content}
             loading={research.loading}
-            placeholder="Research notes — codebase analysis and technical findings. Populated during the research phase."
+            placeholder="Research notes — codebase analysis and technical findings."
             onExpand={() => setExpandedDoc("research")}
           />
 
@@ -293,7 +259,7 @@ export function TaskDetailView() {
             expanded={expandedDoc === "plan"}
             content={plan.content}
             loading={plan.loading}
-            placeholder="Implementation plan — step-by-step tasks and architecture decisions. Created during the plan phase."
+            placeholder="Implementation plan — step-by-step tasks and architecture decisions."
             onExpand={() => setExpandedDoc("plan")}
           />
 

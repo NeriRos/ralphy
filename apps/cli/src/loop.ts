@@ -9,4 +9,5 @@ export {
   appendSteeringMessage,
   buildSteeringPrompt,
   mergeUsage,
+  allTasksCompleted,
 } from "@ralphy/core/loop";

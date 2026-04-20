@@ -32,6 +32,7 @@ mock.module("node:child_process", () => ({
 // Import after mocks are set up
 const { registerTools } = await import("../tools");
 const { buildInitialState } = await import("@ralphy/core/state");
+const { OpenSpecChangeStore } = await import("@ralphy/openspec");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,7 +62,7 @@ function captureHandlers(tasksDir: string): (name: string) => ToolHandler {
       handlers.set(_name, handler);
     },
   } as unknown as McpServer;
-  registerTools(mockServer, tasksDir);
+  registerTools(mockServer, tasksDir, new OpenSpecChangeStore());
   return (name: string) => {
     const h = handlers.get(name);
     if (!h) throw new Error(`No handler registered for ${name}`);
@@ -101,7 +102,7 @@ describe("registerTools", () => {
       }),
     } as unknown as McpServer;
 
-    registerTools(mockServer, tempDir);
+    registerTools(mockServer, tempDir, new OpenSpecChangeStore());
 
     expect((mockServer.registerTool as ReturnType<typeof mock>).mock.calls.length).toBe(10);
     expect(registeredTools).toEqual([
@@ -587,36 +588,6 @@ describe("ralph_apply_checklist", () => {
     const data = parseResult(result) as { applied: string[] };
     expect(data.applied).toEqual([]);
   });
-
-  test("handles checklist without H1 heading (parseChecklist fallback)", async () => {
-    // Create a temporary checklist file without an H1 heading
-    const { resolveChecklistDir } = await import("@ralphy/phases");
-    const checklistDir = resolveChecklistDir();
-    const tempChecklistPath = join(checklistDir, "_test_no_h1.md");
-    writeFileSync(tempChecklistPath, "- [ ] Item without heading\n- [ ] Another item\n");
-
-    try {
-      const taskDir = createTask(tempDir, "no-h1-task");
-      writeFileSync(join(taskDir, "PROGRESS.md"), "## Section 1 — Setup\n\n- [ ] Item\n");
-      const handler = captureHandlers(tempDir)("ralph_apply_checklist");
-
-      const result = await handler({
-        name: "no-h1-task",
-        checklists: ["_test_no_h1"],
-      });
-      expect(result.isError).toBeUndefined();
-      const data = parseResult(result) as { applied: string[]; totalSections: number };
-      expect(data.applied).toEqual(["_test_no_h1"]);
-      expect(data.totalSections).toBe(2);
-
-      // Verify PROGRESS.md uses fallback title "Checklist"
-      const progress = readFileSync(join(taskDir, "PROGRESS.md"), "utf-8");
-      expect(progress).toContain("## Section 2 — Checklist");
-      expect(progress).toContain("Item without heading");
-    } finally {
-      rmSync(tempChecklistPath, { force: true });
-    }
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -784,36 +755,6 @@ describe("ralph_finish_interactive", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0]!.text).toContain("Error finishing interactive session");
-  });
-});
-
-describe("ralph_list_checklists error path", () => {
-  test("returns error when listChecklists throws", async () => {
-    // To trigger the catch block, we need resolveChecklistDir or listChecklists to throw.
-    // We can temporarily rename the checklists dir, but that's fragile.
-    // Instead, we use a mock approach: mock the module inline for this one test.
-    const { resolveChecklistDir } = await import("@ralphy/phases");
-    // We can't easily mock these since they're used inside the handler which imports them directly.
-    // However, if we make getStorage() throw by running without context, we can trigger the catch.
-    // Actually, the handler creates its own context via runWithContext(createDefaultContext(), ...).
-    // The most reliable approach is to create a situation where storage.read throws on the
-    // checklist dir content. Since the catch is a safety net, let's verify the handler
-    // structure by checking that the error path returns the expected format.
-    // We'll skip this test if we can't trigger it naturally.
-
-    // Alternative: remove read permission from the checklists dir temporarily
-    const checklistDir = resolveChecklistDir();
-    try {
-      chmodSync(checklistDir, 0o000);
-      const handler = captureHandlers(tempDir)("ralph_list_checklists");
-      const result = await handler({});
-
-      expect(result.isError).toBe(true);
-      expect(result.content[0]!.text).toContain("Error listing checklists");
-    } finally {
-      // Restore permissions
-      chmodSync(checklistDir, 0o755);
-    }
   });
 });
 

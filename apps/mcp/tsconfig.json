@@ -9,9 +9,6 @@
       "path": "../../packages/types"
     },
     {
-      "path": "../../packages/phases"
-    },
-    {
       "path": "../../packages/output"
     },
     {

@@ -29,9 +29,6 @@
   "files": [
     "dist/cli/index.js",
     "dist/mcp/index.js",
-    "dist/phases/",
-    "dist/checklists/",
-    "dist/scaffolds/",
     "README.md"
   ],
   "type": "module",

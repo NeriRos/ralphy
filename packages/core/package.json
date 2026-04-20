@@ -5,20 +5,14 @@
   "type": "module",
   "exports": {
     "./state": "./src/state.ts",
-    "./phases": "./src/phases.ts",
-    "./progress": "./src/progress.ts",
     "./git": "./src/git.ts",
-    "./documents": "./src/documents.ts",
-    "./templates": "./src/templates.ts",
     "./format": "./src/format.ts",
     "./smoke": "./src/smoke.ts",
     "./init": "./src/init.ts",
     "./loop": "./src/loop.ts"
   },
   "dependencies": {
-    "@ralphy/content": "workspace:*",
     "@ralphy/context": "workspace:*",
-    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

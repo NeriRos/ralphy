@@ -1,11 +1,9 @@
 import { join } from "node:path";
 import { appendFileSync, writeFileSync } from "node:fs";
+import { OpenSpecChangeStore } from "@ralphy/openspec";
 import { runWithContext, createDefaultContext, getStorage } from "@ralphy/context";
 import { readState, writeState, buildInitialState } from "@ralphy/core/state";
-import { countProgress, parseProgressItems } from "@ralphy/core/progress";
-import { scaffoldTaskDocuments } from "@ralphy/core/templates";
 import { runEngine, handleEngineFailure } from "@ralphy/engine/engine";
-import { autoTransitionAfterIteration } from "@ralphy/core/phases";
 import { gitPush, commitTaskDir } from "@ralphy/core/git";
 import {
   buildTaskPrompt,
@@ -19,7 +17,7 @@ import {
 } from "../loop-utils";
 import { getActiveStreams } from "../streams";
 import type { SidecarContext } from "../types";
-import type { FeedEvent, State } from "@ralphy/types";
+import type { Engine, FeedEvent, State } from "@ralphy/types";
 
 // Track running loops so we can stop them
 const runningLoops = new Map<string, { cancel: () => void }>();
@@ -120,12 +118,11 @@ export async function loopRoutes(
       maxCostUsd: body.maxCostUsd ?? 0,
       maxRuntimeMinutes: body.maxRuntimeMinutes ?? 0,
       maxConsecutiveFailures: body.maxConsecutiveFailures ?? 5,
-      noExecute: body.noExecute ?? false,
-      interactive: false, // Not supported in UI
       delay: body.delay ?? 2,
       log: body.log ?? false,
       verbose: body.verbose ?? false,
-      tasksDir: ctx.tasksDir,
+      changesDir: ctx.tasksDir,
+      changeStore: new OpenSpecChangeStore(),
     };
 
     // Clear any leftover STOP signal from a previous run
@@ -171,11 +168,11 @@ async function runLoopAsync(
 
     // Init or resume state
     let currentState: State;
-    const existingState = storage.read(join(taskDir, "state.json"));
+    const existingState = storage.read(join(taskDir, ".ralph-state.json"));
     if (existingState !== null) {
       currentState = readState(taskDir);
       if (currentState.engine !== opts.engine || currentState.model !== opts.model) {
-        currentState = { ...currentState, engine: opts.engine, model: opts.model };
+        currentState = { ...currentState, engine: opts.engine as Engine, model: opts.model };
         writeState(taskDir, currentState);
       }
     } else {
@@ -189,7 +186,6 @@ async function runLoopAsync(
     }
 
     broadcast(taskName, { type: "state", state: currentState });
-    scaffoldTaskDocuments(taskDir, opts.prompt);
 
     let iter = 0;
     const loopStartTime = Date.now();
@@ -209,17 +205,9 @@ async function runLoopAsync(
       iter++;
       broadcast(taskName, {
         type: "info",
-        text: `Iteration ${iter} — Phase: ${currentState.phase}`,
+        text: `Iteration ${iter}`,
       });
 
-      const progressContent = storage.read(join(taskDir, "PROGRESS.md"));
-      if (progressContent !== null) {
-        const progress = countProgress(progressContent);
-        const items = parseProgressItems(progressContent);
-        broadcast(taskName, { type: "progress", progress, items });
-      }
-
-      const phaseBeforeEngine = currentState.phase;
       const prompt = buildTaskPrompt(currentState, taskDir);
       const iterStart = new Date().toISOString();
 
@@ -234,12 +222,12 @@ async function runLoopAsync(
         pendingSteerMessages.delete(taskName);
 
         let engineResult = await runEngine({
-          engine: opts.engine,
+          engine: opts.engine as Engine,
           model: opts.model,
           prompt,
           logFlag: opts.log,
           taskDir,
-          interactive: false,
+
           cwd: projectRoot,
           onFeedEvent,
           signal: ac.signal,
@@ -265,12 +253,12 @@ async function runLoopAsync(
           };
 
           const resumeResult = await runEngine({
-            engine: opts.engine,
+            engine: opts.engine as Engine,
             model: opts.model,
             prompt: buildSteeringPrompt(steerMessage),
             logFlag: opts.log,
             taskDir,
-            interactive: false,
+
             cwd: projectRoot,
             onFeedEvent: onResumeFeedEvent,
             signal: resumeAc.signal,
@@ -325,19 +313,6 @@ async function runLoopAsync(
         consFailures = 0;
         lastResult = "";
 
-        // Broadcast updated progress after iteration
-        const postProgressContent = storage.read(join(taskDir, "PROGRESS.md"));
-        if (postProgressContent !== null) {
-          const postProgress = countProgress(postProgressContent);
-          const postItems = parseProgressItems(postProgressContent);
-          broadcast(taskName, { type: "progress", progress: postProgress, items: postItems });
-        }
-
-        if (currentState.phase === phaseBeforeEngine) {
-          currentState = autoTransitionAfterIteration(currentState, taskDir);
-        }
-        broadcast(taskName, { type: "state", state: currentState });
-
         try {
           gitPush();
         } catch {
@@ -374,11 +349,10 @@ async function runLoopAsync(
           ...currentState.history,
           {
             timestamp: now,
-            phase: "done",
             iteration: 0,
             engine: currentState.engine,
             model: currentState.model,
-            result: "task completed",
+            result: "change completed",
           },
         ],
       };

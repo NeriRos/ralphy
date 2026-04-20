@@ -7,7 +7,7 @@ import { rmSync } from "node:fs";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { buildInitialState, writeState } from "@ralphy/core/state";
 import type { State } from "@ralphy/types";
-import type { BuildInitialStateOpts } from "@ralphy/core/state";
+import type { BuildInitialStateOptions } from "@ralphy/core/state";
 import type { ParsedArgs } from "../cli";
 
 // Mock engine module
@@ -28,16 +28,8 @@ mock.module("@ralphy/core/git", () => ({
   gitCommit: mock(() => {}),
 }));
 
-mock.module("@ralphy/core/templates", () => ({
-  scaffoldTaskDocuments: mock(() => {}),
-  renderTemplate: (content: string, vars: Record<string, string>) => {
-    let result = content;
-    for (const [key, value] of Object.entries(vars)) {
-      result = result.replaceAll(`{{${key}}}`, value);
-    }
-    return result;
-  },
-  resolveTemplatePath: mock((name: string) => `/tmp/templates/${name}.md`),
+mock.module("@ralphy/openspec", () => ({
+  archive: mock(async () => {}),
 }));
 
 // Import after mocking
@@ -57,7 +49,7 @@ afterEach(() => {
   rmSync(tempDir, { recursive: true, force: true });
 });
 
-function makeState(overrides: Partial<BuildInitialStateOpts> = {}): State {
+function makeState(overrides: Partial<BuildInitialStateOptions> = {}): State {
   return buildInitialState({
     name: "test-task",
     prompt: "Test prompt text",
@@ -77,9 +69,6 @@ function makeArgs(overrides: Partial<ParsedArgs> = {}): ParsedArgs {
     maxCostUsd: 0,
     maxRuntimeMinutes: 0,
     maxConsecutiveFailures: 5,
-    phase: "",
-    noExecute: false,
-    interactive: false,
     delay: 0,
     log: false,
     verbose: false,
@@ -90,10 +79,10 @@ function makeArgs(overrides: Partial<ParsedArgs> = {}): ParsedArgs {
 describe("App task mode", () => {
   test("task mode with valid name renders TaskLoop", async () => {
     await withStorage(async () => {
-      const taskDir = join(tempDir, "my-task");
-      mkdirSync(taskDir, { recursive: true });
+      const changeDir = join(tempDir, "my-task");
+      mkdirSync(changeDir, { recursive: true });
       const state = makeState({ name: "my-task" });
-      writeState(taskDir, state);
+      writeState(changeDir, state);
 
       const args = makeArgs({
         mode: "task",
@@ -102,7 +91,7 @@ describe("App task mode", () => {
         maxIterations: 1,
       });
 
-      const { frames } = render(<App args={args} tasksDir={tempDir} />);
+      const { frames } = render(<App args={args} changesDir={tempDir} />);
       await new Promise((r) => setTimeout(r, 500));
 
       const allText = frames.join("\n");

@@ -13,10 +13,10 @@
       "path": "../types"
     },
     {
-      "path": "../phases"
+      "path": "../context"
     },
     {
-      "path": "../context"
+      "path": "../openspec"
     }
   ]
 }

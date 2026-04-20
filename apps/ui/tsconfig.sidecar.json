@@ -10,9 +10,6 @@
       "path": "../../packages/types"
     },
     {
-      "path": "../../packages/content"
-    },
-    {
       "path": "../../packages/core"
     },
     {
@@ -22,7 +19,7 @@
       "path": "../../packages/output"
     },
     {
-      "path": "../../packages/phases"
+      "path": "../../packages/openspec"
     },
     {
       "path": "../../packages/context"

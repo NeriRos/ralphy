@@ -6,8 +6,8 @@
   "dependencies": {
     "@ralphy/context": "workspace:*",
     "@ralphy/core": "workspace:*",
+    "@ralphy/openspec": "workspace:*",
     "@ralphy/output": "workspace:*",
-    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }
