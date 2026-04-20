@@ -253,12 +253,7 @@ describe("StopMessage", () => {
   test("renders completed stop", () => {
     const state = makeState();
     const { lastFrame } = render(
-      <StopMessage
-        reason="completed"
-        state={state}
-        stateDir={tempDir}
-        consecutiveFailures={0}
-      />,
+      <StopMessage reason="completed" state={state} stateDir={tempDir} consecutiveFailures={0} />,
     );
     const frame = lastFrame()!;
     expect(frame).toContain("completed");
@@ -358,7 +353,9 @@ describe("App", () => {
   test("list mode renders TaskList", () =>
     withStorage(() => {
       mkdirSync(tempDir, { recursive: true });
-      const { lastFrame } = render(<App args={makeArgs({ mode: "list" })} statesDir={tempDir} tasksDir={tempDir} />);
+      const { lastFrame } = render(
+        <App args={makeArgs({ mode: "list" })} statesDir={tempDir} tasksDir={tempDir} />,
+      );
       expect(lastFrame()!).toContain("No incomplete tasks");
     }));
 
@@ -375,7 +372,11 @@ describe("App", () => {
   test("status mode with missing change shows error", async () => {
     const { lastFrame } = withStorage(() =>
       render(
-        <App args={makeArgs({ mode: "status", name: "nonexistent" })} statesDir={tempDir} tasksDir={tempDir} />,
+        <App
+          args={makeArgs({ mode: "status", name: "nonexistent" })}
+          statesDir={tempDir}
+          tasksDir={tempDir}
+        />,
       ),
     );
     expect(lastFrame()!).toContain("not found");
@@ -391,7 +392,11 @@ describe("App", () => {
       writeFileSync(join(stateDir, ".ralph-state.json"), JSON.stringify(state), "utf-8");
 
       const { lastFrame } = render(
-        <App args={makeArgs({ mode: "status", name: "my-change" })} statesDir={tempDir} tasksDir={tempDir} />,
+        <App
+          args={makeArgs({ mode: "status", name: "my-change" })}
+          statesDir={tempDir}
+          tasksDir={tempDir}
+        />,
       );
       const frame = lastFrame()!;
       expect(frame).toContain("my-change");

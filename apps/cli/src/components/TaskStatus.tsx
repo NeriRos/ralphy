@@ -64,8 +64,7 @@ export function TaskStatus({ state, stateDir }: TaskStatusProps) {
       {recent.map((entry, index) => (
         <Text key={index}>
           {"   "}
-          {entry.timestamp} | iter {entry.iteration} | {entry.engine}/{entry.model} |{" "}
-          {entry.result}
+          {entry.timestamp} | iter {entry.iteration} | {entry.engine}/{entry.model} | {entry.result}
         </Text>
       ))}
       <Text>{HEAVY_RULE}</Text>

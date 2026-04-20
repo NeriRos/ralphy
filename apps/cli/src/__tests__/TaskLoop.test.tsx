@@ -613,8 +613,8 @@ describe("TaskLoop", () => {
           log: false,
           verbose: false,
           statesDir: tempDir,
-        tasksDir: tempDir,
-        changeStore: stubChangeStore,
+          tasksDir: tempDir,
+          changeStore: stubChangeStore,
         });
         steerFn = loop.steer;
         return null;

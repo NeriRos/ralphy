@@ -87,9 +87,7 @@ export function TaskListView() {
                       <span style={{ color: "var(--text-dim)" }}>--</span>
                     )}
                   </td>
-                  <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                    {task.iteration}
-                  </td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>{task.iteration}</td>
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>
                     {formatCost(task.usage.total_cost_usd)}
                   </td>
