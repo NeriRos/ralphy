@@ -7,14 +7,12 @@
     "./state": "./src/state.ts",
     "./git": "./src/git.ts",
     "./format": "./src/format.ts",
-    "./smoke": "./src/smoke.ts",
     "./init": "./src/init.ts",
     "./loop": "./src/loop.ts"
   },
   "dependencies": {
     "@ralphy/content": "workspace:*",
     "@ralphy/context": "workspace:*",
-    "@ralphy/phases": "workspace:*",
     "@ralphy/types": "workspace:*"
   }
 }

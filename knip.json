@@ -42,9 +42,6 @@
     "packages/output": {
       "entry": ["src/**/*.ts"]
     },
-    "packages/phases": {
-      "entry": ["src/**/*.ts"]
-    },
     "packages/types": {
       "entry": ["src/**/*.ts"]
     }

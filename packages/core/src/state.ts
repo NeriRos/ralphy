@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { execSync } from "node:child_process";
 import { StateSchema, type State } from "@ralphy/types";
 import { getStorage } from "@ralphy/context";
 import { formatTaskName } from "./format";
@@ -48,7 +47,15 @@ export function buildInitialState(options: BuildInitialStateOptions): State {
   const now = new Date().toISOString();
   let branch = "main";
   try {
-    branch = execSync("git branch --show-current", { encoding: "utf-8" }).trim();
+    const proc = Bun.spawnSync({
+      cmd: ["git", "branch", "--show-current"],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if (proc.exitCode === 0) {
+      const out = new TextDecoder().decode(proc.stdout).trim();
+      if (out) branch = out;
+    }
   } catch {
     // not in a git repo — use default
   }

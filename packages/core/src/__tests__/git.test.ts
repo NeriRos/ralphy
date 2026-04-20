@@ -1,123 +1,136 @@
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { rmSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 
-// We test git.ts by mocking child_process.execSync
-const mockExecSync = mock(() => "");
+type SpawnResult = { exitCode: number; stdout: string; stderr: string };
 
-mock.module("node:child_process", () => ({
-  execSync: mockExecSync,
-}));
+const spawnCalls: { cmd: string[] }[] = [];
+let nextSpawnResults: SpawnResult[] = [];
+let defaultSpawnResult: SpawnResult = { exitCode: 0, stdout: "", stderr: "" };
 
-// Import after mocking
+const originalSpawnSync = Bun.spawnSync.bind(Bun);
+const encoder = new TextEncoder();
+
+Object.assign(Bun, {
+  spawnSync: (options: { cmd: string[] }) => {
+    spawnCalls.push({ cmd: options.cmd });
+    const result = nextSpawnResults.shift() ?? defaultSpawnResult;
+    return {
+      exitCode: result.exitCode,
+      success: result.exitCode === 0,
+      stdout: encoder.encode(result.stdout),
+      stderr: encoder.encode(result.stderr),
+      pid: 0,
+      signalCode: null,
+      resourceUsage: undefined,
+    };
+  },
+});
+
 const { getCurrentBranch, gitAdd, gitCommit, gitPush, commitState, commitTaskDir } =
   await import("../git");
 
 let tempDir: string;
 
-beforeEach(() => {
-  tempDir = mkdtempSync(join(tmpdir(), "git-test-"));
-  mockExecSync.mockReset();
+beforeEach(async () => {
+  tempDir = await mkdtemp(join(tmpdir(), "git-test-"));
+  spawnCalls.length = 0;
+  nextSpawnResults = [];
+  defaultSpawnResult = { exitCode: 0, stdout: "", stderr: "" };
 });
 
-afterEach(() => {
-  rmSync(tempDir, { recursive: true, force: true });
+afterEach(async () => {
+  await rm(tempDir, { recursive: true, force: true });
 });
 
 describe("getCurrentBranch", () => {
   test("returns trimmed branch name from git", () => {
-    mockExecSync.mockReturnValue("feature/my-branch\n");
+    nextSpawnResults = [{ exitCode: 0, stdout: "feature/my-branch\n", stderr: "" }];
     const branch = getCurrentBranch();
     expect(branch).toBe("feature/my-branch");
-    expect(mockExecSync).toHaveBeenCalledWith("git branch --show-current", {
-      encoding: "utf-8",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "branch", "--show-current"]);
   });
 
   test("returns 'main' when git command fails", () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error("not a git repo");
-    });
+    nextSpawnResults = [{ exitCode: 1, stdout: "", stderr: "not a git repo" }];
+    expect(getCurrentBranch()).toBe("main");
+  });
+
+  test("returns 'main' when branch output is empty", () => {
+    nextSpawnResults = [{ exitCode: 0, stdout: "\n", stderr: "" }];
     expect(getCurrentBranch()).toBe("main");
   });
 });
 
 describe("gitAdd", () => {
-  test("calls execSync with quoted file paths", () => {
-    mockExecSync.mockReturnValue("");
+  test("invokes git add with file paths", () => {
     gitAdd(["file1.ts", "file2.ts"]);
-    expect(mockExecSync).toHaveBeenCalledWith('git add "file1.ts" "file2.ts"', { stdio: "pipe" });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "add", "file1.ts", "file2.ts"]);
   });
 
   test("handles a single file", () => {
-    mockExecSync.mockReturnValue("");
     gitAdd(["src/index.ts"]);
-    expect(mockExecSync).toHaveBeenCalledWith('git add "src/index.ts"', {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "add", "src/index.ts"]);
+  });
+
+  test("throws when git add fails", () => {
+    nextSpawnResults = [{ exitCode: 1, stdout: "", stderr: "fatal" }];
+    expect(() => gitAdd(["nope.ts"])).toThrow("git add failed");
   });
 });
 
 describe("gitCommit", () => {
-  test("calls execSync with escaped message", () => {
-    mockExecSync.mockReturnValue("");
+  test("invokes git commit with message", () => {
     gitCommit("fix: resolve issue");
-    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "fix: resolve issue"', {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "commit", "-m", "fix: resolve issue"]);
   });
 
-  test("escapes double quotes in message", () => {
-    mockExecSync.mockReturnValue("");
+  test("passes message as argv (no shell escaping needed)", () => {
     gitCommit('add "feature"');
-    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "add \\"feature\\""', {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "commit", "-m", 'add "feature"']);
+  });
+
+  test("throws when git commit fails", () => {
+    nextSpawnResults = [{ exitCode: 1, stdout: "", stderr: "nothing to commit" }];
+    expect(() => gitCommit("noop")).toThrow("git commit failed");
   });
 });
 
 describe("gitPush", () => {
   test("succeeds on first attempt", () => {
-    mockExecSync.mockReturnValue("");
+    nextSpawnResults = [
+      { exitCode: 0, stdout: "main\n", stderr: "" }, // branch
+      { exitCode: 0, stdout: "", stderr: "" }, // push
+    ];
     gitPush();
-    expect(mockExecSync).toHaveBeenCalledTimes(2); // getCurrentBranch + push
+    expect(spawnCalls.length).toBe(2);
   });
 
   test("falls back to push -u on first failure", () => {
-    mockExecSync.mockImplementation((...args: unknown[]) => {
-      const cmd = args[0] as string;
-      if (cmd === "git branch --show-current") return "main\n";
-      if (cmd === "git push") throw new Error("no upstream");
-      return "";
-    });
+    nextSpawnResults = [
+      { exitCode: 0, stdout: "main\n", stderr: "" }, // branch
+      { exitCode: 1, stdout: "", stderr: "no upstream" }, // push
+      { exitCode: 0, stdout: "", stderr: "" }, // push -u
+    ];
     gitPush();
-    expect(mockExecSync).toHaveBeenCalledWith("git push -u origin main", {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[2]!.cmd).toEqual(["git", "push", "-u", "origin", "main"]);
   });
 
   test("falls back to --set-upstream on second failure", () => {
-    mockExecSync.mockImplementation((...args: unknown[]) => {
-      const cmd = args[0] as string;
-      if (cmd === "git branch --show-current") return "dev\n";
-      if (cmd === "git push") throw new Error("no upstream");
-      if (cmd === "git push -u origin dev") throw new Error("no upstream");
-      return "";
-    });
+    nextSpawnResults = [
+      { exitCode: 0, stdout: "dev\n", stderr: "" },
+      { exitCode: 1, stdout: "", stderr: "no upstream" },
+      { exitCode: 1, stdout: "", stderr: "no upstream" },
+      { exitCode: 0, stdout: "", stderr: "" },
+    ];
     gitPush();
-    expect(mockExecSync).toHaveBeenCalledWith("git push --set-upstream origin dev", {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[3]!.cmd).toEqual(["git", "push", "--set-upstream", "origin", "dev"]);
   });
 
   test("silently skips when all push attempts fail", () => {
-    mockExecSync.mockImplementation((...args: unknown[]) => {
-      const cmd = args[0] as string;
-      if (cmd === "git branch --show-current") return "main\n";
-      throw new Error("no remote");
-    });
+    defaultSpawnResult = { exitCode: 1, stdout: "", stderr: "no remote" };
+    nextSpawnResults = [{ exitCode: 0, stdout: "main\n", stderr: "" }];
     // Should not throw
     expect(() => gitPush()).not.toThrow();
   });
@@ -125,40 +138,32 @@ describe("gitPush", () => {
 
 describe("commitState", () => {
   test("adds and commits state.json", () => {
-    mockExecSync.mockReturnValue("");
     commitState("/tasks/test", "phase transition");
-    expect(mockExecSync).toHaveBeenCalledWith('git add "/tasks/test/state.json"', {
-      stdio: "pipe",
-    });
-    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "docs(ralph): phase transition"', {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "add", "/tasks/test/state.json"]);
+    expect(spawnCalls[1]!.cmd).toEqual(["git", "commit", "-m", "docs(ralph): phase transition"]);
   });
 
   test("silently handles failure", () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error("nothing to commit");
-    });
+    defaultSpawnResult = { exitCode: 1, stdout: "", stderr: "nothing to commit" };
     expect(() => commitState("/tasks/test", "msg")).not.toThrow();
   });
 });
 
 describe("commitTaskDir", () => {
   test("adds task directory and commits with prefixed message", () => {
-    mockExecSync.mockReturnValue("");
     commitTaskDir("/tasks/my-task", "save progress");
-    expect(mockExecSync).toHaveBeenCalledWith('git add "/tasks/my-task"', {
-      stdio: "pipe",
-    });
-    expect(mockExecSync).toHaveBeenCalledWith('git commit -m "docs(ralph): save progress"', {
-      stdio: "pipe",
-    });
+    expect(spawnCalls[0]!.cmd).toEqual(["git", "add", "/tasks/my-task"]);
+    expect(spawnCalls[1]!.cmd).toEqual(["git", "commit", "-m", "docs(ralph): save progress"]);
   });
 
   test("silently handles failure", () => {
-    mockExecSync.mockImplementation(() => {
-      throw new Error("nothing to commit");
-    });
+    defaultSpawnResult = { exitCode: 1, stdout: "", stderr: "nothing to commit" };
     expect(() => commitTaskDir("/tasks/test", "msg")).not.toThrow();
   });
+});
+
+// Restore the original at the end (tests run sequentially within the module)
+afterEach(() => {
+  // no-op — we keep the patch for the whole module since it's reset in beforeEach
+  void originalSpawnSync;
 });

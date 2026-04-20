@@ -9,15 +9,12 @@ mock.module("@ralphy/core/git", () => ({
   commitState: mock(() => {}),
 }));
 
-const spawnMock = mock((_command: string, _args: string[], _options: unknown) => ({
+// Patch Bun.spawn so the tools.ts shell-out is observable in tests.
+const spawnMock = mock((_options: { cmd: string[] }) => ({
   unref: () => {},
   pid: 12345,
 }));
-const realChildProcess = await import("node:child_process");
-mock.module("node:child_process", () => ({
-  ...realChildProcess,
-  spawn: spawnMock,
-}));
+Object.assign(Bun, { spawn: spawnMock });
 
 const { registerTools } = await import("../tools");
 const { buildInitialState } = await import("@ralphy/core/state");
@@ -276,12 +273,13 @@ describe("ralph_create_change", () => {
       engine: "codex",
       model: "gpt-5",
     });
-    const args = spawnMock.mock.calls[0]![1] as string[];
-    expect(args).toContain("--max-iterations");
-    expect(args).toContain("--max-cost");
-    expect(args).toContain("--max-runtime");
-    expect(args).toContain("--codex");
-    expect(args).toContain("--model");
+    const call = spawnMock.mock.calls[0]![0] as { cmd: string[] };
+    expect(call.cmd[0]).toBe("bun");
+    expect(call.cmd).toContain("--max-iterations");
+    expect(call.cmd).toContain("--max-cost");
+    expect(call.cmd).toContain("--max-runtime");
+    expect(call.cmd).toContain("--codex");
+    expect(call.cmd).toContain("--model");
   });
 
   test("returns error when spawn throws", async () => {

@@ -1,5 +1,5 @@
 import { join, dirname } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { exists } from "node:fs/promises";
 import { runWithContext, createDefaultContext } from "@ralphy/context";
 import { taskRoutes } from "./routes/tasks";
 import { loopRoutes } from "./routes/loop";
@@ -12,10 +12,10 @@ import type { SidecarContext } from "./types";
 const port = Number(process.env["SIDECAR_PORT"] ?? 0);
 
 // Walk up from cwd to find the project root (directory containing openspec/)
-function findProjectRoot(start: string): string {
+async function findProjectRoot(start: string): Promise<string> {
   let dir = start;
   while (true) {
-    if (existsSync(join(dir, "openspec"))) return dir;
+    if (await exists(join(dir, "openspec"))) return dir;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
@@ -23,7 +23,7 @@ function findProjectRoot(start: string): string {
   return start; // fallback to cwd
 }
 
-const projectRoot = findProjectRoot(process.cwd());
+const projectRoot = await findProjectRoot(process.cwd());
 const openspecDir = join(projectRoot, "openspec");
 const tasksDir = join(openspecDir, "changes");
 const statesDir = join(projectRoot, ".ralph", "tasks");
@@ -127,13 +127,14 @@ const server = Bun.serve<WsData>({
     }
   },
   websocket: {
-    open(ws) {
+    async open(ws) {
       addStream(ws.data.taskName, ws);
       // Replay existing log entries so the feed persists across page reloads
       const logFile = join(tasksDir, ws.data.taskName, "LOG.jsonl");
       try {
-        if (existsSync(logFile)) {
-          const content = readFileSync(logFile, "utf-8");
+        const file = Bun.file(logFile);
+        if (await file.exists()) {
+          const content = await file.text();
           for (const line of content.split("\n")) {
             if (line) ws.send(line);
           }

@@ -5,6 +5,10 @@ Ralph loop framework.
 ## Stack
 
 - Package Manager: bun - USE ONLY `bun` and `bun run` and `bunx` to run commands.
+- Runtime: Bun (required, enforced via preflight at CLI entry). The project is not compatible with plain Node.js.
+- Always use Bun-native APIs (`Bun.spawn` / `Bun.spawnSync`, `Bun.file`, `Bun.write`, `Bun.resolveSync`, `Bun.serve`, etc.). Only fall back to a `node:*` import if no Bun-native exists for the use case.
+- Never use `node:fs` **sync** APIs in source. Callers should be async.
+- Tests that need to mock spawning must patch `Bun.spawnSync` directly (see `packages/openspec/src/__tests__/openspec-change-store.test.ts` for the pattern). Do not `mock.module("node:child_process", ...)`.
 
 ## Change Layout
 

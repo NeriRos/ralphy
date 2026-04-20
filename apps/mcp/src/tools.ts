@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { spawn } from "node:child_process";
 import { z } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -199,9 +198,11 @@ export function registerTools(
           if (engine) cliArgs.push("--" + engine);
           if (model) cliArgs.push("--model", model);
 
-          const child = spawn("bun", cliArgs, {
-            detached: true,
-            stdio: "ignore",
+          const child = Bun.spawn({
+            cmd: ["bun", ...cliArgs],
+            stdin: "ignore",
+            stdout: "ignore",
+            stderr: "ignore",
           });
           child.unref();
 

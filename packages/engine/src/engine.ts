@@ -1,5 +1,5 @@
 import { spawn } from "./spawn";
-import { writeFileSync, unlinkSync, existsSync, mkdtempSync } from "node:fs";
+import { mkdtemp, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { type Engine, type IterationUsage } from "@ralphy/types";
@@ -112,8 +112,8 @@ async function runInteractive(
   // Write prompt to a temp file in the task dir so Claude can read it
   const promptFile = taskDir
     ? join(taskDir, "_interactive_prompt.md")
-    : join(mkdtempSync(join(tmpdir(), "ralph-")), "prompt.md");
-  writeFileSync(promptFile, prompt);
+    : join(await mkdtemp(join(tmpdir(), "ralph-")), "prompt.md");
+  await Bun.write(promptFile, prompt);
 
   try {
     const cmd = [
@@ -145,14 +145,14 @@ async function runInteractive(
     // Check if the interactive session completed successfully via the MCP tool signal
     // Keep the file — the loop uses it to avoid re-entering interactive mode
     const doneFile = taskDir ? join(taskDir, "_interactive_done") : null;
-    if (doneFile && existsSync(doneFile)) {
+    if (doneFile && (await Bun.file(doneFile).exists())) {
       return { exitCode: 0, usage: null, sessionId: null, rateLimited: false };
     }
 
     return { exitCode, usage: null, sessionId: null, rateLimited: false };
   } finally {
     try {
-      unlinkSync(promptFile);
+      await unlink(promptFile);
     } catch {
       // cleanup is best-effort
     }

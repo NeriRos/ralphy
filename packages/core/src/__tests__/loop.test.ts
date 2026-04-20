@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -232,7 +232,7 @@ describe("appendSteeringMessage", () => {
   test("creates steering.md when missing", () =>
     withStorage(() => {
       appendSteeringMessage(tempDir, "First message");
-      const content = require("node:fs").readFileSync(join(tempDir, "steering.md"), "utf-8");
+      const content = readFileSync(join(tempDir, "steering.md"), "utf-8");
       expect(content).toContain("First message");
     }));
 
@@ -240,7 +240,7 @@ describe("appendSteeringMessage", () => {
     withStorage(() => {
       writeFileSync(join(tempDir, "steering.md"), "Old content\n", "utf-8");
       appendSteeringMessage(tempDir, "New message");
-      const content = require("node:fs").readFileSync(join(tempDir, "steering.md"), "utf-8");
+      const content = readFileSync(join(tempDir, "steering.md"), "utf-8");
       expect(content.indexOf("New message")).toBeLessThan(content.indexOf("Old content"));
     }));
 });

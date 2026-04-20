@@ -1,13 +1,12 @@
 import { describe, expect, test, spyOn } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { rmSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
 import { parseArgs, printHelp } from "../cli";
 
 describe("parseArgs", () => {
-  test("defaults to task mode with claude/opus", () => {
-    const result = parseArgs([]);
+  test("defaults to task mode with claude/opus", async () => {
+    const result = await parseArgs([]);
     expect(result.mode).toBe("task");
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("opus");
@@ -16,104 +15,104 @@ describe("parseArgs", () => {
     expect(result.engineSet).toBe(false);
   });
 
-  test("parses mode as first positional argument", () => {
-    expect(parseArgs(["list"]).mode).toBe("list");
-    expect(parseArgs(["status"]).mode).toBe("status");
-    expect(parseArgs(["init"]).mode).toBe("init");
+  test("parses mode as first positional argument", async () => {
+    expect((await parseArgs(["list"])).mode).toBe("list");
+    expect((await parseArgs(["status"])).mode).toBe("status");
+    expect((await parseArgs(["init"])).mode).toBe("init");
   });
 
-  test("parses --name flag", () => {
-    const result = parseArgs(["--name", "my-task"]);
+  test("parses --name flag", async () => {
+    const result = await parseArgs(["--name", "my-task"]);
     expect(result.name).toBe("my-task");
   });
 
-  test("parses --prompt flag", () => {
-    const result = parseArgs(["--prompt", "Add dark mode"]);
+  test("parses --prompt flag", async () => {
+    const result = await parseArgs(["--prompt", "Add dark mode"]);
     expect(result.prompt).toBe("Add dark mode");
   });
 
-  test("parses --prompt-file flag", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "cli-test-"));
+  test("parses --prompt-file flag", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "cli-test-"));
     const promptFile = join(tempDir, "prompt.txt");
-    writeFileSync(promptFile, "Task from file");
+    await Bun.write(promptFile, "Task from file");
     try {
-      const result = parseArgs(["--prompt-file", promptFile]);
+      const result = await parseArgs(["--prompt-file", promptFile]);
       expect(result.prompt).toBe("Task from file");
     } finally {
-      rmSync(tempDir, { recursive: true, force: true });
+      await rm(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("parses --claude without model (defaults to opus)", () => {
-    const result = parseArgs(["--claude"]);
+  test("parses --claude without model (defaults to opus)", async () => {
+    const result = await parseArgs(["--claude"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("opus");
     expect(result.engineSet).toBe(true);
   });
 
-  test("parses --claude with model", () => {
-    const result = parseArgs(["--claude", "sonnet"]);
+  test("parses --claude with model", async () => {
+    const result = await parseArgs(["--claude", "sonnet"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("sonnet");
     expect(result.engineSet).toBe(true);
   });
 
-  test("parses --claude haiku", () => {
-    const result = parseArgs(["--claude", "haiku"]);
+  test("parses --claude haiku", async () => {
+    const result = await parseArgs(["--claude", "haiku"]);
     expect(result.model).toBe("haiku");
   });
 
-  test("parses --codex", () => {
-    const result = parseArgs(["--codex"]);
+  test("parses --codex", async () => {
+    const result = await parseArgs(["--codex"]);
     expect(result.engine).toBe("codex");
     expect(result.engineSet).toBe(true);
   });
 
-  test("throws on conflicting engine flags", () => {
-    expect(() => parseArgs(["--claude", "--codex"])).toThrow("Choose only one engine flag");
-    expect(() => parseArgs(["--codex", "--claude"])).toThrow("Choose only one engine flag");
+  test("throws on conflicting engine flags", async () => {
+    await expect(parseArgs(["--claude", "--codex"])).rejects.toThrow("Choose only one engine flag");
+    await expect(parseArgs(["--codex", "--claude"])).rejects.toThrow("Choose only one engine flag");
   });
 
-  test("throws on bare number (use --max-iterations instead)", () => {
-    expect(() => parseArgs(["20"])).toThrow("Unknown argument");
+  test("throws on bare number (use --max-iterations instead)", async () => {
+    await expect(parseArgs(["20"])).rejects.toThrow("Unknown argument");
   });
 
-  test("parses --max-iterations flag", () => {
-    const result = parseArgs(["--max-iterations", "20"]);
+  test("parses --max-iterations flag", async () => {
+    const result = await parseArgs(["--max-iterations", "20"]);
     expect(result.maxIterations).toBe(20);
   });
 
-  test("parses --log", () => {
-    const result = parseArgs(["--log"]);
+  test("parses --log", async () => {
+    const result = await parseArgs(["--log"]);
     expect(result.log).toBe(true);
   });
 
-  test("parses --delay with value", () => {
-    const result = parseArgs(["--delay", "5"]);
+  test("parses --delay with value", async () => {
+    const result = await parseArgs(["--delay", "5"]);
     expect(result.delay).toBe(5);
   });
 
-  test("parses --unlimited as maxIterations 0", () => {
-    const result = parseArgs(["--max-iterations", "10", "--unlimited"]);
+  test("parses --unlimited as maxIterations 0", async () => {
+    const result = await parseArgs(["--max-iterations", "10", "--unlimited"]);
     expect(result.maxIterations).toBe(0);
   });
 
-  test("ignores deprecated --timeout flag", () => {
-    const result = parseArgs(["--timeout", "300"]);
+  test("ignores deprecated --timeout flag", async () => {
+    const result = await parseArgs(["--timeout", "300"]);
     expect(result.mode).toBe("task");
   });
 
-  test("ignores deprecated --push-interval flag", () => {
-    const result = parseArgs(["--push-interval", "5"]);
+  test("ignores deprecated --push-interval flag", async () => {
+    const result = await parseArgs(["--push-interval", "5"]);
     expect(result.mode).toBe("task");
   });
 
-  test("throws on unknown argument", () => {
-    expect(() => parseArgs(["--bogus"])).toThrow("Unknown argument");
+  test("throws on unknown argument", async () => {
+    await expect(parseArgs(["--bogus"])).rejects.toThrow("Unknown argument");
   });
 
-  test("parses complex real-world command", () => {
-    const result = parseArgs([
+  test("parses complex real-world command", async () => {
+    const result = await parseArgs([
       "task",
       "--max-iterations",
       "20",
@@ -134,61 +133,61 @@ describe("parseArgs", () => {
     expect(result.log).toBe(true);
   });
 
-  test("--claude followed by non-model arg uses default model", () => {
-    const result = parseArgs(["--claude", "--name", "test"]);
+  test("--claude followed by non-model arg uses default model", async () => {
+    const result = await parseArgs(["--claude", "--name", "test"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("opus");
     expect(result.name).toBe("test");
   });
 
-  test("allows duplicate same-engine flags", () => {
-    const result = parseArgs(["--claude", "--claude", "haiku"]);
+  test("allows duplicate same-engine flags", async () => {
+    const result = await parseArgs(["--claude", "--claude", "haiku"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("haiku");
   });
 
-  test("parses --model flag", () => {
-    const result = parseArgs(["--model", "sonnet"]);
+  test("parses --model flag", async () => {
+    const result = await parseArgs(["--model", "sonnet"]);
     expect(result.model).toBe("sonnet");
   });
 
-  test("parses --model haiku", () => {
-    const result = parseArgs(["--model", "haiku"]);
+  test("parses --model haiku", async () => {
+    const result = await parseArgs(["--model", "haiku"]);
     expect(result.model).toBe("haiku");
   });
 
-  test("throws on invalid --model value", () => {
-    expect(() => parseArgs(["--model", "gpt4"])).toThrow("Invalid model");
+  test("throws on invalid --model value", async () => {
+    await expect(parseArgs(["--model", "gpt4"])).rejects.toThrow("Invalid model");
   });
 
-  test("--model overrides --claude default", () => {
-    const result = parseArgs(["--claude", "--model", "haiku"]);
+  test("--model overrides --claude default", async () => {
+    const result = await parseArgs(["--claude", "--model", "haiku"]);
     expect(result.engine).toBe("claude");
     expect(result.model).toBe("haiku");
   });
 
-  test("parses --max-cost flag", () => {
-    const result = parseArgs(["--max-cost", "5.50"]);
+  test("parses --max-cost flag", async () => {
+    const result = await parseArgs(["--max-cost", "5.50"]);
     expect(result.maxCostUsd).toBe(5.5);
   });
 
-  test("parses --max-runtime flag", () => {
-    const result = parseArgs(["--max-runtime", "30"]);
+  test("parses --max-runtime flag", async () => {
+    const result = await parseArgs(["--max-runtime", "30"]);
     expect(result.maxRuntimeMinutes).toBe(30);
   });
 
-  test("parses --max-failures flag", () => {
-    const result = parseArgs(["--max-failures", "3"]);
+  test("parses --max-failures flag", async () => {
+    const result = await parseArgs(["--max-failures", "3"]);
     expect(result.maxConsecutiveFailures).toBe(3);
   });
 
-  test("parses --verbose flag", () => {
-    const result = parseArgs(["--verbose"]);
+  test("parses --verbose flag", async () => {
+    const result = await parseArgs(["--verbose"]);
     expect(result.verbose).toBe(true);
   });
 
-  test("unknown argument error includes help hint", () => {
-    expect(() => parseArgs(["--bogus"])).toThrow("ralph --help");
+  test("unknown argument error includes help hint", async () => {
+    await expect(parseArgs(["--bogus"])).rejects.toThrow("ralph --help");
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
@@ -267,7 +267,6 @@ describe("checkStopSignal", () => {
       expect(result).toBe("Blocked: need API key");
 
       // File should be removed
-      const { existsSync } = require("node:fs");
       expect(existsSync(join(tempDir, "STOP"))).toBe(false);
     }));
 
