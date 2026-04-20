@@ -86,9 +86,9 @@ export const PhaseFrontmatterSchema = z.object({
   name: z.string(),
   order: z.number(),
   requires: z.array(z.string()).default([]),
-  next: z.string().optional().nullable(),
-  autoAdvance: z.enum(["allChecked"]).optional().nullable(),
-  loopBack: z.string().optional().nullable(),
+  next: z.string().nullable().default(null),
+  autoAdvance: z.enum(["allChecked"]).nullable().default(null),
+  loopBack: z.string().nullable().default(null),
   terminal: z.boolean().default(false),
   context: z
     .array(
