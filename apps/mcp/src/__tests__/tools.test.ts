@@ -10,7 +10,7 @@ mock.module("@ralphy/core/git", () => ({
   commitState: mock(() => {}),
 }));
 
-const spawnMock = mock(() => ({
+const spawnMock = mock((_command: string, _args: string[], _options: unknown) => ({
   unref: () => {},
   pid: 12345,
 }));

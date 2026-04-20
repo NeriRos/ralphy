@@ -205,7 +205,7 @@ export function autoTransitionAfterIteration(state: State, taskDir: string): Sta
             terminal.name,
             "all items checked -> advance to done",
           );
-          const final = { ...updated, status: "completed" };
+          const final = { ...updated, status: "completed" as const };
           writeState(taskDir, final);
           return final;
         }

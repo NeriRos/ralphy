@@ -92,10 +92,17 @@ export const PhaseFrontmatterSchema = z.object({
   terminal: z.boolean().default(false),
   context: z
     .array(
-      z.object({
-        type: z.string(),
-        label: z.string(),
-      }),
+      z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("file"),
+          file: z.string(),
+          label: z.string(),
+        }),
+        z.object({
+          type: z.literal("currentSection"),
+          label: z.string(),
+        }),
+      ]),
     )
     .default([]),
 });
