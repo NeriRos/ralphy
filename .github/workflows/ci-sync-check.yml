@@ -1,0 +1,22 @@
+name: CI Sync Check
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/ci.yml
+      - .github/actions/setup/action.yml
+      - scripts/ci-local.sh
+
+permissions:
+  contents: read
+
+jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Verify ci-local.sh mirrors every ci.yml step
+        run: bun scripts/check-ci-local-sync.ts

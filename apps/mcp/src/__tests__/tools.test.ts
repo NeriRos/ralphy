@@ -3,7 +3,6 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { rmSync } from "node:fs";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ChangeStore } from "@ralphy/change-store";
 
 mock.module("@ralphy/core/git", () => ({
@@ -86,11 +85,11 @@ function captureHandlers(
     registerTool: (name: string, _opts: unknown, handler: ToolHandler) => {
       handlers.set(name, handler);
     },
-  } as unknown as McpServer;
+  };
   registerTools(mockServer, changesDir, store);
   return (name: string) => {
     const h = handlers.get(name);
-    if (!h) throw new Error(`No handler registered for ${name}`);
+    if (!h) throw new Error("No handler registered");
     return h;
   };
 }
@@ -119,7 +118,7 @@ describe("registerTools", () => {
       registerTool: mock((name: string) => {
         registeredTools.push(name);
       }),
-    } as unknown as McpServer;
+    };
 
     registerTools(mockServer, tempDir, new StubChangeStore());
 

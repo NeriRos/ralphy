@@ -32,7 +32,12 @@ function makeReadableStream(lines: string[]): ReadableStream<Uint8Array> {
   });
 }
 
-const spawnMock = mock((): MockProc => mockProc);
+interface SpawnOptions {
+  cmd: string[];
+  stderr?: string;
+  [key: string]: unknown;
+}
+const spawnMock = mock((_options: SpawnOptions): MockProc => mockProc);
 
 mock.module("../spawn", () => ({
   spawn: spawnMock,
@@ -125,7 +130,7 @@ describe("runEngine", () => {
 
     // Verify spawn was called with claude args
     expect(spawnMock).toHaveBeenCalledTimes(1);
-    const call = (spawnMock.mock.calls[0] as unknown[])[0] as { cmd: string[] };
+    const call = spawnMock.mock.calls[0]![0];
     expect(call.cmd[0]).toBe("claude");
     expect(call.cmd).toContain("--model");
     expect(call.cmd).toContain("claude-test");
@@ -189,7 +194,7 @@ describe("runEngine", () => {
     expect(events.some((e) => e.type === "turn-done")).toBe(true);
 
     // Verify spawn with codex args
-    const call = (spawnMock.mock.calls[0] as unknown[])[0] as { cmd: string[] };
+    const call = spawnMock.mock.calls[0]![0];
     expect(call.cmd[0]).toBe("codex");
     expect(call.cmd).toContain("exec");
     expect(call.cmd).toContain("--json");
@@ -300,11 +305,7 @@ describe("runEngine", () => {
       onFeedEvent: () => {},
     });
 
-    const call = (spawnMock.mock.calls[0] as unknown[])[0] as {
-      stdin: string;
-      stdout: string;
-      stderr: string;
-    };
+    const call = spawnMock.mock.calls[0]![0];
     expect(call.stderr).toBe("inherit");
     expect(call.stdin).toBe("pipe");
     expect(call.stdout).toBe("pipe");
@@ -323,7 +324,7 @@ describe("runEngine", () => {
       onFeedEvent: () => {},
     });
 
-    const call = (spawnMock.mock.calls[0] as unknown[])[0] as { stderr: string };
+    const call = spawnMock.mock.calls[0]![0];
     expect(call.stderr).toBe("pipe");
   });
 
@@ -338,7 +339,7 @@ describe("runEngine", () => {
       onFeedEvent: () => {},
     });
 
-    const call = (spawnMock.mock.calls[0] as unknown[])[0] as { cmd: string[] };
+    const call = spawnMock.mock.calls[0]![0];
     expect(call.cmd).toContain("--resume");
     expect(call.cmd).toContain("sess-abc123");
   });
@@ -436,12 +437,7 @@ describe("runEngine", () => {
 
       expect(result.usage).toBeNull();
       expect(spawnMock).toHaveBeenCalledTimes(1);
-      const call = (spawnMock.mock.calls[0] as unknown[])[0] as {
-        cmd: string[];
-        stdin: string;
-        stdout: string;
-        stderr: string;
-      };
+      const call = spawnMock.mock.calls[0]![0];
       expect(call.cmd[0]).toBe("claude");
       expect(call.cmd).toContain("--model");
       expect(call.cmd).toContain("test-model");

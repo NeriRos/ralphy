@@ -10,7 +10,7 @@ import { StopMessage } from "./StopMessage";
 import { useLoop, type LogEntry } from "../hooks/useLoop";
 import type { LoopOptions } from "../loop";
 
-export interface TaskLoopProps {
+interface TaskLoopProps {
   opts: LoopOptions;
 }
 

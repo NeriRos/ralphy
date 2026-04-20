@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 
-export interface IterationHeaderProps {
+interface IterationHeaderProps {
   iteration: number;
   time: string;
 }

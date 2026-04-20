@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import type { State } from "@ralphy/types";
 import { getStorage } from "@ralphy/context";
 
-export interface TaskStatusProps {
+interface TaskStatusProps {
   state: State;
   stateDir: string;
 }
